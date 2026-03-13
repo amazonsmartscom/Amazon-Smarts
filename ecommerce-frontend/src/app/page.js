@@ -1237,38 +1237,32 @@ const ProductCard = ({ product, onAddToCart, getImageUrl }) => (
   </div>
 );
 
-// --- 💀 SKELETON LOADER ---
-const SkeletonCard = () => (
+
+  // CAROUSEL STATE
+  const SkeletonCard = () => (
   <div className="animate-pulse flex flex-col bg-white rounded-2xl border border-slate-100 p-5 h-[380px]">
     <div className="bg-slate-200 h-48 rounded-xl mb-4"></div>
     <div className="bg-slate-200 h-3 w-1/3 rounded-full mb-3"></div>
     <div className="bg-slate-200 h-4 w-full rounded-full mb-2"></div>
-    <div className="bg-slate-200 h-4 w-2/3 rounded-full mb-4 mt-auto"></div>
-    <div className="bg-slate-200 h-10 w-full rounded-xl mt-4"></div>
+    <div className="bg-slate-200 h-10 w-full rounded-xl mt-auto"></div>
   </div>
 );
 
-// 🚀 INNER COMPONENT (Wrapped in Suspense below)
 function StoreContent() {
   const [products, setProducts] = useState([]);
+  const [dynamicBanners, setDynamicBanners] = useState([]); // 🚀 NEW: State for uploaded banners
   const [loading, setLoading] = useState(true);
   
   const { addToCart } = useCart();
-  const { user } = useAuth();
-  
   const searchParams = useSearchParams();
   const router = useRouter();
   const urlSearchQuery = searchParams.get('search')?.toLowerCase() || '';
 
-  // FILTER STATES
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedBrand, setSelectedBrand] = useState('All');
   const [maxPrice, setMaxPrice] = useState(200000);
-
-  // CAROUSEL STATE
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // HELPER TO FIX BROKEN IMAGE URLS
   const getImageUrl = (imagePath) => {
     if (!imagePath) return 'https://placehold.co/400x400/e2e8f0/64748b?text=No+Image';
     if (imagePath.startsWith('http')) {
@@ -1279,49 +1273,32 @@ function StoreContent() {
   };
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchData = async () => {
       try {
-        const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products`);
-        setProducts(data);
+        const [prodRes, bannerRes] = await Promise.all([
+          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products`),
+          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/banners`) // 🚀 Fetching uploaded banners
+        ]);
+        setProducts(prodRes.data);
+        setDynamicBanners(bannerRes.data);
       } catch (error) {
-        console.error('Error fetching products:', error);
+        console.error('Error fetching data:', error);
       } finally {
-        setTimeout(() => setLoading(false), 800);
+        setLoading(false);
       }
     };
-    fetchProducts();
+    fetchData();
   }, []);
 
-  const heroSlides = [
-    {
-      id: 1,
-      image: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=2070&auto=format&fit=crop", 
-      title: "The Big Tech Sale",
-      subtitle: "Up to 50% Off Top Brands",
-      link: "/"
-    },
-    {
-      id: 2,
-      image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop", 
-      title: "Immersive Audio",
-      subtitle: "Discover our premium headphones",
-      link: "/"
-    },
-    {
-      id: 3,
-      image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=1926&auto=format&fit=crop", 
-      title: "Power Meets Portability",
-      subtitle: "Next-gen laptops are here",
-      link: "/"
-    }
-  ];
-
+  // 🚀 Auto-rotate carousel logic
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev === heroSlides.length - 1 ? 0 : prev + 1));
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [heroSlides.length]);
+    if (dynamicBanners.length > 1) {
+      const timer = setInterval(() => {
+        setCurrentSlide((prev) => (prev === dynamicBanners.length - 1 ? 0 : prev + 1));
+      }, 6000);
+      return () => clearInterval(timer);
+    }
+  }, [dynamicBanners.length]);
 
   // --- DYNAMIC INVENTORY LISTS ---
   const uniqueCategories = ['All', ...new Set(products.map(p => p.category))];
@@ -1356,43 +1333,50 @@ function StoreContent() {
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20 selection:bg-orange-200">
       
       {/* ENGAGING GRAPHIC BANNER CAROUSEL (Hide if user is searching) */}
-      {!urlSearchQuery && (
+      {/* 🚀 DYNAMIC BANNER CAROUSEL (Show only if not searching) */}
+      {!urlSearchQuery && dynamicBanners.length > 0 && (
         <div className="relative w-full h-[300px] md:h-[450px] lg:h-[550px] bg-slate-900 overflow-hidden group">
-          {heroSlides.map((slide, index) => (
+          {dynamicBanners.map((slide, index) => (
             <div 
-              key={slide.id}
+              key={slide._id}
               className={`absolute inset-0 w-full h-full transition-all duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-105 z-0'}`}
             >
-              <img src={slide.image} alt={slide.title} className="w-full h-full object-cover object-center" />
+              <img src={getImageUrl(slide.image)} alt={slide.title} className="w-full h-full object-cover object-center" />
               <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-transparent"></div>
               
               <div className={`absolute left-8 md:left-20 top-1/2 -translate-y-1/2 max-w-xl transition-all duration-700 delay-300 ${index === currentSlide ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0'}`}>
                 <h2 className="text-4xl md:text-6xl font-black text-white mb-4 leading-tight tracking-tight">{slide.title}</h2>
                 <p className="text-lg md:text-xl text-slate-200 font-medium mb-8">{slide.subtitle}</p>
-                <Link href={slide.link} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3.5 rounded-full font-bold shadow-lg shadow-orange-500/30 transition-all hover:-translate-y-1 inline-block">
+                <Link href={slide.link || "/"} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3.5 rounded-full font-bold shadow-lg shadow-orange-500/30 transition-all hover:-translate-y-1 inline-block">
                   Shop Now
                 </Link>
               </div>
             </div>
           ))}
           
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 z-20 bg-slate-900/40 backdrop-blur-md px-6 py-3 rounded-full border border-white/10">
-            <button onClick={() => setCurrentSlide(prev => prev === 0 ? heroSlides.length - 1 : prev - 1)} className="text-white hover:text-orange-400 transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
-            </button>
-            <div className="flex gap-2">
-              {heroSlides.map((_, index) => (
-                <button 
-                  key={index} 
-                  onClick={() => setCurrentSlide(index)} 
-                  className={`h-1.5 rounded-full transition-all duration-500 ${index === currentSlide ? 'w-8 bg-orange-500' : 'w-2 bg-white/40 hover:bg-white'}`}
-                />
-              ))}
+          {/* Controls - Only show if more than 1 banner */}
+          {dynamicBanners.length > 1 && (
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 z-20 bg-slate-900/40 backdrop-blur-md px-6 py-3 rounded-full border border-white/10">
+              <button onClick={() => setCurrentSlide(prev => prev === 0 ? dynamicBanners.length - 1 : prev - 1)} className="text-white hover:text-orange-400">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
+              </button>
+              <div className="flex gap-2">
+                {dynamicBanners.map((_, index) => (
+                  <button key={index} onClick={() => setCurrentSlide(index)} className={`h-1.5 rounded-full transition-all duration-500 ${index === currentSlide ? 'w-8 bg-orange-500' : 'w-2 bg-white/40'}`} />
+                ))}
+              </div>
+              <button onClick={() => setCurrentSlide(prev => prev === dynamicBanners.length - 1 ? 0 : prev + 1)} className="text-white hover:text-orange-400">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+              </button>
             </div>
-            <button onClick={() => setCurrentSlide(prev => prev === 0 ? heroSlides.length - 1 : prev + 1)} className="text-white hover:text-orange-400 transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
-            </button>
-          </div>
+          )}
+        </div>
+      )}
+
+      {/* Placeholder if no banners uploaded */}
+      {!urlSearchQuery && dynamicBanners.length === 0 && !loading && (
+        <div className="w-full h-[300px] bg-slate-200 flex items-center justify-center text-slate-400 font-bold uppercase tracking-widest">
+           No Banners Uploaded
         </div>
       )}
 
