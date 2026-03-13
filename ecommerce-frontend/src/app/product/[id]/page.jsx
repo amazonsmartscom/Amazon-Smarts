@@ -1891,7 +1891,7 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="space-y-2 border-t border-slate-100 pt-4">
-              <div className="flex items-center justify-between text-xs text-slate-500 font-medium"><span>Ships from</span><span className="text-slate-900 font-bold">GadgetStore Central</span></div>
+              <div className="flex items-center justify-between text-xs text-slate-500 font-medium"><span>Ships from</span><span className="text-slate-900 font-bold">Amazon Smarts</span></div>
               <div className="flex items-center justify-between text-xs text-slate-500 font-medium"><span>Sold by</span><span className="text-orange-500 font-bold hover:underline cursor-pointer">{product.brand || 'Retail Partner'}</span></div>
             </div>
           </div>
