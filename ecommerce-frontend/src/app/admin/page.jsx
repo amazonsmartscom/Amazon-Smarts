@@ -1,3 +1,575 @@
+// // src/app/admin/page.jsx
+// 'use client';
+// import { useState, useEffect } from 'react';
+// import { useAuth } from '../../context/AuthContext';
+// import { useRouter } from 'next/navigation';
+// import axios from 'axios';
+// import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
+// export default function AdminDashboard() {
+//   // 🚀 Added 'login' from useAuth so we can log in directly on this page
+//   const { user, login } = useAuth(); 
+//   const router = useRouter();
+  
+//   const adminRole = user?.user?.role || user?.role;
+//   const adminId = user?.user?._id || user?._id || user?.id;
+
+//   // 🚀 STATE FOR INTEGRATED LOGIN FORM
+//   const [adminEmail, setAdminEmail] = useState('');
+//   const [adminPassword, setAdminPassword] = useState('');
+//   const [loginError, setLoginError] = useState('');
+//   const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+//   // Dashboard States
+//   const [withdrawals, setWithdrawals] = useState([]);
+//   const [products, setProducts] = useState([]); 
+//   const [orders, setOrders] = useState([]);
+//   const [stats, setStats] = useState(null); 
+//   const [pendingReviews, setPendingReviews] = useState([]); 
+//   const [chartData, setChartData] = useState([]);
+//   const [isHydrated, setIsHydrated] = useState(false); // Fixes the reload flicker
+
+//   // Add Product States
+//   const [name, setName] = useState('');
+//   const [brand, setBrand] = useState(''); 
+//   const [price, setPrice] = useState('');
+//   const [discountPrice, setDiscountPrice] = useState('');
+//   const [category, setCategory] = useState('Smartphones');
+//   const [stock, setStock] = useState('');
+//   const [description, setDescription] = useState('');
+//   const [isBestSeller, setIsBestSeller] = useState(false); 
+//   const [images, setImages] = useState([]);
+//   const [banners, setBanners] = useState([]);
+//   const [features, setFeatures] = useState(['']); 
+//   const [specs, setSpecs] = useState([{ name: '', value: '' }]); 
+//   const [variants, setVariants] = useState([{ name: '', options: '' }]); 
+//   const [returnPolicy, setReturnPolicy] = useState('7 Days Replacement');
+//   const [warrantyPolicy, setWarrantyPolicy] = useState('1 Year Warranty');
+//   const [seoTitle, setSeoTitle] = useState('');
+//   const [seoDescription, setSeoDescription] = useState('');
+//   const [seoKeywords, setSeoKeywords] = useState('');
+
+//   const [editingProduct, setEditingProduct] = useState(null);
+//   const [editForm, setEditForm] = useState({ 
+//     name: '', brand: '', price: '', stock: '', discountPrice: '', description: '', category: 'Smartphones',
+//     isBestSeller: false, existingImages: [], newImagesFiles: [], existingBanners: [], newBannersFiles: [],
+//     features: [''], specs: [{ name: '', value: '' }], variants: [{ name: '', options: '' }],
+//     returnPolicy: '', warrantyPolicy: '', seoTitle: '', seoDescription: '', seoKeywords: ''
+//   });
+
+//   // Hydration check to prevent false logouts on refresh
+//   useEffect(() => {
+//     setIsHydrated(true);
+//   }, []);
+
+//   useEffect(() => {
+//     if (isHydrated && user && adminRole === 'admin') { 
+//       fetchWithdrawals(); fetchProducts(); fetchAllOrders(); fetchStats(); fetchPendingReviews(); 
+//     }
+//   }, [user, adminRole, isHydrated]);
+
+//   useEffect(() => {
+//     if (orders.length > 0) {
+//       const groupedData = orders.reduce((acc, order) => {
+//         const date = new Date(order.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+//         if (!acc[date]) acc[date] = { date, revenue: 0, orders: 0 };
+//         acc[date].revenue += order.totalPrice || 0;
+//         acc[date].orders += 1;
+//         return acc;
+//       }, {});
+//       const formattedData = Object.values(groupedData).reverse();
+//       setChartData(formattedData.slice(-14));
+//     }
+//   }, [orders]);
+
+//   // API FETCHERS
+//   const fetchStats = async () => { try { const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/admin/stats?adminId=${adminId}`); setStats(data); } catch (err) {} };
+//   const fetchWithdrawals = async () => { const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/withdrawals/admin/all?adminId=${adminId}`); setWithdrawals(data); };
+//   const fetchProducts = async () => { const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products`); setProducts(data); };
+//   const fetchAllOrders = async () => { 
+//     try {
+//       const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/all?adminId=${adminId}`); 
+//       setOrders(data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))); 
+//     } catch (err) {}
+//   };
+//   const fetchPendingReviews = async () => {
+//     try {
+//       const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products/admin/pending-reviews?adminId=${adminId}`);
+//       setPendingReviews(data);
+//     } catch (err) {}
+//   };
+
+//   // 🚀 INTEGRATED LOGIN HANDLER
+//   const handleAdminLoginSubmit = async (e) => {
+//     e.preventDefault();
+//     setIsLoggingIn(true);
+//     setLoginError('');
+//     const result = await login(adminEmail, adminPassword);
+    
+//     if (result.success) {
+//       // LocalStorage parses on the next tick, so the UI will automatically flip to the dashboard
+//       setIsLoggingIn(false);
+//     } else {
+//       setLoginError(result.message);
+//       setIsLoggingIn(false);
+//     }
+//   };
+
+//   // ACTION HANDLERS
+//   const handleUpdateOrderStatus = async (orderId, newStatus) => {
+//     await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${orderId}/status?adminId=${adminId}`, { status: newStatus });
+//     alert(`Status updated`); 
+//     fetchAllOrders(); // 🚀 NO RELOAD, just refetch
+//     fetchStats();
+//   };
+
+//   const handleStatusUpdate = async (id, status) => {
+//     try {
+//       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/withdrawals/admin/${id}?adminId=${adminId}`, { status, adminComment: "Processed successfully" });
+//       alert(`Withdrawal ${status}`); 
+//       fetchWithdrawals(); // 🚀 NO RELOAD
+//     } catch (error) { alert("Error updating withdrawal status"); }
+//   };
+
+//   const handleDeleteProduct = async (id) => {
+//     if (window.confirm("Are you sure?")) {
+//       await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/products/${id}?adminId=${adminId}`); 
+//       fetchProducts(); // 🚀 NO RELOAD
+//     }
+//   };
+
+//   const handleReviewAction = async (productId, reviewId, status) => {
+//     try {
+//       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/products/admin/reviews/status?adminId=${adminId}`, {
+//         productId, reviewId, status
+//       });
+//       alert(`Review ${status}!`);
+//       fetchPendingReviews(); // 🚀 NO RELOAD
+//       fetchProducts();
+//     } catch (error) { alert("Error processing review"); }
+//   };
+
+//   const formatVariantsForEdit = (dbVariants) => {
+//     if (!dbVariants || dbVariants.length === 0) return [{ name: '', options: '' }];
+//     return dbVariants.map(v => ({ name: v.name, options: v.options.map(o => o.priceModifier ? `${o.name}(+${o.priceModifier})` : o.name).join(', ') }));
+//   };
+
+//   const handleEditClick = (product) => {
+//     setEditingProduct(product);
+//     setEditForm({ 
+//       ...product, existingImages: product.images || [], newImagesFiles: [], existingBanners: product.banners || [], newBannersFiles: [],
+//       variants: formatVariantsForEdit(product.variants), returnPolicy: product.returnPolicy || '7 Days Replacement',
+//       warrantyPolicy: product.warrantyPolicy || '1 Year Warranty', seoTitle: product.seoTitle || '', seoDescription: product.seoDescription || '', seoKeywords: product.seoKeywords || ''
+//     });
+//   };
+
+//   const parseVariantsForDB = (variantArray) => {
+//     return variantArray.map(v => {
+//       const parsedOptions = typeof v.options === 'string' ? v.options.split(',').map(opt => {
+//         let optName = opt.trim(); let priceModifier = 0; const match = optName.match(/\(([\+\-]?\d+)\)/); 
+//         if (match) { priceModifier = parseInt(match[1], 10); optName = optName.replace(match[0], '').trim(); }
+//         return { name: optName, priceModifier };
+//       }).filter(o => o.name !== '') : [];
+//       return { name: v.name, options: parsedOptions };
+//     }).filter(v => v.name.trim() !== '' && v.options.length > 0);
+//   };
+
+//   // const handleUpdateProduct = async (e) => {
+//   //   e.preventDefault();
+//   //   try {
+//   //     const formData = new FormData();
+//   //     Object.keys(editForm).forEach(key => {
+//   //       if (!['existingImages', 'newImagesFiles', 'existingBanners', 'newBannersFiles', 'features', 'specs', 'variants'].includes(key)) formData.append(key, editForm[key]);
+//   //     });
+//   //     formData.append('existingImages', JSON.stringify(editForm.existingImages)); formData.append('features', JSON.stringify(editForm.features));
+//   //     formData.append('specs', JSON.stringify(editForm.specs)); formData.append('variants', JSON.stringify(parseVariantsForDB(editForm.variants))); 
+//   //     for (let i = 0; i < editForm.newImagesFiles.length; i++) formData.append('images', editForm.newImagesFiles[i]);
+//   //     for (let i = 0; i < editForm.newBannersFiles.length; i++) formData.append('banners', editForm.newBannersFiles[i]);
+      
+//   //     await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/products/${editingProduct._id}?adminId=${adminId}`, formData);
+//   //     alert("✅ Updated!"); 
+//   //     setEditingProduct(null); 
+//   //     fetchProducts(); // 🚀 NO RELOAD
+//   //   } catch (err) { alert("Update failed"); }
+//   // };
+
+//   const handleUpdateProduct = async (e) => {
+//     e.preventDefault();
+//     try {
+//       const formData = new FormData();
+      
+//       // 🚀 THE FIX: Exclude 'reviews' and 'ratings' from being sent back
+//       Object.keys(editForm).forEach(key => {
+//         const excludedFields = [
+//           'existingImages', 'newImagesFiles', 
+//           'existingBanners', 'newBannersFiles', 
+//           'features', 'specs', 'variants',
+//           'reviews', 'ratings', 'numOfReviews' // ADDED THESE THREE
+//         ];
+
+//         if (!excludedFields.includes(key)) {
+//           formData.append(key, editForm[key]);
+//         }
+//       });
+
+//       // (The rest of your existing logic for appending arrays and files...)
+//       formData.append('existingImages', JSON.stringify(editForm.existingImages)); 
+//       formData.append('features', JSON.stringify(editForm.features));
+//       formData.append('specs', JSON.stringify(editForm.specs)); 
+//       formData.append('variants', JSON.stringify(parseVariantsForDB(editForm.variants))); 
+
+//       if (editForm.newImagesFiles) {
+//         for (let i = 0; i < editForm.newImagesFiles.length; i++) formData.append('images', editForm.newImagesFiles[i]);
+//       }
+
+//       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/products/${editingProduct._id}?adminId=${adminId}`, formData);
+      
+//       alert("✅ Product Updated Successfully!");
+//       setEditingProduct(null); 
+//       fetchProducts(); 
+//     } catch (err) {
+//       console.error("Update Error:", err.response?.data);
+//       alert("Update failed. Check console.");
+//     }
+//   };
+
+//   const handleAddProduct = async (e) => {
+//     e.preventDefault();
+//     const formData = new FormData();
+//     formData.append('name', name); formData.append('brand', brand); formData.append('price', price); formData.append('discountPrice', discountPrice);
+//     formData.append('category', category); formData.append('stock', stock); formData.append('description', description); formData.append('isBestSeller', isBestSeller);
+//     formData.append('returnPolicy', returnPolicy); formData.append('warrantyPolicy', warrantyPolicy);
+//     formData.append('seoTitle', seoTitle); formData.append('seoDescription', seoDescription); formData.append('seoKeywords', seoKeywords);
+//     formData.append('features', JSON.stringify(features.filter(f => f.trim() !== ''))); 
+//     formData.append('specs', JSON.stringify(specs.filter(s => s.name.trim() !== '')));
+//     formData.append('variants', JSON.stringify(parseVariantsForDB(variants))); 
+//     for (let i = 0; i < images.length; i++) formData.append('images', images[i]);
+//     for (let i = 0; i < banners.length; i++) formData.append('banners', banners[i]);
+    
+//     await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/products?adminId=${adminId}`, formData);
+//     alert("✅ Published!"); 
+    
+//     // 🚀 NO RELOAD! Just clear the form and refetch data
+//     setName(''); setBrand(''); setPrice(''); setDiscountPrice(''); setStock(''); setDescription('');
+//     setImages([]); setBanners([]); setFeatures(['']); setSpecs([{ name: '', value: '' }]); setVariants([{ name: '', options: '' }]);
+//     fetchProducts(); 
+//   };
+
+//   const inputStyles = "p-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-sm w-full";
+
+//   // 🚀 IF NOT LOGGED IN AS ADMIN, SHOW INTEGRATED LOGIN FORM
+//   if (isHydrated && (!user || adminRole !== 'admin')) {
+//     return (
+//       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
+//         <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
+//           <div className="text-center mb-8">
+//             <h1 className="text-3xl font-black text-orange-500 tracking-widest mb-1">SECURE<span className="text-slate-900">ADMIN</span></h1>
+//             <p className="text-gray-500 font-medium">Authorized Personnel Only</p>
+//           </div>
+          
+//           {loginError && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-bold text-center mb-4">{loginError}</div>}
+          
+//           <form onSubmit={handleAdminLoginSubmit} className="space-y-5">
+//             <div>
+//               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Admin Email</label>
+//               <input type="email" required className={inputStyles} value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} />
+//             </div>
+//             <div>
+//               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Master Password</label>
+//               <input type="password" required className={inputStyles} value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} />
+//             </div>
+//             <button type="submit" disabled={isLoggingIn} className={`w-full font-black py-4 rounded-xl text-white tracking-widest shadow-lg transition-all mt-4 ${isLoggingIn ? 'bg-gray-400' : 'bg-slate-900 hover:bg-slate-800'}`}>
+//               {isLoggingIn ? 'AUTHENTICATING...' : 'ACCESS DASHBOARD'}
+//             </button>
+//           </form>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   // Prevent flicker during initial load
+//   if (!isHydrated) return null;
+
+//   // 🚀 ACTUAL DASHBOARD RENDERS ONLY IF ADMIN IS LOGGED IN
+//   return (
+//     <div className="min-h-screen bg-gray-100 p-8 font-sans pb-20 relative text-gray-900">
+//       <div className="flex justify-between items-center mb-8">
+//         <h1 className="text-3xl font-extrabold text-slate-900">Admin Control Panel</h1>
+//         {/* You can add a logout button here if you want! */}
+//       </div>
+
+//       {stats && (
+//         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+//           <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-orange-500"><p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Revenue</p><h3 className="text-2xl font-black">₹{stats.revenue.toLocaleString('en-IN')}</h3></div>
+//           <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500"><p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Orders</p><h3 className="text-2xl font-black">{stats.orderCount}</h3></div>
+//           <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500"><p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Customers</p><h3 className="text-2xl font-black">{stats.userCount}</h3></div>
+//           <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-purple-500"><p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Inventory</p><h3 className="text-2xl font-black">{stats.productCount} Items</h3></div>
+//         </div>
+//       )}
+
+//       {/* ANALYTICS CHART */}
+//       {chartData.length > 0 && (
+//         <div className="bg-white rounded-xl shadow-md p-6 mb-10 border border-gray-100">
+//           <h2 className="text-xl font-bold mb-6 text-gray-800">📈 Sales & Revenue Trends (Last 14 Active Days)</h2>
+//           <div className="h-[300px] w-full">
+//             <ResponsiveContainer width="100%" height="100%">
+//               <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+//                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+//                 <XAxis dataKey="date" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
+//                 <YAxis yAxisId="left" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val}`} />
+//                 <YAxis yAxisId="right" orientation="right" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
+//                 <Tooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} formatter={(value, name) => [name === 'Revenue' ? `₹${value.toLocaleString()}` : value, name]} />
+//                 <Legend />
+//                 <Bar yAxisId="left" dataKey="revenue" name="Revenue" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={50} />
+//                 <Bar yAxisId="right" dataKey="orders" name="Orders" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={50} />
+//               </BarChart>
+//             </ResponsiveContainer>
+//           </div>
+//         </div>
+//       )}
+
+//       {/* INVENTORY TABLE */}
+//       <div className="bg-white rounded-xl shadow-md overflow-hidden mb-10 border border-gray-100">
+//         <div className="p-6 bg-slate-900 text-white flex justify-between items-center"><h2 className="text-xl font-bold">🛒 Manage Inventory</h2></div>
+//         <div className="overflow-x-auto">
+//           <table className="w-full text-left">
+//             <thead className="bg-gray-50 border-b"><tr><th className="p-4 text-gray-600">Product</th><th className="p-4 text-gray-600">Price</th><th className="p-4 text-gray-600">Stock</th><th className="p-4 text-right text-gray-600">Actions</th></tr></thead>
+//             <tbody>
+//               {products.map((p) => (
+//                 <tr key={p._id} className="border-b hover:bg-gray-50">
+//                   <td className="p-4 flex items-center gap-3"><img src={p.images[0] || 'https://placehold.co/50'} className="w-12 h-12 object-contain rounded border bg-white" /><span className="font-semibold">{p.name}</span></td>
+//                   <td className="p-4 font-bold">₹{p.discountPrice || p.price}</td>
+//                   <td className="p-4"><span className={`px-2 py-1 rounded-full text-xs font-bold ${p.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{p.stock}</span></td>
+//                   <td className="p-4 text-right space-x-2">
+//                     <button onClick={() => handleEditClick(p)} className="bg-blue-500 text-white px-3 py-1 rounded text-sm font-bold">Edit</button>
+//                     <button onClick={() => handleDeleteProduct(p._id)} className="bg-red-500 text-white px-3 py-1 rounded text-sm font-bold">Delete</button>
+//                   </td>
+//                 </tr>
+//               ))}
+//             </tbody>
+//           </table>
+//         </div>
+//       </div>
+
+//       {/* CUSTOMER ORDERS TABLE */}
+//       <div className="bg-white rounded-xl shadow-md overflow-hidden mb-10 border border-gray-100">
+//         <div className="p-6 bg-slate-900 text-white"><h2 className="text-xl font-bold">📦 Logistics & Fulfillment (Orders)</h2></div>
+//         <div className="overflow-x-auto">
+//           <table className="w-full text-left">
+//             <thead className="bg-gray-50 border-b"><tr><th className="p-4 text-gray-600 font-semibold">Order Info</th><th className="p-4 text-gray-600 font-semibold">Customer Details</th><th className="p-4 text-gray-600 font-semibold">Items</th><th className="p-4 text-gray-600 font-semibold">Total</th><th className="p-4 text-gray-600 font-semibold">Status</th></tr></thead>
+//             <tbody>
+//               {orders.map((order) => (
+//                 <tr key={order._id} className="border-b hover:bg-gray-50 transition">
+//                   <td className="p-4 align-top"><p className="font-mono font-black text-sm text-blue-700 uppercase tracking-wider mb-1">#{order._id.slice(-6)}</p><p className="text-xs font-bold text-gray-600">{new Date(order.createdAt).toLocaleDateString('en-IN')}</p></td>
+//                   <td className="p-4 align-top">
+//                     <div className="mb-2">
+//                       <p className="font-bold text-gray-900">{order.user?.name || 'Guest User'}</p>
+//                       <p className="text-xs text-gray-500">{order.user?.email}</p>
+//                     </div>
+//                     {order.shippingAddress ? (
+//                       <div className="bg-gray-50 border border-gray-200 p-3 rounded-lg shadow-sm text-xs text-gray-700 max-w-[280px]">
+//                         <p className="font-bold text-gray-900 mb-1 border-b border-gray-200 pb-1 flex items-center gap-1">📍 Ship To:</p>
+//                         <p className="font-semibold text-gray-800">{order.shippingAddress.fullName || order.shippingAddress.name || order.user?.name}</p>
+//                         <p className="leading-relaxed mt-1">{order.shippingAddress.address}</p>
+//                         <p className="font-medium">{order.shippingAddress.city} - {order.shippingAddress.postalCode || order.shippingAddress.pincode}</p>
+//                         <p className="mt-2 pt-2 border-t border-gray-200 font-bold text-blue-700">📞 Phone: {order.shippingAddress.phone}</p>
+//                       </div>
+//                     ) : (
+//                       <span className="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded">No shipping info provided</span>
+//                     )}
+//                   </td>
+//                   <td className="p-4 align-top">
+//                     <div className="text-xs text-gray-600 space-y-2">
+//                       {order.orderItems?.map((i, idx) => (
+//                         <div key={idx}><span className="font-bold text-gray-900">{i.quantity || i.qty}x</span> {i.name}
+//                           {i.selectedOptions && Object.keys(i.selectedOptions).length > 0 && (
+//                             <div className="ml-4 mt-1 text-[10px] text-orange-600 font-bold tracking-wide">
+//                               {Object.entries(i.selectedOptions).map(([key, val]) => (<span key={key} className="mr-2 bg-orange-50 px-1 py-0.5 rounded">{key}: {val}</span>))}
+//                             </div>
+//                           )}
+//                         </div>
+//                       ))}
+//                     </div>
+//                   </td>
+//                   <td className="p-4 align-top font-black text-gray-900 text-lg">₹{order.totalPrice?.toLocaleString('en-IN')}</td>
+//                   <td className="p-4 align-top">
+//                     <select value={order.status} onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)} className="p-2 rounded-lg border text-sm font-bold shadow-sm outline-none cursor-pointer">
+//                       <option value="Processing">Processing</option><option value="Shipped">Shipped</option><option value="Delivered">Delivered</option>
+//                     </select>
+//                   </td>
+//                 </tr>
+//               ))}
+//             </tbody>
+//           </table>
+//         </div>
+//       </div>
+
+//       {/* AFFILIATE PAYOUT APPROVALS */}
+//       <div className="bg-white rounded-xl shadow-md overflow-hidden mb-10 border border-gray-100">
+//         <div className="p-6 bg-slate-900 text-white flex justify-between items-center"><h2 className="text-xl font-bold">💳 Affiliate Payout Approvals</h2></div>
+//         <div className="overflow-x-auto">
+//           <table className="w-full text-left">
+//             <thead className="bg-gray-50 border-b"><tr><th className="p-4 text-gray-600">User</th><th className="p-4 text-gray-600">Amount</th><th className="p-4 text-gray-600">UPI</th><th className="p-4 text-gray-600">Status</th><th className="p-4 text-right text-gray-600">Actions</th></tr></thead>
+//             <tbody>
+//               {withdrawals.map((req) => (
+//                 <tr key={req._id} className="border-b hover:bg-gray-50">
+//                   <td className="p-4 font-semibold text-gray-900">{req.userId?.name}</td>
+//                   <td className="p-4 font-bold text-green-600">₹{req.amount?.toLocaleString()}</td>
+//                   <td className="p-4 text-sm text-gray-600 font-mono">{req.details?.upiId}</td>
+//                   <td className="p-4"><span className={`px-2 py-1 rounded-full text-[10px] uppercase font-bold ${req.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : req.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{req.status}</span></td>
+//                   <td className="p-4 text-right space-x-2">
+//                     {req.status === 'pending' && (<><button onClick={() => handleStatusUpdate(req._id, 'approved')} className="bg-green-500 text-white px-3 py-1 rounded text-sm font-bold">Approve</button><button onClick={() => handleStatusUpdate(req._id, 'rejected')} className="bg-red-500 text-white px-3 py-1 rounded text-sm font-bold">Reject</button></>)}
+//                   </td>
+//                 </tr>
+//               ))}
+//             </tbody>
+//           </table>
+//         </div>
+//       </div>
+
+//       {/* PENDING REVIEWS APPROVAL TABLE */}
+//       <div className="bg-white rounded-xl shadow-md overflow-hidden mb-10 border border-gray-100">
+//         <div className="p-6 bg-slate-900 text-white flex justify-between items-center"><h2 className="text-xl font-bold">⭐ Pending Product Reviews</h2></div>
+//         <div className="overflow-x-auto">
+//           <table className="w-full text-left">
+//             <thead className="bg-gray-50 border-b"><tr><th className="p-4 text-gray-600 font-semibold">Product</th><th className="p-4 text-gray-600 font-semibold">Customer</th><th className="p-4 text-gray-600 font-semibold">Rating & Comment</th><th className="p-4 text-right text-gray-600 font-semibold">Actions</th></tr></thead>
+//             <tbody>
+//               {pendingReviews.map((item) => (
+//                 <tr key={item.review._id} className="border-b hover:bg-gray-50">
+//                   <td className="p-4 font-bold text-gray-900 text-sm max-w-[200px] truncate">{item.productName}</td>
+//                   <td className="p-4 text-sm font-medium text-gray-700">{item.review.name}</td>
+//                   <td className="p-4">
+//                     <div className="text-orange-500 text-sm mb-1">{'★'.repeat(item.review.rating)}{'☆'.repeat(5 - item.review.rating)}</div>
+//                     <p className="text-xs text-gray-600 italic max-w-xs break-words">"{item.review.comment}"</p>
+//                   </td>
+//                   <td className="p-4 text-right space-x-2">
+//                     <button onClick={() => handleReviewAction(item.productId, item.review._id, 'approved')} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm font-bold">Approve</button>
+//                     <button onClick={() => handleReviewAction(item.productId, item.review._id, 'rejected')} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm font-bold">Reject</button>
+//                   </td>
+//                 </tr>
+//               ))}
+//               {pendingReviews.length === 0 && (<tr><td colSpan="4" className="p-8 text-center text-gray-500 font-medium">No pending reviews.</td></tr>)}
+//             </tbody>
+//           </table>
+//         </div>
+//       </div>
+
+//       {/* ADD NEW PRODUCT FORM */}
+//       <div className="bg-white rounded-xl shadow-md p-8 mb-10 border border-gray-100">
+//         <h2 className="text-2xl font-bold mb-6 border-b pb-4">📦 Publish New Gadget</h2>
+//         <form onSubmit={handleAddProduct} className="space-y-8">
+//           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+//             <input type="text" placeholder="Product Name" className={inputStyles} value={name} onChange={e => setName(e.target.value)} required />
+//             <input type="text" placeholder="Brand" className={inputStyles} value={brand} onChange={e => setBrand(e.target.value)} required />
+//             <input type="number" placeholder="Base MRP Price" className={inputStyles} value={price} onChange={e => setPrice(e.target.value)} required />
+//             <input type="number" placeholder="Base Discount Price" className={inputStyles} value={discountPrice} onChange={e => setDiscountPrice(e.target.value)} />
+//             <input type="number" placeholder="Stock" className={inputStyles} value={stock} onChange={e => setStock(e.target.value)} required />
+//             <select className={inputStyles} value={category} onChange={e => setCategory(e.target.value)}>
+//               <option value="Smartphones">Smartphones</option><option value="Laptops">Laptops</option>
+//             </select>
+//           </div>
+//           <textarea placeholder="Description" className={`${inputStyles} h-24`} value={description} onChange={e => setDescription(e.target.value)} required />
+          
+//           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+//             <div>
+//               <div className="flex justify-between items-center mb-3"><h3 className="text-lg font-semibold text-gray-700">Tech Specs</h3><button type="button" onClick={() => setSpecs([...specs, { name: '', value: '' }])} className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold hover:bg-blue-200">+ Add Row</button></div>
+//               {specs.map((spec, index) => (<div key={index} className="flex gap-2 mb-2"><input type="text" placeholder="e.g. RAM" className={`${inputStyles} w-1/3`} value={spec.name} onChange={e => {const newSpecs=[...specs]; newSpecs[index].name=e.target.value; setSpecs(newSpecs)}} /><input type="text" placeholder="e.g. 12GB" className={`${inputStyles} flex-1`} value={spec.value} onChange={e => {const newSpecs=[...specs]; newSpecs[index].value=e.target.value; setSpecs(newSpecs)}} /></div>))}
+//             </div>
+//             <div>
+//               <div className="flex justify-between items-center mb-3"><h3 className="text-lg font-semibold text-gray-700">Features</h3><button type="button" onClick={() => setFeatures([...features, ''])} className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold hover:bg-blue-200">+ Add Row</button></div>
+//               {features.map((f, index) => (<div key={index} className="flex gap-2 mb-2"><input type="text" placeholder="e.g. Titanium Body" className={`${inputStyles} flex-1`} value={f} onChange={e => {const newFeatures=[...features]; newFeatures[index]=e.target.value; setFeatures(newFeatures)}} /></div>))}
+//             </div>
+//           </div>
+
+//           <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+//             <div className="flex justify-between items-center mb-1">
+//               <h3 className="font-bold text-gray-900 uppercase tracking-tighter">Variants & Price Modifiers</h3>
+//               <button type="button" onClick={() => setVariants([...variants, { name: '', options: '' }])} className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold hover:bg-blue-200">+ Add Variant</button>
+//             </div>
+//             <p className="text-xs text-gray-500 mb-4">Example: <span className="bg-white px-2 py-1 rounded border">128GB, 256GB(+5000), 512GB(+10000)</span></p>
+//             {variants.map((variant, index) => (
+//               <div key={index} className="flex gap-2 mb-3">
+//                 <input type="text" placeholder="e.g. Storage" className={`${inputStyles} w-1/4`} value={variant.name} onChange={e => { const newVars = [...variants]; newVars[index].name = e.target.value; setVariants(newVars); }} />
+//                 <input type="text" placeholder="128GB, 256GB(+5000)" className={`${inputStyles} flex-1`} value={variant.options} onChange={e => { const newVars = [...variants]; newVars[index].options = e.target.value; setVariants(newVars); }} />
+//                 {variants.length > 1 && <button type="button" onClick={() => setVariants(variants.filter((_, i) => i !== index))} className="text-red-500 font-bold px-4">X</button>}
+//               </div>
+//             ))}
+//           </div>
+
+//           <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
+//             <h3 className="font-bold text-blue-900 uppercase tracking-tighter mb-4">Trust Badges & Policies</h3>
+//             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//               <input type="text" placeholder="Return Policy (e.g. 7 Days Replacement)" className={inputStyles} value={returnPolicy} onChange={e => setReturnPolicy(e.target.value)} required />
+//               <input type="text" placeholder="Warranty Policy (e.g. 1 Year Brand Warranty)" className={inputStyles} value={warrantyPolicy} onChange={e => setWarrantyPolicy(e.target.value)} required />
+//             </div>
+//           </div>
+
+//           <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
+//             <h3 className="font-bold mb-4 text-gray-700 uppercase text-sm tracking-widest">Media Uploads</h3>
+//             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//               <div><label className="block text-sm font-bold text-gray-600 mb-2">Product Images (Gallery)</label><input type="file" multiple className={inputStyles} onChange={e => setImages(e.target.files)} required /></div>
+//               <div><label className="block text-sm font-bold text-gray-600 mb-2">Promo Banners (A+ Content)</label><input type="file" multiple className={inputStyles} onChange={e => setBanners(e.target.files)} /></div>
+//             </div>
+//           </div>
+
+//           <button type="submit" className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl text-lg hover:bg-black transition">🚀 Upload to Store</button>
+//         </form>
+//       </div>
+
+//       {/* EDIT MODAL */}
+//       {editingProduct && (
+//         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 overflow-y-auto">
+//           <div className="bg-white rounded-2xl p-8 w-full max-w-5xl shadow-2xl mt-20 mb-20 relative">
+//             <h2 className="text-3xl font-black mb-6 border-b pb-4">Edit Gadget</h2>
+//             <form onSubmit={handleUpdateProduct} className="space-y-6">
+//               <div className="grid grid-cols-2 gap-4">
+//                 <input type="text" className={inputStyles} value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
+//                 <input type="number" className={inputStyles} value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} />
+//               </div>
+
+//               <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+//                 <div className="flex justify-between items-center mb-1">
+//                   <h3 className="font-bold text-gray-900">Variants & Price Modifiers</h3>
+//                   <button type="button" onClick={() => setEditForm({...editForm, variants: [...editForm.variants, { name: '', options: '' }]})} className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold hover:bg-blue-200">+ Add Variant</button>
+//                 </div>
+//                 {editForm.variants.map((variant, index) => (
+//                   <div key={index} className="flex gap-2 mb-3 mt-4">
+//                     <input type="text" placeholder="e.g. Storage" className={`${inputStyles} w-1/4`} value={variant.name} onChange={e => { const newVars = [...editForm.variants]; newVars[index].name = e.target.value; setEditForm({...editForm, variants: newVars}); }} />
+//                     <input type="text" placeholder="128GB, 256GB(+5000)" className={`${inputStyles} flex-1`} value={variant.options} onChange={e => { const newVars = [...editForm.variants]; newVars[index].options = e.target.value; setEditForm({...editForm, variants: newVars}); }} />
+//                     {editForm.variants.length > 1 && <button type="button" onClick={() => { const newVars = editForm.variants.filter((_, i) => i !== index); setEditForm({...editForm, variants: newVars}); }} className="text-red-500 font-bold px-4">X</button>}
+//                   </div>
+//                 ))}
+//               </div>
+
+//               <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
+//                 <h3 className="font-bold text-blue-900 uppercase tracking-tighter mb-4">Trust Badges & Policies</h3>
+//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//                   <input type="text" placeholder="Return Policy" className={inputStyles} value={editForm.returnPolicy} onChange={e => setEditForm({...editForm, returnPolicy: e.target.value})} required />
+//                   <input type="text" placeholder="Warranty Policy" className={inputStyles} value={editForm.warrantyPolicy} onChange={e => setEditForm({...editForm, warrantyPolicy: e.target.value})} required />
+//                 </div>
+//               </div>
+
+//               <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
+//                 <h3 className="font-bold mb-4 text-gray-700 uppercase text-sm tracking-widest">Upload New Media</h3>
+//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                   <div><label className="block text-sm font-bold text-gray-600 mb-2">Add Gallery Images</label><input type="file" multiple accept="image/*" className={inputStyles} onChange={e => setEditForm({...editForm, newImagesFiles: e.target.files})} /></div>
+//                   <div><label className="block text-sm font-bold text-gray-600 mb-2">Upload New Promo Banners</label><input type="file" multiple accept="image/*" className={inputStyles} onChange={e => setEditForm({...editForm, newBannersFiles: e.target.files})} /></div>
+//                 </div>
+//               </div>
+
+//               <div className="flex gap-4 pt-6 border-t">
+//                 <button type="button" onClick={() => setEditingProduct(null)} className="flex-1 py-4 bg-gray-100 font-bold rounded-xl">Cancel</button>
+//                 <button type="submit" className="flex-1 py-4 bg-orange-500 text-white font-bold rounded-xl">Save All Changes</button>
+//               </div>
+//             </form>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+
 // src/app/admin/page.jsx
 'use client';
 import { useState, useEffect } from 'react';
@@ -7,14 +579,13 @@ import axios from 'axios';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function AdminDashboard() {
-  // 🚀 Added 'login' from useAuth so we can log in directly on this page
-  const { user, login } = useAuth(); 
+  const { user, login, logout } = useAuth(); 
   const router = useRouter();
   
   const adminRole = user?.user?.role || user?.role;
   const adminId = user?.user?._id || user?._id || user?.id;
 
-  // 🚀 STATE FOR INTEGRATED LOGIN FORM
+  // STATE FOR INTEGRATED LOGIN FORM
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -27,7 +598,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null); 
   const [pendingReviews, setPendingReviews] = useState([]); 
   const [chartData, setChartData] = useState([]);
-  const [isHydrated, setIsHydrated] = useState(false); // Fixes the reload flicker
+  const [isHydrated, setIsHydrated] = useState(false);
 
   // Add Product States
   const [name, setName] = useState('');
@@ -50,17 +621,19 @@ export default function AdminDashboard() {
   const [seoKeywords, setSeoKeywords] = useState('');
 
   const [editingProduct, setEditingProduct] = useState(null);
-  const [editForm, setEditForm] = useState({ 
-    name: '', brand: '', price: '', stock: '', discountPrice: '', description: '', category: 'Smartphones',
-    isBestSeller: false, existingImages: [], newImagesFiles: [], existingBanners: [], newBannersFiles: [],
-    features: [''], specs: [{ name: '', value: '' }], variants: [{ name: '', options: '' }],
-    returnPolicy: '', warrantyPolicy: '', seoTitle: '', seoDescription: '', seoKeywords: ''
-  });
+  const [editForm, setEditForm] = useState(null);
 
-  // Hydration check to prevent false logouts on refresh
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
+  // HELPER TO FIX BROKEN IMAGE URLS IN ADMIN TABLE
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return 'https://placehold.co/400x400?text=No+Image';
+    if (imagePath.startsWith('http')) {
+        return imagePath.replace('http://localhost:5000', process.env.NEXT_PUBLIC_API_URL.replace('/api', ''));
+    }
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+    return `${baseUrl}/${imagePath}`;
+  };
+
+  useEffect(() => { setIsHydrated(true); }, []);
 
   useEffect(() => {
     if (isHydrated && user && adminRole === 'admin') { 
@@ -99,53 +672,42 @@ export default function AdminDashboard() {
     } catch (err) {}
   };
 
-  // 🚀 INTEGRATED LOGIN HANDLER
+  // INTEGRATED LOGIN HANDLER
   const handleAdminLoginSubmit = async (e) => {
     e.preventDefault();
     setIsLoggingIn(true);
     setLoginError('');
     const result = await login(adminEmail, adminPassword);
-    
-    if (result.success) {
-      // LocalStorage parses on the next tick, so the UI will automatically flip to the dashboard
-      setIsLoggingIn(false);
-    } else {
-      setLoginError(result.message);
-      setIsLoggingIn(false);
-    }
+    if (result.success) setIsLoggingIn(false);
+    else { setLoginError(result.message); setIsLoggingIn(false); }
   };
 
   // ACTION HANDLERS
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${orderId}/status?adminId=${adminId}`, { status: newStatus });
     alert(`Status updated`); 
-    fetchAllOrders(); // 🚀 NO RELOAD, just refetch
-    fetchStats();
+    fetchAllOrders(); fetchStats();
   };
 
   const handleStatusUpdate = async (id, status) => {
     try {
       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/withdrawals/admin/${id}?adminId=${adminId}`, { status, adminComment: "Processed successfully" });
-      alert(`Withdrawal ${status}`); 
-      fetchWithdrawals(); // 🚀 NO RELOAD
+      alert(`Withdrawal ${status}`); fetchWithdrawals();
     } catch (error) { alert("Error updating withdrawal status"); }
   };
 
   const handleDeleteProduct = async (id) => {
     if (window.confirm("Are you sure?")) {
       await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/products/${id}?adminId=${adminId}`); 
-      fetchProducts(); // 🚀 NO RELOAD
+      fetchProducts();
     }
   };
 
   const handleReviewAction = async (productId, reviewId, status) => {
     try {
-      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/products/admin/reviews/status?adminId=${adminId}`, {
-        productId, reviewId, status
-      });
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/products/admin/reviews/status?adminId=${adminId}`, { productId, reviewId, status });
       alert(`Review ${status}!`);
-      fetchPendingReviews(); // 🚀 NO RELOAD
-      fetchProducts();
+      fetchPendingReviews(); fetchProducts();
     } catch (error) { alert("Error processing review"); }
   };
 
@@ -157,9 +719,15 @@ export default function AdminDashboard() {
   const handleEditClick = (product) => {
     setEditingProduct(product);
     setEditForm({ 
-      ...product, existingImages: product.images || [], newImagesFiles: [], existingBanners: product.banners || [], newBannersFiles: [],
-      variants: formatVariantsForEdit(product.variants), returnPolicy: product.returnPolicy || '7 Days Replacement',
-      warrantyPolicy: product.warrantyPolicy || '1 Year Warranty', seoTitle: product.seoTitle || '', seoDescription: product.seoDescription || '', seoKeywords: product.seoKeywords || ''
+      ...product, 
+      existingImages: product.images || [], newImagesFiles: [], 
+      existingBanners: product.banners || [], newBannersFiles: [],
+      variants: formatVariantsForEdit(product.variants), 
+      features: product.features && product.features.length > 0 ? product.features : [''],
+      specs: product.specs && product.specs.length > 0 ? product.specs : [{ name: '', value: '' }],
+      returnPolicy: product.returnPolicy || '7 Days Replacement',
+      warrantyPolicy: product.warrantyPolicy || '1 Year Warranty', 
+      seoTitle: product.seoTitle || '', seoDescription: product.seoDescription || '', seoKeywords: product.seoKeywords || ''
     });
   };
 
@@ -174,52 +742,29 @@ export default function AdminDashboard() {
     }).filter(v => v.name.trim() !== '' && v.options.length > 0);
   };
 
-  // const handleUpdateProduct = async (e) => {
-  //   e.preventDefault();
-  //   try {
-  //     const formData = new FormData();
-  //     Object.keys(editForm).forEach(key => {
-  //       if (!['existingImages', 'newImagesFiles', 'existingBanners', 'newBannersFiles', 'features', 'specs', 'variants'].includes(key)) formData.append(key, editForm[key]);
-  //     });
-  //     formData.append('existingImages', JSON.stringify(editForm.existingImages)); formData.append('features', JSON.stringify(editForm.features));
-  //     formData.append('specs', JSON.stringify(editForm.specs)); formData.append('variants', JSON.stringify(parseVariantsForDB(editForm.variants))); 
-  //     for (let i = 0; i < editForm.newImagesFiles.length; i++) formData.append('images', editForm.newImagesFiles[i]);
-  //     for (let i = 0; i < editForm.newBannersFiles.length; i++) formData.append('banners', editForm.newBannersFiles[i]);
-      
-  //     await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/products/${editingProduct._id}?adminId=${adminId}`, formData);
-  //     alert("✅ Updated!"); 
-  //     setEditingProduct(null); 
-  //     fetchProducts(); // 🚀 NO RELOAD
-  //   } catch (err) { alert("Update failed"); }
-  // };
-
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
     try {
       const formData = new FormData();
       
-      // 🚀 THE FIX: Exclude 'reviews' and 'ratings' from being sent back
       Object.keys(editForm).forEach(key => {
         const excludedFields = [
-          'existingImages', 'newImagesFiles', 
-          'existingBanners', 'newBannersFiles', 
-          'features', 'specs', 'variants',
-          'reviews', 'ratings', 'numOfReviews' // ADDED THESE THREE
+          'existingImages', 'newImagesFiles', 'existingBanners', 'newBannersFiles', 
+          'features', 'specs', 'variants', 'reviews', 'ratings', 'numOfReviews'
         ];
-
-        if (!excludedFields.includes(key)) {
-          formData.append(key, editForm[key]);
-        }
+        if (!excludedFields.includes(key)) formData.append(key, editForm[key]);
       });
 
-      // (The rest of your existing logic for appending arrays and files...)
       formData.append('existingImages', JSON.stringify(editForm.existingImages)); 
-      formData.append('features', JSON.stringify(editForm.features));
-      formData.append('specs', JSON.stringify(editForm.specs)); 
+      formData.append('features', JSON.stringify(editForm.features.filter(f => f.trim() !== '')));
+      formData.append('specs', JSON.stringify(editForm.specs.filter(s => s.name.trim() !== ''))); 
       formData.append('variants', JSON.stringify(parseVariantsForDB(editForm.variants))); 
 
       if (editForm.newImagesFiles) {
         for (let i = 0; i < editForm.newImagesFiles.length; i++) formData.append('images', editForm.newImagesFiles[i]);
+      }
+      if (editForm.newBannersFiles) {
+        for (let i = 0; i < editForm.newBannersFiles.length; i++) formData.append('banners', editForm.newBannersFiles[i]);
       }
 
       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/products/${editingProduct._id}?adminId=${adminId}`, formData);
@@ -249,36 +794,39 @@ export default function AdminDashboard() {
     await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/products?adminId=${adminId}`, formData);
     alert("✅ Published!"); 
     
-    // 🚀 NO RELOAD! Just clear the form and refetch data
     setName(''); setBrand(''); setPrice(''); setDiscountPrice(''); setStock(''); setDescription('');
     setImages([]); setBanners([]); setFeatures(['']); setSpecs([{ name: '', value: '' }]); setVariants([{ name: '', options: '' }]);
+    setSeoTitle(''); setSeoDescription(''); setSeoKeywords('');
     fetchProducts(); 
   };
 
-  const inputStyles = "p-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-sm w-full";
+  const inputStyles = "w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-gray-900 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all shadow-sm";
+  const labelStyles = "block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1";
+  const sectionCardStyles = "bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100 mb-6";
+  const sectionTitleStyles = "text-lg font-black text-slate-900 mb-6 flex items-center gap-2 border-b border-slate-100 pb-4";
 
-  // 🚀 IF NOT LOGGED IN AS ADMIN, SHOW INTEGRATED LOGIN FORM
   if (isHydrated && (!user || adminRole !== 'admin')) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-blue-500/10 z-0"></div>
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-10 w-full max-w-md shadow-2xl relative z-10 border border-white/20">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-black text-orange-500 tracking-widest mb-1">SECURE<span className="text-slate-900">ADMIN</span></h1>
-            <p className="text-gray-500 font-medium">Authorized Personnel Only</p>
+            <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mt-2">Authorized Personnel Only</p>
           </div>
           
-          {loginError && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-bold text-center mb-4">{loginError}</div>}
+          {loginError && <div className="bg-red-50 border border-red-100 text-red-600 p-3 rounded-xl text-sm font-bold text-center mb-6 shadow-sm">{loginError}</div>}
           
-          <form onSubmit={handleAdminLoginSubmit} className="space-y-5">
+          <form onSubmit={handleAdminLoginSubmit} className="space-y-6">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Admin Email</label>
+              <label className={labelStyles}>Admin Email</label>
               <input type="email" required className={inputStyles} value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Master Password</label>
+              <label className={labelStyles}>Master Password</label>
               <input type="password" required className={inputStyles} value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} />
             </div>
-            <button type="submit" disabled={isLoggingIn} className={`w-full font-black py-4 rounded-xl text-white tracking-widest shadow-lg transition-all mt-4 ${isLoggingIn ? 'bg-gray-400' : 'bg-slate-900 hover:bg-slate-800'}`}>
+            <button type="submit" disabled={isLoggingIn} className={`w-full font-black py-4 rounded-xl text-white tracking-widest shadow-lg transition-all mt-6 ${isLoggingIn ? 'bg-slate-400' : 'bg-slate-900 hover:bg-orange-500 hover:shadow-orange-500/30 hover:-translate-y-1'}`}>
               {isLoggingIn ? 'AUTHENTICATING...' : 'ACCESS DASHBOARD'}
             </button>
           </form>
@@ -287,281 +835,485 @@ export default function AdminDashboard() {
     );
   }
 
-  // Prevent flicker during initial load
   if (!isHydrated) return null;
 
-  // 🚀 ACTUAL DASHBOARD RENDERS ONLY IF ADMIN IS LOGGED IN
   return (
-    <div className="min-h-screen bg-gray-100 p-8 font-sans pb-20 relative text-gray-900">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-extrabold text-slate-900">Admin Control Panel</h1>
-        {/* You can add a logout button here if you want! */}
+    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8 font-sans pb-20 text-gray-900 selection:bg-orange-200">
+      
+      {/* DASHBOARD HEADER */}
+      <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Control Panel</h1>
+          <p className="text-slate-500 font-medium mt-1">Manage inventory, orders, and store analytics.</p>
+        </div>
+        <div className="flex gap-4">
+          <button onClick={() => router.push('/')} className="bg-white text-slate-700 font-bold px-6 py-2.5 rounded-full border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors">View Store</button>
+          <button onClick={logout} className="bg-slate-900 text-white font-bold px-6 py-2.5 rounded-full shadow-md hover:bg-orange-500 transition-colors">Logout</button>
+        </div>
       </div>
 
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-          <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-orange-500"><p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Revenue</p><h3 className="text-2xl font-black">₹{stats.revenue.toLocaleString('en-IN')}</h3></div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500"><p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Orders</p><h3 className="text-2xl font-black">{stats.orderCount}</h3></div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500"><p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Customers</p><h3 className="text-2xl font-black">{stats.userCount}</h3></div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-purple-500"><p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Inventory</p><h3 className="text-2xl font-black">{stats.productCount} Items</h3></div>
-        </div>
-      )}
-
-      {/* ANALYTICS CHART */}
-      {chartData.length > 0 && (
-        <div className="bg-white rounded-xl shadow-md p-6 mb-10 border border-gray-100">
-          <h2 className="text-xl font-bold mb-6 text-gray-800">📈 Sales & Revenue Trends (Last 14 Active Days)</h2>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                <XAxis dataKey="date" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis yAxisId="left" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val}`} />
-                <YAxis yAxisId="right" orientation="right" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} formatter={(value, name) => [name === 'Revenue' ? `₹${value.toLocaleString()}` : value, name]} />
-                <Legend />
-                <Bar yAxisId="left" dataKey="revenue" name="Revenue" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                <Bar yAxisId="right" dataKey="orders" name="Orders" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={50} />
-              </BarChart>
-            </ResponsiveContainer>
+      <div className="max-w-[1600px] mx-auto">
+        {/* STATS ROW */}
+        {stats && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group">
+              <div className="absolute right-0 top-0 w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-bl-full opacity-10 group-hover:scale-110 transition-transform"></div>
+              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Total Revenue</p>
+              <h3 className="text-3xl font-black text-slate-900">₹{stats.revenue.toLocaleString('en-IN')}</h3>
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group">
+              <div className="absolute right-0 top-0 w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-bl-full opacity-10 group-hover:scale-110 transition-transform"></div>
+              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Total Orders</p>
+              <h3 className="text-3xl font-black text-slate-900">{stats.orderCount}</h3>
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group">
+              <div className="absolute right-0 top-0 w-16 h-16 bg-gradient-to-br from-orange-400 to-red-600 rounded-bl-full opacity-10 group-hover:scale-110 transition-transform"></div>
+              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Customers</p>
+              <h3 className="text-3xl font-black text-slate-900">{stats.userCount}</h3>
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group">
+              <div className="absolute right-0 top-0 w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-600 rounded-bl-full opacity-10 group-hover:scale-110 transition-transform"></div>
+              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Inventory</p>
+              <h3 className="text-3xl font-black text-slate-900">{stats.productCount} <span className="text-lg font-bold text-slate-400">Items</span></h3>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* INVENTORY TABLE */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden mb-10 border border-gray-100">
-        <div className="p-6 bg-slate-900 text-white flex justify-between items-center"><h2 className="text-xl font-bold">🛒 Manage Inventory</h2></div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b"><tr><th className="p-4 text-gray-600">Product</th><th className="p-4 text-gray-600">Price</th><th className="p-4 text-gray-600">Stock</th><th className="p-4 text-right text-gray-600">Actions</th></tr></thead>
-            <tbody>
-              {products.map((p) => (
-                <tr key={p._id} className="border-b hover:bg-gray-50">
-                  <td className="p-4 flex items-center gap-3"><img src={p.images[0] || 'https://placehold.co/50'} className="w-12 h-12 object-contain rounded border bg-white" /><span className="font-semibold">{p.name}</span></td>
-                  <td className="p-4 font-bold">₹{p.discountPrice || p.price}</td>
-                  <td className="p-4"><span className={`px-2 py-1 rounded-full text-xs font-bold ${p.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{p.stock}</span></td>
-                  <td className="p-4 text-right space-x-2">
-                    <button onClick={() => handleEditClick(p)} className="bg-blue-500 text-white px-3 py-1 rounded text-sm font-bold">Edit</button>
-                    <button onClick={() => handleDeleteProduct(p._id)} className="bg-red-500 text-white px-3 py-1 rounded text-sm font-bold">Delete</button>
-                  </td>
+        {/* ANALYTICS CHART */}
+        {chartData.length > 0 && (
+          <div className={sectionCardStyles}>
+            <h2 className={sectionTitleStyles}>📈 Sales & Revenue Trends</h2>
+            <div className="h-[350px] w-full pt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} dy={10} />
+                  <YAxis yAxisId="left" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val}`} dx={-10} />
+                  <YAxis yAxisId="right" orientation="right" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} dx={10} />
+                  <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} formatter={(value, name) => [name === 'Revenue' ? `₹${value.toLocaleString()}` : value, name]} />
+                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                  <Bar yAxisId="left" dataKey="revenue" name="Revenue" fill="#f97316" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                  <Bar yAxisId="right" dataKey="orders" name="Orders" fill="#334155" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* INVENTORY TABLE */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-10 border border-slate-100">
+          <div className="p-6 md:p-8 bg-white border-b border-slate-100 flex justify-between items-center">
+            <h2 className="text-xl font-black text-slate-900">🛒 Manage Inventory</h2>
+            <span className="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-full">{products.length} Products</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left whitespace-nowrap">
+              <thead className="bg-slate-50 border-b border-slate-100">
+                <tr>
+                  <th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">Product</th>
+                  <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Price</th>
+                  <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Stock</th>
+                  <th className="p-4 md:px-8 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* CUSTOMER ORDERS TABLE */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden mb-10 border border-gray-100">
-        <div className="p-6 bg-slate-900 text-white"><h2 className="text-xl font-bold">📦 Logistics & Fulfillment (Orders)</h2></div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b"><tr><th className="p-4 text-gray-600 font-semibold">Order Info</th><th className="p-4 text-gray-600 font-semibold">Customer Details</th><th className="p-4 text-gray-600 font-semibold">Items</th><th className="p-4 text-gray-600 font-semibold">Total</th><th className="p-4 text-gray-600 font-semibold">Status</th></tr></thead>
-            <tbody>
-              {orders.map((order) => (
-                <tr key={order._id} className="border-b hover:bg-gray-50 transition">
-                  <td className="p-4 align-top"><p className="font-mono font-black text-sm text-blue-700 uppercase tracking-wider mb-1">#{order._id.slice(-6)}</p><p className="text-xs font-bold text-gray-600">{new Date(order.createdAt).toLocaleDateString('en-IN')}</p></td>
-                  <td className="p-4 align-top">
-                    <div className="mb-2">
-                      <p className="font-bold text-gray-900">{order.user?.name || 'Guest User'}</p>
-                      <p className="text-xs text-gray-500">{order.user?.email}</p>
-                    </div>
-                    {order.shippingAddress ? (
-                      <div className="bg-gray-50 border border-gray-200 p-3 rounded-lg shadow-sm text-xs text-gray-700 max-w-[280px]">
-                        <p className="font-bold text-gray-900 mb-1 border-b border-gray-200 pb-1 flex items-center gap-1">📍 Ship To:</p>
-                        <p className="font-semibold text-gray-800">{order.shippingAddress.fullName || order.shippingAddress.name || order.user?.name}</p>
-                        <p className="leading-relaxed mt-1">{order.shippingAddress.address}</p>
-                        <p className="font-medium">{order.shippingAddress.city} - {order.shippingAddress.postalCode || order.shippingAddress.pincode}</p>
-                        <p className="mt-2 pt-2 border-t border-gray-200 font-bold text-blue-700">📞 Phone: {order.shippingAddress.phone}</p>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {products.map((p) => (
+                  <tr key={p._id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="p-4 md:px-8 flex items-center gap-4">
+                      {/* 🚀 FIXED: Using getImageUrl for Admin Inventory */}
+                      <img src={getImageUrl(p.images[0])} className="w-14 h-14 object-contain rounded-xl border border-slate-200 bg-white p-1 shadow-sm" alt="thumbnail" />
+                      <div>
+                        <span className="font-bold text-slate-900 block">{p.name}</span>
+                        <span className="text-xs font-bold text-slate-400 uppercase">{p.brand || 'Generic'}</span>
                       </div>
-                    ) : (
-                      <span className="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded">No shipping info provided</span>
-                    )}
-                  </td>
-                  <td className="p-4 align-top">
-                    <div className="text-xs text-gray-600 space-y-2">
-                      {order.orderItems?.map((i, idx) => (
-                        <div key={idx}><span className="font-bold text-gray-900">{i.quantity || i.qty}x</span> {i.name}
-                          {i.selectedOptions && Object.keys(i.selectedOptions).length > 0 && (
-                            <div className="ml-4 mt-1 text-[10px] text-orange-600 font-bold tracking-wide">
-                              {Object.entries(i.selectedOptions).map(([key, val]) => (<span key={key} className="mr-2 bg-orange-50 px-1 py-0.5 rounded">{key}: {val}</span>))}
-                            </div>
-                          )}
+                    </td>
+                    <td className="p-4 font-black text-slate-900">₹{p.discountPrice || p.price}</td>
+                    <td className="p-4"><span className={`px-3 py-1 rounded-full text-[10px] uppercase font-black tracking-wider ${p.stock > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{p.stock} In Stock</span></td>
+                    <td className="p-4 md:px-8 text-right space-x-3">
+                      <button onClick={() => handleEditClick(p)} className="text-slate-500 hover:text-blue-600 font-bold text-sm bg-slate-100 hover:bg-blue-50 px-4 py-2 rounded-lg transition-colors">Edit</button>
+                      <button onClick={() => handleDeleteProduct(p._id)} className="text-red-500 hover:text-red-700 font-bold text-sm bg-red-50 hover:bg-red-100 px-4 py-2 rounded-lg transition-colors">Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* CUSTOMER ORDERS TABLE */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-10 border border-slate-100">
+          <div className="p-6 md:p-8 bg-white border-b border-slate-100"><h2 className="text-xl font-black text-slate-900">📦 Logistics & Orders</h2></div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left whitespace-nowrap">
+              <thead className="bg-slate-50 border-b border-slate-100">
+                <tr>
+                  <th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">Order Info</th>
+                  <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Customer</th>
+                  <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Items</th>
+                  <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Total</th>
+                  <th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {orders.map((order) => (
+                  <tr key={order._id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="p-4 md:px-8 align-top pt-6">
+                      <p className="font-mono font-black text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded inline-block uppercase tracking-wider mb-2">#{order._id.slice(-6)}</p>
+                      <p className="text-xs font-bold text-slate-500">{new Date(order.createdAt).toLocaleDateString('en-IN')}</p>
+                    </td>
+                    <td className="p-4 align-top pt-6">
+                      <div className="mb-3">
+                        <p className="font-bold text-slate-900">{order.user?.name || 'Guest User'}</p>
+                        <p className="text-xs text-slate-500">{order.user?.email}</p>
+                      </div>
+                      {order.shippingAddress ? (
+                        <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl shadow-sm text-xs text-slate-700 max-w-[280px] whitespace-normal">
+                          <p className="font-black text-slate-900 mb-2 border-b border-slate-200 pb-2">📍 Ship To:</p>
+                          <p className="font-bold text-slate-800">{order.shippingAddress.fullName || order.shippingAddress.name || order.user?.name}</p>
+                          <p className="leading-relaxed mt-1 text-slate-600">{order.shippingAddress.address}</p>
+                          <p className="font-bold mt-1">{order.shippingAddress.city} - {order.shippingAddress.postalCode || order.shippingAddress.pincode}</p>
+                          <p className="mt-3 pt-3 border-t border-slate-200 font-bold text-blue-600">📞 {order.shippingAddress.phone}</p>
                         </div>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="p-4 align-top font-black text-gray-900 text-lg">₹{order.totalPrice?.toLocaleString('en-IN')}</td>
-                  <td className="p-4 align-top">
-                    <select value={order.status} onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)} className="p-2 rounded-lg border text-sm font-bold shadow-sm outline-none cursor-pointer">
-                      <option value="Processing">Processing</option><option value="Shipped">Shipped</option><option value="Delivered">Delivered</option>
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      ) : (
+                        <span className="text-red-500 text-[10px] uppercase tracking-wider font-black bg-red-50 px-2 py-1 rounded">No shipping info</span>
+                      )}
+                    </td>
+                    <td className="p-4 align-top pt-6">
+                      <div className="text-xs text-slate-700 space-y-3 whitespace-normal min-w-[200px]">
+                        {order.orderItems?.map((i, idx) => (
+                          <div key={idx} className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                            <span className="font-black text-slate-900 bg-white px-1.5 py-0.5 rounded shadow-sm mr-2">{i.quantity || i.qty}x</span> 
+                            <span className="font-semibold">{i.name}</span>
+                            {i.selectedOptions && Object.keys(i.selectedOptions).length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                {Object.entries(i.selectedOptions).map(([key, val]) => (<span key={key} className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">{key}: {val}</span>))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="p-4 align-top pt-6 font-black text-slate-900 text-lg">₹{order.totalPrice?.toLocaleString('en-IN')}</td>
+                    <td className="p-4 md:px-8 align-top pt-6">
+                      <select value={order.status} onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)} className={`p-2 rounded-xl text-xs font-black uppercase tracking-wider outline-none cursor-pointer border-2 transition-colors ${order.status === 'Delivered' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : order.status === 'Shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-orange-50 border-orange-200 text-orange-700'}`}>
+                        <option value="Processing">Processing</option><option value="Shipped">Shipped</option><option value="Delivered">Delivered</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      {/* AFFILIATE PAYOUT APPROVALS */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden mb-10 border border-gray-100">
-        <div className="p-6 bg-slate-900 text-white flex justify-between items-center"><h2 className="text-xl font-bold">💳 Affiliate Payout Approvals</h2></div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b"><tr><th className="p-4 text-gray-600">User</th><th className="p-4 text-gray-600">Amount</th><th className="p-4 text-gray-600">UPI</th><th className="p-4 text-gray-600">Status</th><th className="p-4 text-right text-gray-600">Actions</th></tr></thead>
-            <tbody>
-              {withdrawals.map((req) => (
-                <tr key={req._id} className="border-b hover:bg-gray-50">
-                  <td className="p-4 font-semibold text-gray-900">{req.userId?.name}</td>
-                  <td className="p-4 font-bold text-green-600">₹{req.amount?.toLocaleString()}</td>
-                  <td className="p-4 text-sm text-gray-600 font-mono">{req.details?.upiId}</td>
-                  <td className="p-4"><span className={`px-2 py-1 rounded-full text-[10px] uppercase font-bold ${req.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : req.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{req.status}</span></td>
-                  <td className="p-4 text-right space-x-2">
-                    {req.status === 'pending' && (<><button onClick={() => handleStatusUpdate(req._id, 'approved')} className="bg-green-500 text-white px-3 py-1 rounded text-sm font-bold">Approve</button><button onClick={() => handleStatusUpdate(req._id, 'rejected')} className="bg-red-500 text-white px-3 py-1 rounded text-sm font-bold">Reject</button></>)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* AFFILIATE PAYOUT APPROVALS */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-10 border border-slate-100">
+          <div className="p-6 md:p-8 bg-white border-b border-slate-100"><h2 className="text-xl font-black text-slate-900">💳 Affiliate Payouts</h2></div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left whitespace-nowrap">
+              <thead className="bg-slate-50 border-b border-slate-100"><tr><th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">User</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Amount</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">UPI</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Status</th><th className="p-4 md:px-8 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th></tr></thead>
+              <tbody className="divide-y divide-slate-100">
+                {withdrawals.map((req) => (
+                  <tr key={req._id} className="hover:bg-slate-50/50">
+                    <td className="p-4 md:px-8 font-bold text-slate-900">{req.userId?.name}</td>
+                    <td className="p-4 font-black text-emerald-600">₹{req.amount?.toLocaleString()}</td>
+                    <td className="p-4 text-xs font-mono font-bold text-slate-600 bg-slate-50 px-2 py-1 rounded inline-block mt-3">{req.details?.upiId}</td>
+                    <td className="p-4"><span className={`px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-black ${req.status === 'pending' ? 'bg-orange-100 text-orange-700' : req.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{req.status}</span></td>
+                    <td className="p-4 md:px-8 text-right space-x-2">
+                      {req.status === 'pending' && (<><button onClick={() => handleStatusUpdate(req._id, 'approved')} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm">Approve</button><button onClick={() => handleStatusUpdate(req._id, 'rejected')} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm">Reject</button></>)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      {/* PENDING REVIEWS APPROVAL TABLE */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden mb-10 border border-gray-100">
-        <div className="p-6 bg-slate-900 text-white flex justify-between items-center"><h2 className="text-xl font-bold">⭐ Pending Product Reviews</h2></div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b"><tr><th className="p-4 text-gray-600 font-semibold">Product</th><th className="p-4 text-gray-600 font-semibold">Customer</th><th className="p-4 text-gray-600 font-semibold">Rating & Comment</th><th className="p-4 text-right text-gray-600 font-semibold">Actions</th></tr></thead>
-            <tbody>
-              {pendingReviews.map((item) => (
-                <tr key={item.review._id} className="border-b hover:bg-gray-50">
-                  <td className="p-4 font-bold text-gray-900 text-sm max-w-[200px] truncate">{item.productName}</td>
-                  <td className="p-4 text-sm font-medium text-gray-700">{item.review.name}</td>
-                  <td className="p-4">
-                    <div className="text-orange-500 text-sm mb-1">{'★'.repeat(item.review.rating)}{'☆'.repeat(5 - item.review.rating)}</div>
-                    <p className="text-xs text-gray-600 italic max-w-xs break-words">"{item.review.comment}"</p>
-                  </td>
-                  <td className="p-4 text-right space-x-2">
-                    <button onClick={() => handleReviewAction(item.productId, item.review._id, 'approved')} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm font-bold">Approve</button>
-                    <button onClick={() => handleReviewAction(item.productId, item.review._id, 'rejected')} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm font-bold">Reject</button>
-                  </td>
-                </tr>
-              ))}
-              {pendingReviews.length === 0 && (<tr><td colSpan="4" className="p-8 text-center text-gray-500 font-medium">No pending reviews.</td></tr>)}
-            </tbody>
-          </table>
+        {/* PENDING REVIEWS APPROVAL TABLE */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-10 border border-slate-100">
+          <div className="p-6 md:p-8 bg-white border-b border-slate-100"><h2 className="text-xl font-black text-slate-900">⭐ Pending Reviews</h2></div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50 border-b border-slate-100"><tr><th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">Product & Customer</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest w-1/2">Review</th><th className="p-4 md:px-8 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th></tr></thead>
+              <tbody className="divide-y divide-slate-100">
+                {pendingReviews.map((item) => (
+                  <tr key={item.review._id} className="hover:bg-slate-50/50">
+                    <td className="p-4 md:px-8 align-top pt-6">
+                      <p className="font-black text-slate-900 text-sm mb-1">{item.productName}</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">By: {item.review.name}</p>
+                    </td>
+                    <td className="p-4 align-top pt-6">
+                      <div className="text-yellow-400 text-sm mb-2 drop-shadow-sm">{'★'.repeat(item.review.rating)}{'☆'.repeat(5 - item.review.rating)}</div>
+                      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative">
+                        <span className="absolute -top-3 left-4 text-2xl text-slate-200">"</span>
+                        <p className="text-sm text-slate-700 italic relative z-10">{item.review.comment}</p>
+                      </div>
+                    </td>
+                    <td className="p-4 md:px-8 align-top pt-6 text-right space-x-2 whitespace-nowrap">
+                      <button onClick={() => handleReviewAction(item.productId, item.review._id, 'approved')} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm">Approve</button>
+                      <button onClick={() => handleReviewAction(item.productId, item.review._id, 'rejected')} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm">Reject</button>
+                    </td>
+                  </tr>
+                ))}
+                {pendingReviews.length === 0 && (<tr><td colSpan="3" className="p-12 text-center text-slate-400 font-bold uppercase tracking-widest text-sm bg-slate-50/50">No pending reviews.</td></tr>)}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      {/* ADD NEW PRODUCT FORM */}
-      <div className="bg-white rounded-xl shadow-md p-8 mb-10 border border-gray-100">
-        <h2 className="text-2xl font-bold mb-6 border-b pb-4">📦 Publish New Gadget</h2>
-        <form onSubmit={handleAddProduct} className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <input type="text" placeholder="Product Name" className={inputStyles} value={name} onChange={e => setName(e.target.value)} required />
-            <input type="text" placeholder="Brand" className={inputStyles} value={brand} onChange={e => setBrand(e.target.value)} required />
-            <input type="number" placeholder="Base MRP Price" className={inputStyles} value={price} onChange={e => setPrice(e.target.value)} required />
-            <input type="number" placeholder="Base Discount Price" className={inputStyles} value={discountPrice} onChange={e => setDiscountPrice(e.target.value)} />
-            <input type="number" placeholder="Stock" className={inputStyles} value={stock} onChange={e => setStock(e.target.value)} required />
-            <select className={inputStyles} value={category} onChange={e => setCategory(e.target.value)}>
-              <option value="Smartphones">Smartphones</option><option value="Laptops">Laptops</option>
-            </select>
-          </div>
-          <textarea placeholder="Description" className={`${inputStyles} h-24`} value={description} onChange={e => setDescription(e.target.value)} required />
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
-            <div>
-              <div className="flex justify-between items-center mb-3"><h3 className="text-lg font-semibold text-gray-700">Tech Specs</h3><button type="button" onClick={() => setSpecs([...specs, { name: '', value: '' }])} className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold hover:bg-blue-200">+ Add Row</button></div>
-              {specs.map((spec, index) => (<div key={index} className="flex gap-2 mb-2"><input type="text" placeholder="e.g. RAM" className={`${inputStyles} w-1/3`} value={spec.name} onChange={e => {const newSpecs=[...specs]; newSpecs[index].name=e.target.value; setSpecs(newSpecs)}} /><input type="text" placeholder="e.g. 12GB" className={`${inputStyles} flex-1`} value={spec.value} onChange={e => {const newSpecs=[...specs]; newSpecs[index].value=e.target.value; setSpecs(newSpecs)}} /></div>))}
-            </div>
-            <div>
-              <div className="flex justify-between items-center mb-3"><h3 className="text-lg font-semibold text-gray-700">Features</h3><button type="button" onClick={() => setFeatures([...features, ''])} className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold hover:bg-blue-200">+ Add Row</button></div>
-              {features.map((f, index) => (<div key={index} className="flex gap-2 mb-2"><input type="text" placeholder="e.g. Titanium Body" className={`${inputStyles} flex-1`} value={f} onChange={e => {const newFeatures=[...features]; newFeatures[index]=e.target.value; setFeatures(newFeatures)}} /></div>))}
-            </div>
-          </div>
-
-          <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-            <div className="flex justify-between items-center mb-1">
-              <h3 className="font-bold text-gray-900 uppercase tracking-tighter">Variants & Price Modifiers</h3>
-              <button type="button" onClick={() => setVariants([...variants, { name: '', options: '' }])} className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold hover:bg-blue-200">+ Add Variant</button>
-            </div>
-            <p className="text-xs text-gray-500 mb-4">Example: <span className="bg-white px-2 py-1 rounded border">128GB, 256GB(+5000), 512GB(+10000)</span></p>
-            {variants.map((variant, index) => (
-              <div key={index} className="flex gap-2 mb-3">
-                <input type="text" placeholder="e.g. Storage" className={`${inputStyles} w-1/4`} value={variant.name} onChange={e => { const newVars = [...variants]; newVars[index].name = e.target.value; setVariants(newVars); }} />
-                <input type="text" placeholder="128GB, 256GB(+5000)" className={`${inputStyles} flex-1`} value={variant.options} onChange={e => { const newVars = [...variants]; newVars[index].options = e.target.value; setVariants(newVars); }} />
-                {variants.length > 1 && <button type="button" onClick={() => setVariants(variants.filter((_, i) => i !== index))} className="text-red-500 font-bold px-4">X</button>}
-              </div>
-            ))}
-          </div>
-
-          <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
-            <h3 className="font-bold text-blue-900 uppercase tracking-tighter mb-4">Trust Badges & Policies</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input type="text" placeholder="Return Policy (e.g. 7 Days Replacement)" className={inputStyles} value={returnPolicy} onChange={e => setReturnPolicy(e.target.value)} required />
-              <input type="text" placeholder="Warranty Policy (e.g. 1 Year Brand Warranty)" className={inputStyles} value={warrantyPolicy} onChange={e => setWarrantyPolicy(e.target.value)} required />
-            </div>
-          </div>
-
-          <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
-            <h3 className="font-bold mb-4 text-gray-700 uppercase text-sm tracking-widest">Media Uploads</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div><label className="block text-sm font-bold text-gray-600 mb-2">Product Images (Gallery)</label><input type="file" multiple className={inputStyles} onChange={e => setImages(e.target.files)} required /></div>
-              <div><label className="block text-sm font-bold text-gray-600 mb-2">Promo Banners (A+ Content)</label><input type="file" multiple className={inputStyles} onChange={e => setBanners(e.target.files)} /></div>
-            </div>
-          </div>
-
-          <button type="submit" className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl text-lg hover:bg-black transition">🚀 Upload to Store</button>
-        </form>
-      </div>
-
-      {/* EDIT MODAL */}
-      {editingProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-5xl shadow-2xl mt-20 mb-20 relative">
-            <h2 className="text-3xl font-black mb-6 border-b pb-4">Edit Gadget</h2>
-            <form onSubmit={handleUpdateProduct} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <input type="text" className={inputStyles} value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
-                <input type="number" className={inputStyles} value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} />
-              </div>
-
-              <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                <div className="flex justify-between items-center mb-1">
-                  <h3 className="font-bold text-gray-900">Variants & Price Modifiers</h3>
-                  <button type="button" onClick={() => setEditForm({...editForm, variants: [...editForm.variants, { name: '', options: '' }]})} className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold hover:bg-blue-200">+ Add Variant</button>
+        {/* ADD NEW PRODUCT FORM */}
+        <div className="bg-white rounded-3xl shadow-sm p-6 md:p-10 border border-slate-100">
+          <h2 className="text-2xl md:text-3xl font-black mb-8 border-b border-slate-100 pb-6 text-slate-900">📦 Publish New Gadget</h2>
+          <form onSubmit={handleAddProduct} className="space-y-6">
+            
+            {/* SECTION 1: BASIC INFO */}
+            <div className={sectionCardStyles}>
+              <h3 className={sectionTitleStyles}>Basic Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div><label className={labelStyles}>Product Name</label><input type="text" className={inputStyles} value={name} onChange={e => setName(e.target.value)} required /></div>
+                <div><label className={labelStyles}>Brand</label><input type="text" className={inputStyles} value={brand} onChange={e => setBrand(e.target.value)} required /></div>
+                <div className="md:col-span-2"><label className={labelStyles}>Description</label><textarea className={`${inputStyles} h-32 resize-none`} value={description} onChange={e => setDescription(e.target.value)} required /></div>
+                <div><label className={labelStyles}>Category</label><select className={inputStyles} value={category} onChange={e => setCategory(e.target.value)}><option value="Smartphones">Smartphones</option><option value="Laptops">Laptops</option><option value="Audio">Audio</option><option value="Wearables">Wearables</option></select></div>
+                <div className="flex items-center mt-6">
+                  <label className="flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" checked={isBestSeller} onChange={e => setIsBestSeller(e.target.checked)} />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 relative"></div>
+                    <span className="ml-3 text-sm font-bold text-slate-700 uppercase tracking-wider">Highlight as Best Seller</span>
+                  </label>
                 </div>
-                {editForm.variants.map((variant, index) => (
-                  <div key={index} className="flex gap-2 mb-3 mt-4">
-                    <input type="text" placeholder="e.g. Storage" className={`${inputStyles} w-1/4`} value={variant.name} onChange={e => { const newVars = [...editForm.variants]; newVars[index].name = e.target.value; setEditForm({...editForm, variants: newVars}); }} />
-                    <input type="text" placeholder="128GB, 256GB(+5000)" className={`${inputStyles} flex-1`} value={variant.options} onChange={e => { const newVars = [...editForm.variants]; newVars[index].options = e.target.value; setEditForm({...editForm, variants: newVars}); }} />
-                    {editForm.variants.length > 1 && <button type="button" onClick={() => { const newVars = editForm.variants.filter((_, i) => i !== index); setEditForm({...editForm, variants: newVars}); }} className="text-red-500 font-bold px-4">X</button>}
+              </div>
+            </div>
+
+            {/* SECTION 2: PRICING & INVENTORY */}
+            <div className={sectionCardStyles}>
+              <h3 className={sectionTitleStyles}>Pricing & Inventory</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div><label className={labelStyles}>Base MRP (₹)</label><input type="number" className={inputStyles} value={price} onChange={e => setPrice(e.target.value)} required /></div>
+                <div><label className={labelStyles}>Discount Price (₹)</label><input type="number" className={inputStyles} value={discountPrice} onChange={e => setDiscountPrice(e.target.value)} /></div>
+                <div><label className={labelStyles}>Total Stock</label><input type="number" className={inputStyles} value={stock} onChange={e => setStock(e.target.value)} required /></div>
+              </div>
+            </div>
+
+            {/* SECTION 3: FEATURES & SPECS */}
+            <div className={sectionCardStyles}>
+              <h3 className={sectionTitleStyles}>Technical Details</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                <div>
+                  <div className="flex justify-between items-center mb-4"><label className={labelStyles}>Tech Specs (Table)</label><button type="button" onClick={() => setSpecs([...specs, { name: '', value: '' }])} className="text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Row</button></div>
+                  <div className="space-y-3">
+                    {specs.map((spec, index) => (
+                      <div key={index} className="flex gap-3 relative group">
+                        <input type="text" placeholder="e.g. RAM" className={`${inputStyles} w-1/3`} value={spec.name} onChange={e => {const newSpecs=[...specs]; newSpecs[index].name=e.target.value; setSpecs(newSpecs)}} />
+                        <input type="text" placeholder="e.g. 12GB Unified" className={`${inputStyles} flex-1`} value={spec.value} onChange={e => {const newSpecs=[...specs]; newSpecs[index].value=e.target.value; setSpecs(newSpecs)}} />
+                        {specs.length > 1 && <button type="button" onClick={() => setSpecs(specs.filter((_, i) => i !== index))} className="absolute -right-3 top-1/2 -translate-y-1/2 bg-red-100 text-red-600 w-6 h-6 rounded-full flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity">×</button>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-4"><label className={labelStyles}>Key Features (Bullets)</label><button type="button" onClick={() => setFeatures([...features, ''])} className="text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Feature</button></div>
+                  <div className="space-y-3">
+                    {features.map((f, index) => (
+                      <div key={index} className="flex gap-3 relative group">
+                        <input type="text" placeholder="e.g. Aerospace-grade titanium design" className={inputStyles} value={f} onChange={e => {const newFeatures=[...features]; newFeatures[index]=e.target.value; setFeatures(newFeatures)}} />
+                        {features.length > 1 && <button type="button" onClick={() => setFeatures(features.filter((_, i) => i !== index))} className="absolute -right-3 top-1/2 -translate-y-1/2 bg-red-100 text-red-600 w-6 h-6 rounded-full flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity">×</button>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 4: VARIANTS */}
+            <div className={sectionCardStyles}>
+              <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-4">
+                <div><h3 className="text-lg font-black text-slate-900">Variants & Pricing Modifiers</h3><p className="text-xs font-bold text-slate-400 mt-1">Format: <span className="text-orange-500 bg-orange-50 px-2 py-0.5 rounded border border-orange-100 font-mono">128GB, 256GB(+5000)</span></p></div>
+                <button type="button" onClick={() => setVariants([...variants, { name: '', options: '' }])} className="text-[10px] bg-slate-900 text-white px-4 py-2 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Variant Group</button>
+              </div>
+              <div className="space-y-4">
+                {variants.map((variant, index) => (
+                  <div key={index} className="flex flex-col md:flex-row gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 relative group">
+                    <div className="w-full md:w-1/4"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Variant Name</label><input type="text" placeholder="e.g. Storage" className={inputStyles} value={variant.name} onChange={e => { const newVars = [...variants]; newVars[index].name = e.target.value; setVariants(newVars); }} /></div>
+                    <div className="w-full md:flex-1"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Options (Comma separated)</label><input type="text" placeholder="128GB, 256GB(+5000)" className={inputStyles} value={variant.options} onChange={e => { const newVars = [...variants]; newVars[index].options = e.target.value; setVariants(newVars); }} /></div>
+                    {variants.length > 1 && <button type="button" onClick={() => setVariants(variants.filter((_, i) => i !== index))} className="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center font-bold shadow-md hover:scale-110 transition-transform">×</button>}
                   </div>
                 ))}
               </div>
+            </div>
 
-              <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
-                <h3 className="font-bold text-blue-900 uppercase tracking-tighter mb-4">Trust Badges & Policies</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input type="text" placeholder="Return Policy" className={inputStyles} value={editForm.returnPolicy} onChange={e => setEditForm({...editForm, returnPolicy: e.target.value})} required />
-                  <input type="text" placeholder="Warranty Policy" className={inputStyles} value={editForm.warrantyPolicy} onChange={e => setEditForm({...editForm, warrantyPolicy: e.target.value})} required />
+            {/* SECTION 5: SEO & META */}
+            <div className={sectionCardStyles}>
+              <h3 className={sectionTitleStyles}>Search Engine Optimization (SEO)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div><label className={labelStyles}>SEO Title (Meta Title)</label><input type="text" placeholder="e.g. Buy iPhone 17 Pro Max Online | GadgetStore" className={inputStyles} value={seoTitle} onChange={e => setSeoTitle(e.target.value)} /></div>
+                <div><label className={labelStyles}>SEO Keywords (Comma separated)</label><input type="text" placeholder="iphone 17, apple smartphone, buy iphone online" className={inputStyles} value={seoKeywords} onChange={e => setSeoKeywords(e.target.value)} /></div>
+                <div className="md:col-span-2"><label className={labelStyles}>SEO Description (Max 160 characters)</label><textarea placeholder="Get the best deals on the new iPhone 17. Free shipping and 7-day returns..." className={`${inputStyles} h-20 resize-none`} value={seoDescription} onChange={e => setSeoDescription(e.target.value)} /></div>
+              </div>
+            </div>
+
+            {/* SECTION 6: POLICIES */}
+            <div className={sectionCardStyles}>
+              <h3 className={sectionTitleStyles}>Trust & Policies</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div><label className={labelStyles}>Return Policy</label><input type="text" placeholder="e.g. 7 Days Replacement" className={inputStyles} value={returnPolicy} onChange={e => setReturnPolicy(e.target.value)} required /></div>
+                <div><label className={labelStyles}>Warranty Policy</label><input type="text" placeholder="e.g. 1 Year Brand Warranty" className={inputStyles} value={warrantyPolicy} onChange={e => setWarrantyPolicy(e.target.value)} required /></div>
+              </div>
+            </div>
+
+            {/* SECTION 7: MEDIA */}
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 rounded-2xl shadow-lg border border-slate-700">
+              <h3 className="text-lg font-black text-white mb-6 flex items-center gap-2 border-b border-slate-700 pb-4">📸 Upload Media Assets</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-slate-900/50 p-6 rounded-xl border border-white/10 border-dashed">
+                  <label className="block text-sm font-black text-orange-400 uppercase tracking-widest mb-3 text-center">Gallery Images</label>
+                  <input type="file" multiple accept="image/*" className="w-full text-slate-300 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:tracking-wider file:bg-orange-500 file:text-white hover:file:bg-orange-600 transition-colors cursor-pointer" onChange={e => setImages(e.target.files)} required />
+                </div>
+                <div className="bg-slate-900/50 p-6 rounded-xl border border-white/10 border-dashed">
+                  <label className="block text-sm font-black text-blue-400 uppercase tracking-widest mb-3 text-center">Promo Banners (A+ Content)</label>
+                  <input type="file" multiple accept="image/*" className="w-full text-slate-300 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:tracking-wider file:bg-blue-500 file:text-white hover:file:bg-blue-600 transition-colors cursor-pointer" onChange={e => setBanners(e.target.files)} />
                 </div>
               </div>
+            </div>
 
-              <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
-                <h3 className="font-bold mb-4 text-gray-700 uppercase text-sm tracking-widest">Upload New Media</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div><label className="block text-sm font-bold text-gray-600 mb-2">Add Gallery Images</label><input type="file" multiple accept="image/*" className={inputStyles} onChange={e => setEditForm({...editForm, newImagesFiles: e.target.files})} /></div>
-                  <div><label className="block text-sm font-bold text-gray-600 mb-2">Upload New Promo Banners</label><input type="file" multiple accept="image/*" className={inputStyles} onChange={e => setEditForm({...editForm, newBannersFiles: e.target.files})} /></div>
+            <button type="submit" className="w-full bg-orange-500 text-white font-black py-5 rounded-2xl text-xl hover:bg-orange-600 hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(249,115,22,0.5)] transition-all uppercase tracking-widest">
+              🚀 Publish to Live Store
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* 🚀 THE ULTIMATE EDIT MODAL */}
+      {editingProduct && editForm && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 z-50 overflow-y-auto">
+          <div className="bg-slate-50 rounded-3xl w-full max-w-6xl shadow-2xl relative my-auto border border-white/20">
+            
+            {/* Modal Header (Sticky) */}
+            <div className="sticky top-0 bg-white/90 backdrop-blur-md px-8 py-6 border-b border-slate-200 flex justify-between items-center rounded-t-3xl z-20">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Edit <span className="text-orange-500">{editingProduct.name}</span></h2>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Make changes below and save.</p>
+              </div>
+              <button onClick={() => setEditingProduct(null)} className="w-10 h-10 bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600 rounded-full flex items-center justify-center font-black transition-colors text-xl pb-1">×</button>
+            </div>
+            
+            <div className="p-8 max-h-[75vh] overflow-y-auto overflow-x-hidden custom-scrollbar">
+              <form id="editForm" onSubmit={handleUpdateProduct} className="space-y-6">
+                
+                {/* Edit: Basic Info */}
+                <div className={sectionCardStyles}>
+                  <h3 className={sectionTitleStyles}>Basic Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div><label className={labelStyles}>Product Name</label><input type="text" className={inputStyles} value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} required /></div>
+                    <div><label className={labelStyles}>Brand</label><input type="text" className={inputStyles} value={editForm.brand} onChange={e => setEditForm({...editForm, brand: e.target.value})} required /></div>
+                    <div className="md:col-span-2"><label className={labelStyles}>Description</label><textarea className={`${inputStyles} h-32 resize-none`} value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} required /></div>
+                    <div><label className={labelStyles}>Category</label><select className={inputStyles} value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})}><option value="Smartphones">Smartphones</option><option value="Laptops">Laptops</option><option value="Audio">Audio</option><option value="Wearables">Wearables</option></select></div>
+                    <div className="flex items-center mt-6">
+                      <label className="flex items-center cursor-pointer">
+                        <input type="checkbox" className="sr-only peer" checked={editForm.isBestSeller} onChange={e => setEditForm({...editForm, isBestSeller: e.target.checked})} />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 relative"></div>
+                        <span className="ml-3 text-sm font-bold text-slate-700 uppercase tracking-wider">Highlight as Best Seller</span>
+                      </label>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex gap-4 pt-6 border-t">
-                <button type="button" onClick={() => setEditingProduct(null)} className="flex-1 py-4 bg-gray-100 font-bold rounded-xl">Cancel</button>
-                <button type="submit" className="flex-1 py-4 bg-orange-500 text-white font-bold rounded-xl">Save All Changes</button>
-              </div>
-            </form>
+                {/* Edit: Pricing & Inventory */}
+                <div className={sectionCardStyles}>
+                  <h3 className={sectionTitleStyles}>Pricing & Inventory</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div><label className={labelStyles}>Base MRP (₹)</label><input type="number" className={inputStyles} value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} required /></div>
+                    <div><label className={labelStyles}>Discount Price (₹)</label><input type="number" className={inputStyles} value={editForm.discountPrice || ''} onChange={e => setEditForm({...editForm, discountPrice: e.target.value})} /></div>
+                    <div><label className={labelStyles}>Total Stock</label><input type="number" className={inputStyles} value={editForm.stock} onChange={e => setEditForm({...editForm, stock: e.target.value})} required /></div>
+                  </div>
+                </div>
+
+                {/* Edit: Features & Specs */}
+                <div className={sectionCardStyles}>
+                  <h3 className={sectionTitleStyles}>Technical Details</h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                    <div>
+                      <div className="flex justify-between items-center mb-4"><label className={labelStyles}>Tech Specs</label><button type="button" onClick={() => setEditForm({...editForm, specs: [...editForm.specs, { name: '', value: '' }]})} className="text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Row</button></div>
+                      <div className="space-y-3">
+                        {editForm.specs.map((spec, index) => (
+                          <div key={index} className="flex gap-3 relative group">
+                            <input type="text" placeholder="Name" className={`${inputStyles} w-1/3`} value={spec.name} onChange={e => {const newSpecs=[...editForm.specs]; newSpecs[index].name=e.target.value; setEditForm({...editForm, specs: newSpecs})}} />
+                            <input type="text" placeholder="Value" className={`${inputStyles} flex-1`} value={spec.value} onChange={e => {const newSpecs=[...editForm.specs]; newSpecs[index].value=e.target.value; setEditForm({...editForm, specs: newSpecs})}} />
+                            {editForm.specs.length > 1 && <button type="button" onClick={() => {const newSpecs=editForm.specs.filter((_, i) => i !== index); setEditForm({...editForm, specs: newSpecs})}} className="absolute -right-3 top-1/2 -translate-y-1/2 bg-red-100 text-red-600 w-6 h-6 rounded-full flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity">×</button>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center mb-4"><label className={labelStyles}>Key Features</label><button type="button" onClick={() => setEditForm({...editForm, features: [...editForm.features, '']})} className="text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Feature</button></div>
+                      <div className="space-y-3">
+                        {editForm.features.map((f, index) => (
+                          <div key={index} className="flex gap-3 relative group">
+                            <input type="text" placeholder="Feature" className={inputStyles} value={f} onChange={e => {const newFeatures=[...editForm.features]; newFeatures[index]=e.target.value; setEditForm({...editForm, features: newFeatures})}} />
+                            {editForm.features.length > 1 && <button type="button" onClick={() => {const newFeatures=editForm.features.filter((_, i) => i !== index); setEditForm({...editForm, features: newFeatures})}} className="absolute -right-3 top-1/2 -translate-y-1/2 bg-red-100 text-red-600 w-6 h-6 rounded-full flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity">×</button>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Edit: Variants */}
+                <div className={sectionCardStyles}>
+                  <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-4">
+                    <div><h3 className="text-lg font-black text-slate-900">Variants & Pricing Modifiers</h3></div>
+                    <button type="button" onClick={() => setEditForm({...editForm, variants: [...editForm.variants, { name: '', options: '' }]})} className="text-[10px] bg-slate-900 text-white px-4 py-2 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Variant</button>
+                  </div>
+                  <div className="space-y-4">
+                    {editForm.variants.map((variant, index) => (
+                      <div key={index} className="flex flex-col md:flex-row gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 relative group">
+                        <div className="w-full md:w-1/4"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Variant Name</label><input type="text" className={inputStyles} value={variant.name} onChange={e => { const newVars = [...editForm.variants]; newVars[index].name = e.target.value; setEditForm({...editForm, variants: newVars}); }} /></div>
+                        <div className="w-full md:flex-1"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Options</label><input type="text" className={inputStyles} value={variant.options} onChange={e => { const newVars = [...editForm.variants]; newVars[index].options = e.target.value; setEditForm({...editForm, variants: newVars}); }} /></div>
+                        {editForm.variants.length > 1 && <button type="button" onClick={() => { const newVars = editForm.variants.filter((_, i) => i !== index); setEditForm({...editForm, variants: newVars}); }} className="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center font-bold shadow-md hover:scale-110 transition-transform">×</button>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Edit: SEO & Meta */}
+                <div className={sectionCardStyles}>
+                  <h3 className={sectionTitleStyles}>Search Engine Optimization (SEO)</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div><label className={labelStyles}>SEO Title</label><input type="text" className={inputStyles} value={editForm.seoTitle || ''} onChange={e => setEditForm({...editForm, seoTitle: e.target.value})} /></div>
+                    <div><label className={labelStyles}>SEO Keywords</label><input type="text" className={inputStyles} value={editForm.seoKeywords || ''} onChange={e => setEditForm({...editForm, seoKeywords: e.target.value})} /></div>
+                    <div className="md:col-span-2"><label className={labelStyles}>SEO Description</label><textarea className={`${inputStyles} h-20 resize-none`} value={editForm.seoDescription || ''} onChange={e => setEditForm({...editForm, seoDescription: e.target.value})} /></div>
+                  </div>
+                </div>
+
+                {/* Edit: Policies */}
+                <div className={sectionCardStyles}>
+                  <h3 className={sectionTitleStyles}>Trust & Policies</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div><label className={labelStyles}>Return Policy</label><input type="text" className={inputStyles} value={editForm.returnPolicy} onChange={e => setEditForm({...editForm, returnPolicy: e.target.value})} required /></div>
+                    <div><label className={labelStyles}>Warranty Policy</label><input type="text" className={inputStyles} value={editForm.warrantyPolicy} onChange={e => setEditForm({...editForm, warrantyPolicy: e.target.value})} required /></div>
+                  </div>
+                </div>
+
+                {/* Edit: Upload Media */}
+                <div className={sectionCardStyles}>
+                  <h3 className={sectionTitleStyles}>Update Media Assets</h3>
+                  <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl mb-6">
+                    <p className="text-sm font-bold text-orange-800">Note: Uploading new files will ADD to existing media.</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div><label className={labelStyles}>Add Gallery Images</label><input type="file" multiple accept="image/*" className="w-full text-slate-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer" onChange={e => setEditForm({...editForm, newImagesFiles: e.target.files})} /></div>
+                    <div><label className={labelStyles}>Upload New Promo Banners</label><input type="file" multiple accept="image/*" className="w-full text-slate-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer" onChange={e => setEditForm({...editForm, newBannersFiles: e.target.files})} /></div>
+                  </div>
+                </div>
+
+              </form>
+            </div>
+            
+            {/* Modal Footer (Sticky) */}
+            <div className="sticky bottom-0 bg-white/90 backdrop-blur-md px-8 py-5 border-t border-slate-200 flex gap-4 rounded-b-3xl z-20">
+              <button type="button" onClick={() => setEditingProduct(null)} className="flex-1 py-3.5 bg-slate-100 text-slate-700 font-black rounded-xl hover:bg-slate-200 uppercase tracking-widest text-sm transition-colors">Cancel Edit</button>
+              <button type="submit" form="editForm" className="flex-1 py-3.5 bg-orange-500 text-white font-black rounded-xl hover:bg-orange-600 hover:shadow-lg hover:-translate-y-0.5 uppercase tracking-widest text-sm transition-all shadow-md">💾 Save All Changes</button>
+            </div>
+            
           </div>
         </div>
       )}
