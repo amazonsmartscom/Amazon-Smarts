@@ -573,7 +573,7 @@ export default function SignupPage() {
               </div>
               <h3 className="text-3xl font-black text-slate-900 tracking-tight">Account Verified!</h3>
               <p className="text-slate-500 font-medium px-4 leading-relaxed">
-                Your email has been successfully verified. Welcome to the GadgetStore family. You're ready to start shopping!
+                Your email has been successfully verified. Welcome to the AMAZON SMARTS family. You're ready to start shopping!
               </p>
               <div className="pt-8">
                 <Link href="/login">

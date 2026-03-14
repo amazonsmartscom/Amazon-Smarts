@@ -2108,7 +2108,7 @@ export default function AdminDashboard() {
             <div className={sectionCardStyles}>
               <h3 className={sectionTitleStyles}>Search Engine Optimization (SEO)</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div><label className={labelStyles}>SEO Title (Meta Title)</label><input type="text" placeholder="e.g. Buy iPhone 17 Pro Max Online | GadgetStore" className={inputStyles} value={seoTitle} onChange={e => setSeoTitle(e.target.value)} /></div>
+                <div><label className={labelStyles}>SEO Title (Meta Title)</label><input type="text" placeholder="e.g. Buy iPhone 17 Pro Max Online | AMAZON SMARTS" className={inputStyles} value={seoTitle} onChange={e => setSeoTitle(e.target.value)} /></div>
                 <div><label className={labelStyles}>SEO Keywords (Comma separated)</label><input type="text" placeholder="iphone 17, apple smartphone, buy iphone online" className={inputStyles} value={seoKeywords} onChange={e => setSeoKeywords(e.target.value)} /></div>
                 <div className="md:col-span-2"><label className={labelStyles}>SEO Description (Max 160 characters)</label><textarea placeholder="Get the best deals on the new iPhone 17. Free shipping and 7-day returns..." className={`${inputStyles} h-20 resize-none`} value={seoDescription} onChange={e => setSeoDescription(e.target.value)} /></div>
               </div>

@@ -20,8 +20,8 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: {
-    default: "GADGETSTORE | Premium Tech & Electronics",
-    template: "%s | GADGETSTORE" 
+    default: "AMAZON SMARTS | Premium Tech & Electronics",
+    template: "%s | AMAZON SMARTS" 
   },
   description: "Your premium destination for the latest smartphones, laptops, audio gear, and wearables.",
 };

@@ -72,21 +72,21 @@ export default function ContactPage() {
               <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition-transform">🎧</div>
               <h3 className="text-xl font-black text-slate-900 mb-2">Customer Support</h3>
               <p className="text-slate-500 text-sm mb-4">Having trouble with an order or a device? Our support team is available 24/7.</p>
-              <p className="font-bold text-slate-900">support@gadgetstore.com</p>
+              <p className="font-bold text-slate-900"> info@amazonsmarts.com</p>
             </div>
 
             <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow group">
               <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition-transform">🤝</div>
               <h3 className="text-xl font-black text-slate-900 mb-2">Partnerships</h3>
               <p className="text-slate-500 text-sm mb-4">Want to sell your products on our platform or join our affiliate program?</p>
-              <p className="font-bold text-slate-900">partners@gadgetstore.com</p>
+              <p className="font-bold text-slate-900"> info@amazonsmarts.com</p>
             </div>
 
             <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-lg relative overflow-hidden">
               <div className="absolute -right-4 -top-4 text-7xl opacity-10">📍</div>
               <h3 className="text-lg font-black tracking-widest uppercase mb-4 text-orange-500">Headquarters</h3>
               <p className="font-medium text-slate-300 leading-relaxed mb-4">
-                GadgetStore Tech Tower<br/>
+                AMAZON SMARTS Tech Tower<br/>
                 Sector 62, Mohali<br/>
                 Punjab, India - 160062
               </p>
