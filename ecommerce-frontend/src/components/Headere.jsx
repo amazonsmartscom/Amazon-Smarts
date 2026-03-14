@@ -195,7 +195,7 @@ export default function Header() {
       </div>
 
       {/* MOBILE MENU DRAWER */}
-      <div className={`md:hidden absolute top-full left-0 w-full bg-slate-900 border-b border-slate-800 transition-all duration-300 overflow-hidden ${isMobileMenuOpen ? 'max-h-[500px] border-b border-white/10' : 'max-h-0 border-transparent'}`}>
+      <div className={`md:hidden sticky top-full left-0 w-full bg-slate-900 border-b border-slate-800 transition-all duration-300 overflow-hidden ${isMobileMenuOpen ? 'max-h-[500px] border-b border-white/10' : 'max-h-0 border-transparent'}`}>
         <div className="p-4 space-y-4">
           <form onSubmit={handleSearch} className="flex shadow-inner rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-500">
             <input 

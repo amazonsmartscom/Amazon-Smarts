@@ -44,7 +44,7 @@ export default function RootLayout({ children }) {
             <Header />
 
             {/* MAIN CONTENT AREA */}
-            <main className="flex-grow pt-20">
+            <main className="flex-grow">
               {children}
             </main>
 
