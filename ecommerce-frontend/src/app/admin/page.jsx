@@ -1793,11 +1793,39 @@ export default function AdminDashboard() {
           <h2 className="text-2xl font-black text-slate-900 mb-8 border-b border-slate-100 pb-4">🖼️ Homepage Slides</h2>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
             {/* Form Column */}
-            <form onSubmit={handleUploadBanner} className="lg:col-span-1 space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+            {/* <form onSubmit={handleUploadBanner} className="lg:col-span-1 space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
               <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest mb-4">Add New Slide</h3>
               <div><label className={labelStyles}>Main Heading</label><input type="text" className={inputStyles} value={bannerTitle} onChange={e => setBannerTitle(e.target.value)} required /></div>
               <div><label className={labelStyles}>Sub-heading</label><input type="text" className={inputStyles} value={bannerSubtitle} onChange={e => setBannerSubtitle(e.target.value)} required /></div>
               <div><label className={labelStyles}>Redirect Link</label><input type="text" className={inputStyles} value={bannerLink} onChange={e => setBannerLink(e.target.value)} /></div>
+              <div>
+                <label className={labelStyles}>Slide Image (1920x800 recommended)</label>
+                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl hover:border-orange-400 transition-colors bg-white cursor-pointer relative">
+                    <div className="space-y-1 text-center">
+                    <div className="text-3xl mb-2">📸</div>
+                    <div className="flex text-sm text-gray-600">
+                        <label className="relative cursor-pointer rounded-md font-black text-orange-500 hover:text-orange-600 focus-within:outline-none">
+                        <span>Click to select image</span>
+                        <input type="file" className="sr-only" accept="image/*" onChange={e => setBannerImage(e.target.files[0])} required />
+                        </label>
+                    </div>
+                    <p className="text-xs text-gray-500">PNG, JPG up to 5MB</p>
+                    {bannerImage && <p className="mt-2 text-xs font-bold text-emerald-600 truncate max-w-[150px]">✅ {bannerImage.name}</p>}
+                    </div>
+                </div>
+              </div>
+              <button type="submit" disabled={isBannerUploading} className="w-full bg-slate-900 text-white font-black py-3 rounded-xl hover:bg-orange-500 transition-all uppercase text-xs tracking-widest shadow-md">
+                {isBannerUploading ? 'Uploading...' : 'Publish Slide'}
+              </button>
+            </form> */}
+
+            {/* Form Column */}
+            <form onSubmit={handleUploadBanner} className="lg:col-span-1 space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+              <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest mb-4">Add New Slide</h3>
+              {/* 🚀 FIXED: Removed 'required' from Title and Subtitle */}
+              <div><label className={labelStyles}>Main Heading (Optional)</label><input type="text" className={inputStyles} value={bannerTitle} onChange={e => setBannerTitle(e.target.value)} /></div>
+              <div><label className={labelStyles}>Sub-heading (Optional)</label><input type="text" className={inputStyles} value={bannerSubtitle} onChange={e => setBannerSubtitle(e.target.value)} /></div>
+              <div><label className={labelStyles}>Redirect Link (Optional)</label><input type="text" className={inputStyles} placeholder="e.g. /product/123" value={bannerLink} onChange={e => setBannerLink(e.target.value)} /></div>
               <div>
                 <label className={labelStyles}>Slide Image (1920x800 recommended)</label>
                 <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl hover:border-orange-400 transition-colors bg-white cursor-pointer relative">

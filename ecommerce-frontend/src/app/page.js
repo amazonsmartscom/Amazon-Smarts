@@ -1334,40 +1334,63 @@ function StoreContent() {
       
       {/* ENGAGING GRAPHIC BANNER CAROUSEL (Hide if user is searching) */}
       {/* 🚀 DYNAMIC BANNER CAROUSEL (Show only if not searching) */}
+      {/* 🚀 DYNAMIC BANNER CAROUSEL (Show only if not searching) */}
       {!urlSearchQuery && dynamicBanners.length > 0 && (
         <div className="relative w-full h-[300px] md:h-[450px] lg:h-[550px] bg-slate-900 overflow-hidden group">
-          {dynamicBanners.map((slide, index) => (
-            <div 
-              key={slide._id}
-              className={`absolute inset-0 w-full h-full transition-all duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-105 z-0'}`}
-            >
-              <img src={getImageUrl(slide.image)} alt={slide.title} className="w-full h-full object-cover object-center" />
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-transparent"></div>
-              
-              <div className={`absolute left-8 md:left-20 top-1/2 -translate-y-1/2 max-w-xl transition-all duration-700 delay-300 ${index === currentSlide ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0'}`}>
-                <h2 className="text-4xl md:text-6xl font-black text-white mb-4 leading-tight tracking-tight">{slide.title}</h2>
-                <p className="text-lg md:text-xl text-slate-200 font-medium mb-8">{slide.subtitle}</p>
-                <Link href={slide.link || "/"} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3.5 rounded-full font-bold shadow-lg shadow-orange-500/30 transition-all hover:-translate-y-1 inline-block">
-                  Shop Now
-                </Link>
+          {dynamicBanners.map((slide, index) => {
+            // Check if this slide has text content
+            const hasText = slide.title || slide.subtitle;
+            
+            // The core image component
+            const BannerImage = (
+              <img src={getImageUrl(slide.image)} alt={slide.title || 'Promo Banner'} className="w-full h-full object-cover object-center" />
+            );
+
+            return (
+              <div 
+                key={slide._id} 
+                className={`absolute inset-0 w-full h-full transition-all duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-105 z-0'}`}
+              >
+                {/* 🚀 FIXED: Make whole banner clickable if a link exists */}
+                {slide.link && slide.link !== '/' ? (
+                  <Link href={slide.link} className="block w-full h-full cursor-pointer">
+                    {BannerImage}
+                  </Link>
+                ) : (
+                  <div className="w-full h-full">{BannerImage}</div>
+                )}
+
+                {/* 🚀 FIXED: Only show gradient and text if text actually exists! */}
+                {hasText && (
+                  <>
+                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-transparent pointer-events-none"></div>
+                    <div className={`absolute left-8 md:left-20 top-1/2 -translate-y-1/2 max-w-xl transition-all duration-700 delay-300 pointer-events-none ${index === currentSlide ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0'}`}>
+                      {slide.title && <h2 className="text-4xl md:text-6xl font-black text-white mb-4 leading-tight tracking-tight">{slide.title}</h2>}
+                      {slide.subtitle && <p className="text-lg md:text-xl text-slate-200 font-medium mb-8">{slide.subtitle}</p>}
+                      
+                      {/* Only show the Shop Now button if there is a specific link */}
+                      {slide.link && slide.link !== '/' && (
+                        <Link href={slide.link} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3.5 rounded-full font-bold shadow-lg transition-all hover:-translate-y-1 inline-block pointer-events-auto">
+                          Shop Now
+                        </Link>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
           
           {/* Controls - Only show if more than 1 banner */}
           {dynamicBanners.length > 1 && (
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 z-20 bg-slate-900/40 backdrop-blur-md px-6 py-3 rounded-full border border-white/10">
-              <button onClick={() => setCurrentSlide(prev => prev === 0 ? dynamicBanners.length - 1 : prev - 1)} className="text-white hover:text-orange-400">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
-              </button>
+              <button onClick={() => setCurrentSlide(prev => prev === 0 ? dynamicBanners.length - 1 : prev - 1)} className="text-white hover:text-orange-400">←</button>
               <div className="flex gap-2">
                 {dynamicBanners.map((_, index) => (
                   <button key={index} onClick={() => setCurrentSlide(index)} className={`h-1.5 rounded-full transition-all duration-500 ${index === currentSlide ? 'w-8 bg-orange-500' : 'w-2 bg-white/40'}`} />
                 ))}
               </div>
-              <button onClick={() => setCurrentSlide(prev => prev === dynamicBanners.length - 1 ? 0 : prev + 1)} className="text-white hover:text-orange-400">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
-              </button>
+              <button onClick={() => setCurrentSlide(prev => prev === dynamicBanners.length - 1 ? 0 : prev + 1)} className="text-white hover:text-orange-400">→</button>
             </div>
           )}
         </div>
