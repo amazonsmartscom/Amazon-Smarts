@@ -718,7 +718,7 @@ export default function WalletDashboard() {
     if (!referralCode) return alert("Referral code not found. Please log in again.");
 
     const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://yourstore.com';
-    const shareMessage = `Hey! I'm buying awesome gadgets from AMAZON SMARTS. Use my VIP invite code *${referralCode}* when you sign up to get special deals! Check it out: ${origin}/signup?ref=${referralCode}`;
+    const shareMessage = `Hey! I'm buying awesome gadgets from AMAZON SMARTS. Use my VIP invite code *${referralCode}* when you sign up to get special deals! Check it out: ${origin}/register?ref=${referralCode}`;
 
     if (navigator.share) {
       try {
