@@ -1,3 +1,4 @@
+// models/Banner.js
 const mongoose = require('mongoose');
 
 const bannerSchema = new mongoose.Schema({
@@ -7,16 +8,16 @@ const bannerSchema = new mongoose.Schema({
   },
   title: {
     type: String,
-    required: [true, "Please enter a banner title"],
-    trim: true
+    trim: true,
+    default: "" // 🚀 FIXED: No longer required
   },
   subtitle: {
     type: String,
-    required: [true, "Please enter a banner subtitle"]
+    default: "" // 🚀 FIXED: No longer required
   },
   link: {
     type: String,
-    default: "/"
+    default: ""
   },
   createdAt: {
     type: Date,
