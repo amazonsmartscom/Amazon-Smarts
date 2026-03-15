@@ -198,7 +198,7 @@ const app = express();
 app.use(cors({
   origin: [
     'http://localhost:3000', 
-    'https://amazonsmarts.com', // 🚀 FIXED: Spelled correctly with hyphen
+    'https://in.amazonsmarts.com', // 🚀 FIXED: Spelled correctly with hyphen
     // 'https://www.amazon-smarts.vercel.app'
   ],
   credentials: true,
