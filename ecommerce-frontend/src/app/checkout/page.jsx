@@ -325,263 +325,263 @@
 // }
 
 
-// src/app/checkout/page.jsx
-'use client';
-import { useState, useEffect } from 'react';
-import { useCart } from '../../context/CartContext';
-import { useAuth } from '../../context/AuthContext';
-import { useRouter } from 'next/navigation';
-import axios from 'axios';
-import Link from 'next/link';
+// // src/app/checkout/page.jsx
+// 'use client';
+// import { useState, useEffect } from 'react';
+// import { useCart } from '../../context/CartContext';
+// import { useAuth } from '../../context/AuthContext';
+// import { useRouter } from 'next/navigation';
+// import axios from 'axios';
+// import Link from 'next/link';
 
-export default function CheckoutPage() {
-  const { cart, clearCart } = useCart(); 
-  const { user } = useAuth();
-  const router = useRouter();
+// export default function CheckoutPage() {
+//   const { cart, clearCart } = useCart(); 
+//   const { user } = useAuth();
+//   const router = useRouter();
 
-  const [isHydrated, setIsHydrated] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+//   const [isHydrated, setIsHydrated] = useState(false);
+//   const [isProcessing, setIsProcessing] = useState(false);
 
-  const [shippingInfo, setShippingInfo] = useState({
-    fullName: user?.name || user?.user?.name || '', 
-    phone: '',
-    address: '',
-    city: '',
-    pincode: ''
-  });
+//   const [shippingInfo, setShippingInfo] = useState({
+//     fullName: user?.name || user?.user?.name || '', 
+//     phone: '',
+//     address: '',
+//     city: '',
+//     pincode: ''
+//   });
 
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
+//   useEffect(() => {
+//     setIsHydrated(true);
+//   }, []);
 
-  // 🚀 CONSISTENT CALCULATION LOGIC (Matches Cart Page)
-  const itemsPrice = cart.reduce((total, item) => total + ((item.discountPrice || item.price) * item.quantity), 0);
-  const shippingPrice = itemsPrice > 50000 ? 0 : 499; 
-  const grandTotal = itemsPrice + (cart.length > 0 ? shippingPrice : 0);
+//   // 🚀 CONSISTENT CALCULATION LOGIC (Matches Cart Page)
+//   const itemsPrice = cart.reduce((total, item) => total + ((item.discountPrice || item.price) * item.quantity), 0);
+//   const shippingPrice = itemsPrice > 50000 ? 0 : 499; 
+//   const grandTotal = itemsPrice + (cart.length > 0 ? shippingPrice : 0);
 
-  // HELPER TO FIX BROKEN IMAGE URLS
-  const getImageUrl = (imagePath) => {
-    if (!imagePath) return 'https://placehold.co/400x400?text=No+Image';
-    if (imagePath.startsWith('http')) {
-        return imagePath.replace('http://localhost:5000', process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000');
-    }
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
-    return `${baseUrl}/${imagePath}`;
-  };
+//   // HELPER TO FIX BROKEN IMAGE URLS
+//   const getImageUrl = (imagePath) => {
+//     if (!imagePath) return 'https://placehold.co/400x400?text=No+Image';
+//     if (imagePath.startsWith('http')) {
+//         return imagePath.replace('http://localhost:5000', process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000');
+//     }
+//     const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+//     return `${baseUrl}/${imagePath}`;
+//   };
 
-  if (!isHydrated) return null;
+//   if (!isHydrated) return null;
 
-  if (cart.length === 0) {
-    return (
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4">
-        <div className="text-6xl mb-6 opacity-50">🛒</div>
-        <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Your cart is empty</h2>
-        <p className="text-slate-500 font-medium mb-8">You need to add items before you can checkout.</p>
-        <Link href="/">
-          <button className="bg-slate-900 text-white font-black uppercase tracking-widest px-8 py-4 rounded-xl hover:bg-orange-500 transition-colors shadow-lg hover:shadow-orange-500/30 hover:-translate-y-1">
-            Return to Store
-          </button>
-        </Link>
-      </div>
-    );
-  }
+//   if (cart.length === 0) {
+//     return (
+//       <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4">
+//         <div className="text-6xl mb-6 opacity-50">🛒</div>
+//         <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Your cart is empty</h2>
+//         <p className="text-slate-500 font-medium mb-8">You need to add items before you can checkout.</p>
+//         <Link href="/">
+//           <button className="bg-slate-900 text-white font-black uppercase tracking-widest px-8 py-4 rounded-xl hover:bg-orange-500 transition-colors shadow-lg hover:shadow-orange-500/30 hover:-translate-y-1">
+//             Return to Store
+//           </button>
+//         </Link>
+//       </div>
+//     );
+//   }
 
-  const handlePlaceOrder = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
+//   const handlePlaceOrder = async (e) => {
+//     e.preventDefault();
+//     setIsProcessing(true);
 
-    try {
-      const orderPayload = {
-        userId: user?._id || user?.user?._id || undefined, // undefined allows guest checkout if backend supports it
-        orderItems: cart.map(item => ({
-          name: item.name,
-          quantity: item.quantity || 1,
-          image: item.images && item.images.length > 0 ? item.images[0] : '',
-          price: item.discountPrice || item.price,
-          product: item._id,
-          selectedOptions: item.selectedOptions || {} 
-        })),
-        itemsPrice,
-        shippingPrice,
-        totalPrice: grandTotal,
-        shippingAddress: shippingInfo,
-        paymentMethod: 'COD' // Explicitly defining COD
-      };
+//     try {
+//       const orderPayload = {
+//         userId: user?._id || user?.user?._id || undefined, // undefined allows guest checkout if backend supports it
+//         orderItems: cart.map(item => ({
+//           name: item.name,
+//           quantity: item.quantity || 1,
+//           image: item.images && item.images.length > 0 ? item.images[0] : '',
+//           price: item.discountPrice || item.price,
+//           product: item._id,
+//           selectedOptions: item.selectedOptions || {} 
+//         })),
+//         itemsPrice,
+//         shippingPrice,
+//         totalPrice: grandTotal,
+//         shippingAddress: shippingInfo,
+//         paymentMethod: 'COD' // Explicitly defining COD
+//       };
 
-      const { data } = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders`, orderPayload);
+//       const { data } = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders`, orderPayload);
 
-      // Simulate Payment step (or verify COD)
-      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/${data.order._id}/pay`);
+//       // Simulate Payment step (or verify COD)
+//       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/${data.order._id}/pay`);
 
-      alert("🎉 Order Placed Successfully!");
-      if(clearCart) clearCart(); 
-      router.push('/orders'); 
+//       alert("🎉 Order Placed Successfully!");
+//       if(clearCart) clearCart(); 
+//       router.push('/orders'); 
 
-    } catch (error) {
-      console.error("Order Error:", error);
-      alert(error.response?.data?.message || "Error placing order. Please try again.");
-      setIsProcessing(false);
-    }
-  };
+//     } catch (error) {
+//       console.error("Order Error:", error);
+//       alert(error.response?.data?.message || "Error placing order. Please try again.");
+//       setIsProcessing(false);
+//     }
+//   };
 
-  const inputStyles = "w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all font-medium shadow-sm";
-  const labelStyles = "block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1";
+//   const inputStyles = "w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all font-medium shadow-sm";
+//   const labelStyles = "block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1";
 
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-20 font-sans selection:bg-orange-200">
+//   return (
+//     <div className="min-h-screen bg-[#F8FAFC] pb-20 font-sans selection:bg-orange-200">
       
-      {/* PREMIUM NAVBAR */}
-      <nav className="bg-slate-900 p-5 text-white shadow-md sticky top-0 z-50">
-        <div className="max-w-[1400px] mx-auto flex justify-between items-center">
-          <Link href="/">
-            <h1 className="text-2xl font-black tracking-widest text-orange-500 cursor-pointer hover:scale-105 transition-transform">
-              GADGET<span className="text-white">STORE</span>
-            </h1>
-          </Link>
-          <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
-            <Link href="/cart" className="hover:text-white transition-colors">Cart</Link>
-            <span>---------</span>
-            <span className="text-orange-500">Checkout</span>
-            <span>---------</span>
-            <span>Complete</span>
-          </div>
-        </div>
-      </nav>
+//       {/* PREMIUM NAVBAR */}
+//       <nav className="bg-slate-900 p-5 text-white shadow-md sticky top-0 z-50">
+//         <div className="max-w-[1400px] mx-auto flex justify-between items-center">
+//           <Link href="/">
+//             <h1 className="text-2xl font-black tracking-widest text-orange-500 cursor-pointer hover:scale-105 transition-transform">
+//               GADGET<span className="text-white">STORE</span>
+//             </h1>
+//           </Link>
+//           <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
+//             <Link href="/cart" className="hover:text-white transition-colors">Cart</Link>
+//             <span>---------</span>
+//             <span className="text-orange-500">Checkout</span>
+//             <span>---------</span>
+//             <span>Complete</span>
+//           </div>
+//         </div>
+//       </nav>
 
-      <div className="max-w-[1200px] mx-auto p-4 md:p-8 mt-4 grid grid-cols-1 lg:grid-cols-3 gap-8">
+//       <div className="max-w-[1200px] mx-auto p-4 md:p-8 mt-4 grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* LEFT: Forms */}
-        <div className="lg:col-span-2 space-y-8">
+//         {/* LEFT: Forms */}
+//         <div className="lg:col-span-2 space-y-8">
           
-          {/* Form Card */}
-          <form id="checkoutForm" onSubmit={handlePlaceOrder} className="bg-white p-6 md:p-10 rounded-3xl shadow-sm border border-slate-100">
-            <h2 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3 border-b border-slate-100 pb-6">
-              <span className="bg-slate-100 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
-              Shipping Details
-            </h2>
+//           {/* Form Card */}
+//           <form id="checkoutForm" onSubmit={handlePlaceOrder} className="bg-white p-6 md:p-10 rounded-3xl shadow-sm border border-slate-100">
+//             <h2 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3 border-b border-slate-100 pb-6">
+//               <span className="bg-slate-100 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
+//               Shipping Details
+//             </h2>
             
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className={labelStyles}>Full Name</label>
-                  <input type="text" required className={inputStyles} placeholder="John Doe" value={shippingInfo.fullName} onChange={e => setShippingInfo({...shippingInfo, fullName: e.target.value})} />
-                </div>
-                <div>
-                  <label className={labelStyles}>Phone Number</label>
-                  <input type="tel" required className={inputStyles} placeholder="10-digit mobile number" value={shippingInfo.phone} onChange={e => setShippingInfo({...shippingInfo, phone: e.target.value})} />
-                </div>
-              </div>
+//             <div className="space-y-6">
+//               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                 <div>
+//                   <label className={labelStyles}>Full Name</label>
+//                   <input type="text" required className={inputStyles} placeholder="John Doe" value={shippingInfo.fullName} onChange={e => setShippingInfo({...shippingInfo, fullName: e.target.value})} />
+//                 </div>
+//                 <div>
+//                   <label className={labelStyles}>Phone Number</label>
+//                   <input type="tel" required className={inputStyles} placeholder="10-digit mobile number" value={shippingInfo.phone} onChange={e => setShippingInfo({...shippingInfo, phone: e.target.value})} />
+//                 </div>
+//               </div>
 
-              <div>
-                <label className={labelStyles}>Complete Address</label>
-                <textarea required className={`${inputStyles} h-28 resize-none`} placeholder="House No, Building, Street, Area" value={shippingInfo.address} onChange={e => setShippingInfo({...shippingInfo, address: e.target.value})}></textarea>
-              </div>
+//               <div>
+//                 <label className={labelStyles}>Complete Address</label>
+//                 <textarea required className={`${inputStyles} h-28 resize-none`} placeholder="House No, Building, Street, Area" value={shippingInfo.address} onChange={e => setShippingInfo({...shippingInfo, address: e.target.value})}></textarea>
+//               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className={labelStyles}>City / District</label>
-                  <input type="text" required className={inputStyles} placeholder="e.g. Mumbai" value={shippingInfo.city} onChange={e => setShippingInfo({...shippingInfo, city: e.target.value})} />
-                </div>
-                <div>
-                  <label className={labelStyles}>Pincode / Postal Code</label>
-                  <input type="text" required className={inputStyles} placeholder="e.g. 400001" value={shippingInfo.pincode} onChange={e => setShippingInfo({...shippingInfo, pincode: e.target.value})} />
-                </div>
-              </div>
-            </div>
-          </form>
+//               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                 <div>
+//                   <label className={labelStyles}>City / District</label>
+//                   <input type="text" required className={inputStyles} placeholder="e.g. Mumbai" value={shippingInfo.city} onChange={e => setShippingInfo({...shippingInfo, city: e.target.value})} />
+//                 </div>
+//                 <div>
+//                   <label className={labelStyles}>Pincode / Postal Code</label>
+//                   <input type="text" required className={inputStyles} placeholder="e.g. 400001" value={shippingInfo.pincode} onChange={e => setShippingInfo({...shippingInfo, pincode: e.target.value})} />
+//                 </div>
+//               </div>
+//             </div>
+//           </form>
 
-          {/* Payment Method Card */}
-          <div className="bg-white p-6 md:p-10 rounded-3xl shadow-sm border border-slate-100">
-            <h2 className="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3 border-b border-slate-100 pb-6">
-              <span className="bg-slate-100 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
-              Payment Method
-            </h2>
+//           {/* Payment Method Card */}
+//           <div className="bg-white p-6 md:p-10 rounded-3xl shadow-sm border border-slate-100">
+//             <h2 className="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3 border-b border-slate-100 pb-6">
+//               <span className="bg-slate-100 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
+//               Payment Method
+//             </h2>
 
-            <div className="border-2 border-orange-500 bg-orange-50 p-5 rounded-2xl flex items-start md:items-center gap-4 relative overflow-hidden">
-              <div className="absolute -right-4 -bottom-4 text-7xl opacity-10">💵</div>
-              <div className="w-6 h-6 rounded-full border-4 border-orange-500 flex items-center justify-center bg-white flex-shrink-0 mt-1 md:mt-0">
-                <div className="w-2.5 h-2.5 bg-orange-500 rounded-full"></div>
-              </div>
-              <div className="relative z-10">
-                <h3 className="font-black text-orange-900 text-lg">Cash on Delivery (COD)</h3>
-                <p className="text-sm font-medium text-orange-800 mt-1">Pay securely with cash or UPI when your order arrives at your doorstep.</p>
-              </div>
-            </div>
-          </div>
+//             <div className="border-2 border-orange-500 bg-orange-50 p-5 rounded-2xl flex items-start md:items-center gap-4 relative overflow-hidden">
+//               <div className="absolute -right-4 -bottom-4 text-7xl opacity-10">💵</div>
+//               <div className="w-6 h-6 rounded-full border-4 border-orange-500 flex items-center justify-center bg-white flex-shrink-0 mt-1 md:mt-0">
+//                 <div className="w-2.5 h-2.5 bg-orange-500 rounded-full"></div>
+//               </div>
+//               <div className="relative z-10">
+//                 <h3 className="font-black text-orange-900 text-lg">Cash on Delivery (COD)</h3>
+//                 <p className="text-sm font-medium text-orange-800 mt-1">Pay securely with cash or UPI when your order arrives at your doorstep.</p>
+//               </div>
+//             </div>
+//           </div>
 
-        </div>
+//         </div>
 
-        {/* RIGHT: Order Summary */}
-        <div className="w-full">
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 sticky top-28">
-            <h3 className="text-xl font-black text-slate-900 mb-6">Order Summary</h3>
+//         {/* RIGHT: Order Summary */}
+//         <div className="w-full">
+//           <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 sticky top-28">
+//             <h3 className="text-xl font-black text-slate-900 mb-6">Order Summary</h3>
             
-            <div className="space-y-4 mb-6 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar border-b border-slate-100 pb-6">
-              {cart.map((item, idx) => (
-                <div key={idx} className="flex gap-4 mb-4 last:mb-0">
-                  <div className="w-16 h-16 bg-slate-50 rounded-xl border border-slate-100 p-1 flex-shrink-0">
-                    <img src={getImageUrl(item.images[0])} alt={item.name} className="w-full h-full object-contain mix-blend-multiply" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-slate-900 text-sm line-clamp-2 leading-tight">{item.name}</h4>
-                    <div className="flex justify-between items-end mt-1">
-                      <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Qty: {item.quantity || 1}</span>
-                      <span className="font-black text-slate-900 text-sm">₹{((item.discountPrice || item.price) * (item.quantity || 1)).toLocaleString('en-IN')}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+//             <div className="space-y-4 mb-6 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar border-b border-slate-100 pb-6">
+//               {cart.map((item, idx) => (
+//                 <div key={idx} className="flex gap-4 mb-4 last:mb-0">
+//                   <div className="w-16 h-16 bg-slate-50 rounded-xl border border-slate-100 p-1 flex-shrink-0">
+//                     <img src={getImageUrl(item.images[0])} alt={item.name} className="w-full h-full object-contain mix-blend-multiply" />
+//                   </div>
+//                   <div className="flex-1">
+//                     <h4 className="font-bold text-slate-900 text-sm line-clamp-2 leading-tight">{item.name}</h4>
+//                     <div className="flex justify-between items-end mt-1">
+//                       <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Qty: {item.quantity || 1}</span>
+//                       <span className="font-black text-slate-900 text-sm">₹{((item.discountPrice || item.price) * (item.quantity || 1)).toLocaleString('en-IN')}</span>
+//                     </div>
+//                   </div>
+//                 </div>
+//               ))}
+//             </div>
 
-            <div className="space-y-3 text-sm text-slate-600 border-b border-slate-100 pb-6 mb-6">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Subtotal</span>
-                <span className="font-bold text-slate-900">₹{itemsPrice.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Shipping</span>
-                <span className={`font-black ${shippingPrice === 0 ? 'text-emerald-500' : 'text-slate-900'}`}>
-                  {shippingPrice === 0 ? 'FREE' : `₹${shippingPrice}`}
-                </span>
-              </div>
-            </div>
+//             <div className="space-y-3 text-sm text-slate-600 border-b border-slate-100 pb-6 mb-6">
+//               <div className="flex justify-between items-center">
+//                 <span className="font-medium">Subtotal</span>
+//                 <span className="font-bold text-slate-900">₹{itemsPrice.toLocaleString('en-IN')}</span>
+//               </div>
+//               <div className="flex justify-between items-center">
+//                 <span className="font-medium">Shipping</span>
+//                 <span className={`font-black ${shippingPrice === 0 ? 'text-emerald-500' : 'text-slate-900'}`}>
+//                   {shippingPrice === 0 ? 'FREE' : `₹${shippingPrice}`}
+//                 </span>
+//               </div>
+//             </div>
 
-            <div className="flex justify-between items-end mb-8">
-              <div>
-                <span className="block text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">To Pay</span>
-                <span className="text-[10px] text-slate-400">Inclusive of all taxes</span>
-              </div>
-              <span className="text-3xl font-black text-orange-600 tracking-tight">₹{grandTotal.toLocaleString('en-IN')}</span>
-            </div>
+//             <div className="flex justify-between items-end mb-8">
+//               <div>
+//                 <span className="block text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">To Pay</span>
+//                 <span className="text-[10px] text-slate-400">Inclusive of all taxes</span>
+//               </div>
+//               <span className="text-3xl font-black text-orange-600 tracking-tight">₹{grandTotal.toLocaleString('en-IN')}</span>
+//             </div>
 
-            <button 
-              type="submit" 
-              form="checkoutForm"
-              disabled={isProcessing}
-              className={`w-full font-black py-4 rounded-xl uppercase tracking-widest transition-all duration-300 flex justify-center items-center gap-2 shadow-lg ${isProcessing ? 'bg-slate-400 text-white cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 text-white hover:shadow-orange-500/30 hover:-translate-y-1'}`}
-            >
-              {isProcessing ? (
-                <><span className="animate-spin text-xl">⏳</span> Processing...</>
-              ) : (
-                <>Confirm Order <span className="text-lg">→</span></>
-              )}
-            </button>
+//             <button 
+//               type="submit" 
+//               form="checkoutForm"
+//               disabled={isProcessing}
+//               className={`w-full font-black py-4 rounded-xl uppercase tracking-widest transition-all duration-300 flex justify-center items-center gap-2 shadow-lg ${isProcessing ? 'bg-slate-400 text-white cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 text-white hover:shadow-orange-500/30 hover:-translate-y-1'}`}
+//             >
+//               {isProcessing ? (
+//                 <><span className="animate-spin text-xl">⏳</span> Processing...</>
+//               ) : (
+//                 <>Confirm Order <span className="text-lg">→</span></>
+//               )}
+//             </button>
             
-            <div className="mt-6 flex flex-col gap-2 border-t border-slate-100 pt-6">
-              <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
-                <span className="text-lg">🛡️</span> Your personal information is encrypted and securely processed.
-              </div>
-              <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
-                <span className="text-lg">📦</span> 7-Day easy returns and replacements available.
-              </div>
-            </div>
-          </div>
-        </div>
+//             <div className="mt-6 flex flex-col gap-2 border-t border-slate-100 pt-6">
+//               <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
+//                 <span className="text-lg">🛡️</span> Your personal information is encrypted and securely processed.
+//               </div>
+//               <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
+//                 <span className="text-lg">📦</span> 7-Day easy returns and replacements available.
+//               </div>
+//             </div>
+//           </div>
+//         </div>
 
-      </div>
-    </div>
-  );
-}
+//       </div>
+//     </div>
+//   );
+// }
 
 
 // src/app/checkout/page.jsx
