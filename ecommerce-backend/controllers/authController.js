@@ -575,6 +575,154 @@
 // };
 
 
+// // controllers/authController.js
+// const User = require('../models/User');
+// const jwt = require('jsonwebtoken');
+// const sendEmail = require('../utils/sendEmail');
+
+// // 🚀 Helper to ensure Referral Code is unique in DB
+// const generateUniqueReferralCode = async () => {
+//   let code;
+//   let isUnique = false;
+//   while (!isUnique) {
+//     code = Math.random().toString(36).substring(2, 8).toUpperCase();
+//     const existingUser = await User.findOne({ myReferralCode: code });
+//     if (!existingUser) isUnique = true;
+//   }
+//   return code;
+// };
+
+// const generateToken = (id) => {
+//   return jwt.sign({ id }, process.env.JWT_SECRET || 'gadgetstore_super_secret_key_123', { expiresIn: '30d' });
+// };
+
+// // 1. REGISTER
+// exports.registerUser = async (req, res) => {
+//   try {
+//     const { name, email, password, referralCode } = req.body;
+
+//     const userExists = await User.findOne({ email });
+//     if (userExists) {
+//       return res.status(400).json({ message: 'User already exists' });
+//     }
+
+//     let referrerId = null;
+//     if (referralCode) {
+//       const referrer = await User.findOne({ myReferralCode: referralCode });
+//       if (referrer) {
+//         referrerId = referrer._id;
+//       }
+//     }
+
+//     // 🚀 FIX: Generate a guaranteed unique referral code
+//     const myReferralCode = await generateUniqueReferralCode();
+
+//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//     const otpExpiry = Date.now() + 10 * 60 * 1000; 
+
+//     const user = await User.create({
+//       name,
+//       email,
+//       password,
+//       myReferralCode, 
+//       referredBy: referrerId, 
+//       isVerified: false,
+//       otp,
+//       otpExpiry
+//     });
+
+//     const message = `
+//       <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
+//         <div style="text-align: center; border-bottom: 2px solid #f97316; padding-bottom: 15px; margin-bottom: 20px;">
+//           <h1 style="color: #f97316; font-weight: 900; margin: 0; font-size: 28px; letter-spacing: 2px;">GADGET<span style="color: #0f172a;">STORE</span></h1>
+//         </div>
+//         <h2 style="color: #1f2937; font-size: 20px; margin-top: 30px;">Verify your email address</h2>
+//         <p style="color: #4b5563; font-size: 16px; line-height: 1.5;">Hello <strong>${name}</strong>,</p>
+//         <p style="color: #4b5563; font-size: 16px; line-height: 1.5;">Your OTP for account verification is:</p>
+//         <div style="text-align: center; margin: 40px 0;">
+//           <div style="background-color: #fff7ed; border: 2px dashed #fdba74; border-radius: 8px; padding: 20px; display: inline-block;">
+//             <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #ea580c;">${otp}</span>
+//           </div>
+//         </div>
+//         <p style="color: #6b7280; font-size: 14px; text-align: center;">Valid for 10 minutes.</p>
+//       </div>
+//     `;
+
+//     try {
+//       await sendEmail({ email: user.email, subject: 'Verify Your GadgetStore Account', message });
+//     } catch (emailError) {
+//       console.log(`[FALLBACK] OTP for ${user.email} is: ${otp}`); 
+//     }
+
+//     res.status(201).json({ message: 'Registration successful.', email: user.email });
+
+//   } catch (error) {
+//     console.error("🔥 REGISTRATION CRASH:", error);
+//     res.status(500).json({ message: 'Server error during registration', error: error.message });
+//   }
+// };
+
+// // 2. VERIFY OTP
+// exports.verifyOTP = async (req, res) => {
+//   try {
+//     const { email, otp } = req.body;
+//     const user = await User.findOne({ email });
+
+//     if (!user) return res.status(404).json({ message: 'User not found' });
+//     if (user.otp !== otp) return res.status(400).json({ message: 'Invalid OTP' });
+//     if (user.otpExpiry < Date.now()) return res.status(400).json({ message: 'OTP expired' });
+
+//     const updatedUser = await User.findByIdAndUpdate(
+//       user._id,
+//       { $set: { isVerified: true }, $unset: { otp: 1, otpExpiry: 1 } },
+//       { new: true }
+//     );
+
+//     res.status(200).json({
+//       _id: updatedUser._id,
+//       name: updatedUser.name,
+//       email: updatedUser.email,
+//       role: updatedUser.role,
+//       myReferralCode: updatedUser.myReferralCode,
+//       token: generateToken(updatedUser._id),
+//     });
+
+//   } catch (error) {
+//     console.error("🔥 VERIFY OTP CRASH:", error);
+//     res.status(500).json({ message: 'Verification error', error: error.message });
+//   }
+// };
+
+// // 3. LOGIN
+// exports.loginUser = async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+//     const user = await User.findOne({ email });
+
+//     if (user && (await user.matchPassword(password))) {
+//       if (!user.isVerified) {
+//         return res.status(401).json({ message: 'Please verify your email.', requiresVerification: true });
+//       }
+
+//       res.json({
+//         _id: user._id,
+//         name: user.name,
+//         email: user.email,
+//         role: user.role,
+//         myReferralCode: user.myReferralCode,
+//         token: generateToken(user._id),
+//       });
+//     } else {
+//       res.status(401).json({ message: 'Invalid email or password' });
+//     }
+//   } catch (error) {
+//     res.status(500).json({ message: 'Login error', error: error.message });
+//   }
+// };
+
+
+
+
 // controllers/authController.js
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
@@ -614,9 +762,7 @@ exports.registerUser = async (req, res) => {
       }
     }
 
-    // 🚀 FIX: Generate a guaranteed unique referral code
     const myReferralCode = await generateUniqueReferralCode();
-
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiry = Date.now() + 10 * 60 * 1000; 
 
@@ -634,7 +780,7 @@ exports.registerUser = async (req, res) => {
     const message = `
       <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
         <div style="text-align: center; border-bottom: 2px solid #f97316; padding-bottom: 15px; margin-bottom: 20px;">
-          <h1 style="color: #f97316; font-weight: 900; margin: 0; font-size: 28px; letter-spacing: 2px;">GADGET<span style="color: #0f172a;">STORE</span></h1>
+          <h1 style="color: #f97316; font-weight: 900; margin: 0; font-size: 28px; letter-spacing: 2px;">AMAZON<span style="color: #0f172a;">SMARTS</span></h1>
         </div>
         <h2 style="color: #1f2937; font-size: 20px; margin-top: 30px;">Verify your email address</h2>
         <p style="color: #4b5563; font-size: 16px; line-height: 1.5;">Hello <strong>${name}</strong>,</p>
@@ -649,7 +795,7 @@ exports.registerUser = async (req, res) => {
     `;
 
     try {
-      await sendEmail({ email: user.email, subject: 'Verify Your GadgetStore Account', message });
+      await sendEmail({ email: user.email, subject: 'Verify Your Amazon Smarts Account', message });
     } catch (emailError) {
       console.log(`[FALLBACK] OTP for ${user.email} is: ${otp}`); 
     }
@@ -717,5 +863,65 @@ exports.loginUser = async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ message: 'Login error', error: error.message });
+  }
+};
+
+// 🚀 4. SEND OTP ONLY (Used for Checkout Verification)
+exports.sendOtpOnly = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = Date.now() + 10 * 60 * 1000; 
+
+    // Find the user, or create a temporary "Guest" user so the OTP can be saved in the DB
+    let user = await User.findOne({ email });
+    
+    if (!user) {
+      // Create a guest shell account
+      user = await User.create({
+        name: 'Guest Customer',
+        email: email,
+        password: Math.random().toString(36).slice(-8) + 'A1@', // Random strong password
+        myReferralCode: await generateUniqueReferralCode(),
+        isVerified: false,
+        otp,
+        otpExpiry
+      });
+    } else {
+      // Update existing user with new OTP
+      user.otp = otp;
+      user.otpExpiry = otpExpiry;
+      await user.save();
+    }
+
+    const message = `
+      <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
+        <div style="text-align: center; border-bottom: 2px solid #f97316; padding-bottom: 15px; margin-bottom: 20px;">
+          <h1 style="color: #f97316; font-weight: 900; margin: 0; font-size: 28px; letter-spacing: 2px;">AMAZON<span style="color: #0f172a;">SMARTS</span></h1>
+        </div>
+        <h2 style="color: #1f2937; font-size: 20px; margin-top: 30px;">Your Checkout Verification Code</h2>
+        <p style="color: #4b5563; font-size: 16px; line-height: 1.5;">Please use the following OTP to securely complete your order:</p>
+        <div style="text-align: center; margin: 40px 0;">
+          <div style="background-color: #fff7ed; border: 2px dashed #fdba74; border-radius: 8px; padding: 20px; display: inline-block;">
+            <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #ea580c;">${otp}</span>
+          </div>
+        </div>
+        <p style="color: #6b7280; font-size: 14px; text-align: center;">Valid for 10 minutes.</p>
+      </div>
+    `;
+
+    try {
+      await sendEmail({ email: user.email, subject: 'Your Checkout OTP', message });
+    } catch (emailError) {
+      console.log(`[FALLBACK] Checkout OTP for ${user.email} is: ${otp}`); 
+    }
+
+    res.status(200).json({ success: true, message: "OTP sent successfully" });
+
+  } catch (error) {
+    console.error("🔥 SEND OTP CRASH:", error);
+    res.status(500).json({ message: 'Server error sending OTP', error: error.message });
   }
 };
