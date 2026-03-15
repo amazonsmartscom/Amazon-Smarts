@@ -325,6 +325,265 @@
 // }
 
 
+// // src/app/checkout/page.jsx
+// 'use client';
+// import { useState, useEffect } from 'react';
+// import { useCart } from '../../context/CartContext';
+// import { useAuth } from '../../context/AuthContext';
+// import { useRouter } from 'next/navigation';
+// import axios from 'axios';
+// import Link from 'next/link';
+
+// export default function CheckoutPage() {
+//   const { cart, clearCart } = useCart(); 
+//   const { user } = useAuth();
+//   const router = useRouter();
+
+//   const [isHydrated, setIsHydrated] = useState(false);
+//   const [isProcessing, setIsProcessing] = useState(false);
+
+//   const [shippingInfo, setShippingInfo] = useState({
+//     fullName: user?.name || user?.user?.name || '', 
+//     phone: '',
+//     address: '',
+//     city: '',
+//     pincode: ''
+//   });
+
+//   useEffect(() => {
+//     setIsHydrated(true);
+//   }, []);
+
+//   // 🚀 CONSISTENT CALCULATION LOGIC (Matches Cart Page)
+//   const itemsPrice = cart.reduce((total, item) => total + ((item.discountPrice || item.price) * item.quantity), 0);
+//   const shippingPrice = itemsPrice > 50000 ? 0 : 499; 
+//   const grandTotal = itemsPrice + (cart.length > 0 ? shippingPrice : 0);
+
+//   // HELPER TO FIX BROKEN IMAGE URLS
+//   const getImageUrl = (imagePath) => {
+//     if (!imagePath) return 'https://placehold.co/400x400?text=No+Image';
+//     if (imagePath.startsWith('http')) {
+//         return imagePath.replace('http://localhost:5000', process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000');
+//     }
+//     const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+//     return `${baseUrl}/${imagePath}`;
+//   };
+
+//   if (!isHydrated) return null;
+
+//   if (cart.length === 0) {
+//     return (
+//       <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4">
+//         <div className="text-6xl mb-6 opacity-50">🛒</div>
+//         <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Your cart is empty</h2>
+//         <p className="text-slate-500 font-medium mb-8">You need to add items before you can checkout.</p>
+//         <Link href="/">
+//           <button className="bg-slate-900 text-white font-black uppercase tracking-widest px-8 py-4 rounded-xl hover:bg-orange-500 transition-colors shadow-lg hover:shadow-orange-500/30 hover:-translate-y-1">
+//             Return to Store
+//           </button>
+//         </Link>
+//       </div>
+//     );
+//   }
+
+//   const handlePlaceOrder = async (e) => {
+//     e.preventDefault();
+//     setIsProcessing(true);
+
+//     try {
+//       const orderPayload = {
+//         userId: user?._id || user?.user?._id || undefined, // undefined allows guest checkout if backend supports it
+//         orderItems: cart.map(item => ({
+//           name: item.name,
+//           quantity: item.quantity || 1,
+//           image: item.images && item.images.length > 0 ? item.images[0] : '',
+//           price: item.discountPrice || item.price,
+//           product: item._id,
+//           selectedOptions: item.selectedOptions || {} 
+//         })),
+//         itemsPrice,
+//         shippingPrice,
+//         totalPrice: grandTotal,
+//         shippingAddress: shippingInfo,
+//         paymentMethod: 'COD' // Explicitly defining COD
+//       };
+
+//       const { data } = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders`, orderPayload);
+
+//       // Simulate Payment step (or verify COD)
+//       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/${data.order._id}/pay`);
+
+//       alert("🎉 Order Placed Successfully!");
+//       if(clearCart) clearCart(); 
+//       router.push('/orders'); 
+
+//     } catch (error) {
+//       console.error("Order Error:", error);
+//       alert(error.response?.data?.message || "Error placing order. Please try again.");
+//       setIsProcessing(false);
+//     }
+//   };
+
+//   const inputStyles = "w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all font-medium shadow-sm";
+//   const labelStyles = "block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1";
+
+//   return (
+//     <div className="min-h-screen bg-[#F8FAFC] pb-20 font-sans selection:bg-orange-200">
+      
+//       {/* PREMIUM NAVBAR */}
+//       <nav className="bg-slate-900 p-5 text-white shadow-md sticky top-0 z-50">
+//         <div className="max-w-[1400px] mx-auto flex justify-between items-center">
+//           <Link href="/">
+//             <h1 className="text-2xl font-black tracking-widest text-orange-500 cursor-pointer hover:scale-105 transition-transform">
+//               GADGET<span className="text-white">STORE</span>
+//             </h1>
+//           </Link>
+//           <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
+//             <Link href="/cart" className="hover:text-white transition-colors">Cart</Link>
+//             <span>---------</span>
+//             <span className="text-orange-500">Checkout</span>
+//             <span>---------</span>
+//             <span>Complete</span>
+//           </div>
+//         </div>
+//       </nav>
+
+//       <div className="max-w-[1200px] mx-auto p-4 md:p-8 mt-4 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+//         {/* LEFT: Forms */}
+//         <div className="lg:col-span-2 space-y-8">
+          
+//           {/* Form Card */}
+//           <form id="checkoutForm" onSubmit={handlePlaceOrder} className="bg-white p-6 md:p-10 rounded-3xl shadow-sm border border-slate-100">
+//             <h2 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3 border-b border-slate-100 pb-6">
+//               <span className="bg-slate-100 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
+//               Shipping Details
+//             </h2>
+            
+//             <div className="space-y-6">
+//               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                 <div>
+//                   <label className={labelStyles}>Full Name</label>
+//                   <input type="text" required className={inputStyles} placeholder="John Doe" value={shippingInfo.fullName} onChange={e => setShippingInfo({...shippingInfo, fullName: e.target.value})} />
+//                 </div>
+//                 <div>
+//                   <label className={labelStyles}>Phone Number</label>
+//                   <input type="tel" required className={inputStyles} placeholder="10-digit mobile number" value={shippingInfo.phone} onChange={e => setShippingInfo({...shippingInfo, phone: e.target.value})} />
+//                 </div>
+//               </div>
+
+//               <div>
+//                 <label className={labelStyles}>Complete Address</label>
+//                 <textarea required className={`${inputStyles} h-28 resize-none`} placeholder="House No, Building, Street, Area" value={shippingInfo.address} onChange={e => setShippingInfo({...shippingInfo, address: e.target.value})}></textarea>
+//               </div>
+
+//               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                 <div>
+//                   <label className={labelStyles}>City / District</label>
+//                   <input type="text" required className={inputStyles} placeholder="e.g. Mumbai" value={shippingInfo.city} onChange={e => setShippingInfo({...shippingInfo, city: e.target.value})} />
+//                 </div>
+//                 <div>
+//                   <label className={labelStyles}>Pincode / Postal Code</label>
+//                   <input type="text" required className={inputStyles} placeholder="e.g. 400001" value={shippingInfo.pincode} onChange={e => setShippingInfo({...shippingInfo, pincode: e.target.value})} />
+//                 </div>
+//               </div>
+//             </div>
+//           </form>
+
+//           {/* Payment Method Card */}
+//           <div className="bg-white p-6 md:p-10 rounded-3xl shadow-sm border border-slate-100">
+//             <h2 className="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3 border-b border-slate-100 pb-6">
+//               <span className="bg-slate-100 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
+//               Payment Method
+//             </h2>
+
+//             <div className="border-2 border-orange-500 bg-orange-50 p-5 rounded-2xl flex items-start md:items-center gap-4 relative overflow-hidden">
+//               <div className="absolute -right-4 -bottom-4 text-7xl opacity-10">💵</div>
+//               <div className="w-6 h-6 rounded-full border-4 border-orange-500 flex items-center justify-center bg-white flex-shrink-0 mt-1 md:mt-0">
+//                 <div className="w-2.5 h-2.5 bg-orange-500 rounded-full"></div>
+//               </div>
+//               <div className="relative z-10">
+//                 <h3 className="font-black text-orange-900 text-lg">Cash on Delivery (COD)</h3>
+//                 <p className="text-sm font-medium text-orange-800 mt-1">Pay securely with cash or UPI when your order arrives at your doorstep.</p>
+//               </div>
+//             </div>
+//           </div>
+
+//         </div>
+
+//         {/* RIGHT: Order Summary */}
+//         <div className="w-full">
+//           <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 sticky top-28">
+//             <h3 className="text-xl font-black text-slate-900 mb-6">Order Summary</h3>
+            
+//             <div className="space-y-4 mb-6 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar border-b border-slate-100 pb-6">
+//               {cart.map((item, idx) => (
+//                 <div key={idx} className="flex gap-4 mb-4 last:mb-0">
+//                   <div className="w-16 h-16 bg-slate-50 rounded-xl border border-slate-100 p-1 flex-shrink-0">
+//                     <img src={getImageUrl(item.images[0])} alt={item.name} className="w-full h-full object-contain mix-blend-multiply" />
+//                   </div>
+//                   <div className="flex-1">
+//                     <h4 className="font-bold text-slate-900 text-sm line-clamp-2 leading-tight">{item.name}</h4>
+//                     <div className="flex justify-between items-end mt-1">
+//                       <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Qty: {item.quantity || 1}</span>
+//                       <span className="font-black text-slate-900 text-sm">₹{((item.discountPrice || item.price) * (item.quantity || 1)).toLocaleString('en-IN')}</span>
+//                     </div>
+//                   </div>
+//                 </div>
+//               ))}
+//             </div>
+
+//             <div className="space-y-3 text-sm text-slate-600 border-b border-slate-100 pb-6 mb-6">
+//               <div className="flex justify-between items-center">
+//                 <span className="font-medium">Subtotal</span>
+//                 <span className="font-bold text-slate-900">₹{itemsPrice.toLocaleString('en-IN')}</span>
+//               </div>
+//               <div className="flex justify-between items-center">
+//                 <span className="font-medium">Shipping</span>
+//                 <span className={`font-black ${shippingPrice === 0 ? 'text-emerald-500' : 'text-slate-900'}`}>
+//                   {shippingPrice === 0 ? 'FREE' : `₹${shippingPrice}`}
+//                 </span>
+//               </div>
+//             </div>
+
+//             <div className="flex justify-between items-end mb-8">
+//               <div>
+//                 <span className="block text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">To Pay</span>
+//                 <span className="text-[10px] text-slate-400">Inclusive of all taxes</span>
+//               </div>
+//               <span className="text-3xl font-black text-orange-600 tracking-tight">₹{grandTotal.toLocaleString('en-IN')}</span>
+//             </div>
+
+//             <button 
+//               type="submit" 
+//               form="checkoutForm"
+//               disabled={isProcessing}
+//               className={`w-full font-black py-4 rounded-xl uppercase tracking-widest transition-all duration-300 flex justify-center items-center gap-2 shadow-lg ${isProcessing ? 'bg-slate-400 text-white cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 text-white hover:shadow-orange-500/30 hover:-translate-y-1'}`}
+//             >
+//               {isProcessing ? (
+//                 <><span className="animate-spin text-xl">⏳</span> Processing...</>
+//               ) : (
+//                 <>Confirm Order <span className="text-lg">→</span></>
+//               )}
+//             </button>
+            
+//             <div className="mt-6 flex flex-col gap-2 border-t border-slate-100 pt-6">
+//               <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
+//                 <span className="text-lg">🛡️</span> Your personal information is encrypted and securely processed.
+//               </div>
+//               <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
+//                 <span className="text-lg">📦</span> 7-Day easy returns and replacements available.
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+
+//       </div>
+//     </div>
+//   );
+// }
+
+
 // src/app/checkout/page.jsx
 'use client';
 import { useState, useEffect } from 'react';
@@ -354,12 +613,10 @@ export default function CheckoutPage() {
     setIsHydrated(true);
   }, []);
 
-  // 🚀 CONSISTENT CALCULATION LOGIC (Matches Cart Page)
   const itemsPrice = cart.reduce((total, item) => total + ((item.discountPrice || item.price) * item.quantity), 0);
   const shippingPrice = itemsPrice > 50000 ? 0 : 499; 
   const grandTotal = itemsPrice + (cart.length > 0 ? shippingPrice : 0);
 
-  // HELPER TO FIX BROKEN IMAGE URLS
   const getImageUrl = (imagePath) => {
     if (!imagePath) return 'https://placehold.co/400x400?text=No+Image';
     if (imagePath.startsWith('http')) {
@@ -369,17 +626,21 @@ export default function CheckoutPage() {
     return `${baseUrl}/${imagePath}`;
   };
 
+  // 🚀 AMAZON-SPECIFIC TAILWIND STYLES
+  const inputStyles = "w-full px-3 py-2 border border-[#a6a6a6] rounded-[3px] text-sm focus:outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_2px_rgba(228,121,17,0.5)] transition-shadow text-[#111]";
+  const labelStyles = "block text-[13px] font-bold text-[#111] mb-1";
+  const amzButton = "w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-lg py-[6px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer text-center";
+  const sectionTitle = "text-[18px] font-bold text-[#c45500] mb-4";
+
   if (!isHydrated) return null;
 
   if (cart.length === 0) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4">
-        <div className="text-6xl mb-6 opacity-50">🛒</div>
-        <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Your cart is empty</h2>
-        <p className="text-slate-500 font-medium mb-8">You need to add items before you can checkout.</p>
+      <div className="min-h-screen bg-white flex flex-col items-center pt-20">
+        <h2 className="text-[24px] font-bold text-[#111] mb-4">Your Amazon Smarts Cart is empty.</h2>
         <Link href="/">
-          <button className="bg-slate-900 text-white font-black uppercase tracking-widest px-8 py-4 rounded-xl hover:bg-orange-500 transition-colors shadow-lg hover:shadow-orange-500/30 hover:-translate-y-1">
-            Return to Store
+          <button className={amzButton + " px-6 py-2 w-auto rounded-[3px]"}>
+            Continue Shopping
           </button>
         </Link>
       </div>
@@ -392,7 +653,7 @@ export default function CheckoutPage() {
 
     try {
       const orderPayload = {
-        userId: user?._id || user?.user?._id || undefined, // undefined allows guest checkout if backend supports it
+        userId: user?._id || user?.user?._id || undefined, 
         orderItems: cart.map(item => ({
           name: item.name,
           quantity: item.quantity || 1,
@@ -405,15 +666,13 @@ export default function CheckoutPage() {
         shippingPrice,
         totalPrice: grandTotal,
         shippingAddress: shippingInfo,
-        paymentMethod: 'COD' // Explicitly defining COD
+        paymentMethod: 'COD' 
       };
 
       const { data } = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders`, orderPayload);
-
-      // Simulate Payment step (or verify COD)
       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/${data.order._id}/pay`);
 
-      alert("🎉 Order Placed Successfully!");
+      alert("Order Placed Successfully!");
       if(clearCart) clearCart(); 
       router.push('/orders'); 
 
@@ -424,157 +683,153 @@ export default function CheckoutPage() {
     }
   };
 
-  const inputStyles = "w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all font-medium shadow-sm";
-  const labelStyles = "block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1";
-
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-20 font-sans selection:bg-orange-200">
+    <div className="min-h-screen bg-white font-sans text-[#0F1111]">
       
-      {/* PREMIUM NAVBAR */}
-      <nav className="bg-slate-900 p-5 text-white shadow-md sticky top-0 z-50">
-        <div className="max-w-[1400px] mx-auto flex justify-between items-center">
+      {/* 🚀 Distraction-Free Amazon Checkout Header */}
+      <header className="bg-[#F0F2F2] border-b border-[#ddd] py-3">
+        <div className="max-w-[1000px] mx-auto px-4 flex justify-between items-center">
           <Link href="/">
-            <h1 className="text-2xl font-black tracking-widest text-orange-500 cursor-pointer hover:scale-105 transition-transform">
-              GADGET<span className="text-white">STORE</span>
+            <h1 className="text-2xl font-normal tracking-tighter text-[#111] cursor-pointer">
+              amazon<span className="text-[#e77600] font-bold tracking-normal">smarts</span>
             </h1>
           </Link>
-          <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
-            <Link href="/cart" className="hover:text-white transition-colors">Cart</Link>
-            <span>---------</span>
-            <span className="text-orange-500">Checkout</span>
-            <span>---------</span>
-            <span>Complete</span>
-          </div>
+          <h2 className="text-[24px] font-normal text-[#111] hidden md:block">Checkout</h2>
+          <div className="text-[24px] text-[#565959]">🔒</div>
         </div>
-      </nav>
+      </header>
 
-      <div className="max-w-[1200px] mx-auto p-4 md:p-8 mt-4 grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-[1000px] mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
         
         {/* LEFT: Forms */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="flex-1 w-full space-y-4">
           
-          {/* Form Card */}
-          <form id="checkoutForm" onSubmit={handlePlaceOrder} className="bg-white p-6 md:p-10 rounded-3xl shadow-sm border border-slate-100">
-            <h2 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3 border-b border-slate-100 pb-6">
-              <span className="bg-slate-100 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
-              Shipping Details
-            </h2>
+          <form id="checkoutForm" onSubmit={handlePlaceOrder} className="space-y-4">
             
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className={labelStyles}>Full Name</label>
-                  <input type="text" required className={inputStyles} placeholder="John Doe" value={shippingInfo.fullName} onChange={e => setShippingInfo({...shippingInfo, fullName: e.target.value})} />
-                </div>
-                <div>
-                  <label className={labelStyles}>Phone Number</label>
-                  <input type="tel" required className={inputStyles} placeholder="10-digit mobile number" value={shippingInfo.phone} onChange={e => setShippingInfo({...shippingInfo, phone: e.target.value})} />
-                </div>
+            {/* Step 1: Shipping Address */}
+            <div className="border border-[#ddd] rounded-[8px] overflow-hidden">
+              <div className="bg-[#f0f2f2] p-4 border-b border-[#ddd]">
+                <h2 className={sectionTitle + " mb-0"}>1. Enter a shipping address</h2>
               </div>
-
-              <div>
-                <label className={labelStyles}>Complete Address</label>
-                <textarea required className={`${inputStyles} h-28 resize-none`} placeholder="House No, Building, Street, Area" value={shippingInfo.address} onChange={e => setShippingInfo({...shippingInfo, address: e.target.value})}></textarea>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className={labelStyles}>City / District</label>
-                  <input type="text" required className={inputStyles} placeholder="e.g. Mumbai" value={shippingInfo.city} onChange={e => setShippingInfo({...shippingInfo, city: e.target.value})} />
-                </div>
-                <div>
-                  <label className={labelStyles}>Pincode / Postal Code</label>
-                  <input type="text" required className={inputStyles} placeholder="e.g. 400001" value={shippingInfo.pincode} onChange={e => setShippingInfo({...shippingInfo, pincode: e.target.value})} />
-                </div>
-              </div>
-            </div>
-          </form>
-
-          {/* Payment Method Card */}
-          <div className="bg-white p-6 md:p-10 rounded-3xl shadow-sm border border-slate-100">
-            <h2 className="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3 border-b border-slate-100 pb-6">
-              <span className="bg-slate-100 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
-              Payment Method
-            </h2>
-
-            <div className="border-2 border-orange-500 bg-orange-50 p-5 rounded-2xl flex items-start md:items-center gap-4 relative overflow-hidden">
-              <div className="absolute -right-4 -bottom-4 text-7xl opacity-10">💵</div>
-              <div className="w-6 h-6 rounded-full border-4 border-orange-500 flex items-center justify-center bg-white flex-shrink-0 mt-1 md:mt-0">
-                <div className="w-2.5 h-2.5 bg-orange-500 rounded-full"></div>
-              </div>
-              <div className="relative z-10">
-                <h3 className="font-black text-orange-900 text-lg">Cash on Delivery (COD)</h3>
-                <p className="text-sm font-medium text-orange-800 mt-1">Pay securely with cash or UPI when your order arrives at your doorstep.</p>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        {/* RIGHT: Order Summary */}
-        <div className="w-full">
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 sticky top-28">
-            <h3 className="text-xl font-black text-slate-900 mb-6">Order Summary</h3>
-            
-            <div className="space-y-4 mb-6 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar border-b border-slate-100 pb-6">
-              {cart.map((item, idx) => (
-                <div key={idx} className="flex gap-4 mb-4 last:mb-0">
-                  <div className="w-16 h-16 bg-slate-50 rounded-xl border border-slate-100 p-1 flex-shrink-0">
-                    <img src={getImageUrl(item.images[0])} alt={item.name} className="w-full h-full object-contain mix-blend-multiply" />
+              <div className="p-5">
+                <h3 className="text-[16px] font-bold text-[#111] mb-4">Add a new address</h3>
+                <div className="space-y-3 max-w-[500px]">
+                  <div>
+                    <label className={labelStyles}>Full name (First and Last name)</label>
+                    <input type="text" required className={inputStyles} value={shippingInfo.fullName} onChange={e => setShippingInfo({...shippingInfo, fullName: e.target.value})} />
                   </div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-slate-900 text-sm line-clamp-2 leading-tight">{item.name}</h4>
-                    <div className="flex justify-between items-end mt-1">
-                      <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Qty: {item.quantity || 1}</span>
-                      <span className="font-black text-slate-900 text-sm">₹{((item.discountPrice || item.price) * (item.quantity || 1)).toLocaleString('en-IN')}</span>
+                  <div>
+                    <label className={labelStyles}>Mobile number</label>
+                    <input type="tel" required className={inputStyles} placeholder="10-digit mobile number" value={shippingInfo.phone} onChange={e => setShippingInfo({...shippingInfo, phone: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className={labelStyles}>Flat, House no., Building, Company, Apartment</label>
+                    <input type="text" required className={inputStyles} value={shippingInfo.address} onChange={e => setShippingInfo({...shippingInfo, address: e.target.value})} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelStyles}>Town/City</label>
+                      <input type="text" required className={inputStyles} value={shippingInfo.city} onChange={e => setShippingInfo({...shippingInfo, city: e.target.value})} />
+                    </div>
+                    <div>
+                      <label className={labelStyles}>Pincode</label>
+                      <input type="text" required className={inputStyles} placeholder="6 digits" value={shippingInfo.pincode} onChange={e => setShippingInfo({...shippingInfo, pincode: e.target.value})} />
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            <div className="space-y-3 text-sm text-slate-600 border-b border-slate-100 pb-6 mb-6">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Subtotal</span>
-                <span className="font-bold text-slate-900">₹{itemsPrice.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Shipping</span>
-                <span className={`font-black ${shippingPrice === 0 ? 'text-emerald-500' : 'text-slate-900'}`}>
-                  {shippingPrice === 0 ? 'FREE' : `₹${shippingPrice}`}
-                </span>
               </div>
             </div>
 
-            <div className="flex justify-between items-end mb-8">
-              <div>
-                <span className="block text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">To Pay</span>
-                <span className="text-[10px] text-slate-400">Inclusive of all taxes</span>
+            {/* Step 2: Payment Method */}
+            <div className="border border-[#ddd] rounded-[8px] overflow-hidden">
+              <div className="bg-[#f0f2f2] p-4 border-b border-[#ddd]">
+                <h2 className={sectionTitle + " mb-0"}>2. Select a payment method</h2>
               </div>
-              <span className="text-3xl font-black text-orange-600 tracking-tight">₹{grandTotal.toLocaleString('en-IN')}</span>
+              <div className="p-5">
+                <div className="flex items-start gap-3 p-3 border border-[#fbd8b4] bg-[#fef8f2] rounded-[4px]">
+                  <input type="radio" checked readOnly className="mt-1 accent-[#e77600]" />
+                  <div>
+                    <p className="font-bold text-[14px]">Pay on Delivery</p>
+                    <p className="text-[13px] text-[#565959] mt-1">Pay digitally with SMS link or pay cash. (We recommend paying digitally via UPI or Card).</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
+            {/* Step 3: Review Items */}
+            <div className="border border-[#ddd] rounded-[8px] overflow-hidden">
+              <div className="bg-[#f0f2f2] p-4 border-b border-[#ddd]">
+                <h2 className={sectionTitle + " mb-0"}>3. Review items and shipping</h2>
+              </div>
+              <div className="p-5">
+                <div className="space-y-4">
+                  {cart.map((item, idx) => (
+                    <div key={idx} className="flex gap-4">
+                      <div className="w-[100px] shrink-0">
+                        <img src={getImageUrl(item.images[0])} alt={item.name} className="w-full object-contain mix-blend-multiply" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-[#007185] text-[14px] leading-tight mb-1">{item.name}</h4>
+                        <div className="text-[14px] font-bold text-[#B12704] mb-1">₹{((item.discountPrice || item.price)).toLocaleString('en-IN')}</div>
+                        <div className="text-[13px] text-[#111]">
+                          <span className="font-bold">Qty:</span> {item.quantity || 1}
+                        </div>
+                        {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                          <div className="text-[12px] text-[#565959] mt-1">
+                            {Object.entries(item.selectedOptions).map(([key, val]) => (
+                              <span key={key} className="mr-2">{key}: <span className="text-[#111]">{val}</span></span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+          </form>
+        </div>
+
+        {/* RIGHT: Order Summary (Amazon Box) */}
+        <div className="w-full lg:w-[300px] shrink-0">
+          <div className="border border-[#ddd] bg-[#f3f3f3] rounded-[8px] p-4 sticky top-6">
+            
             <button 
               type="submit" 
               form="checkoutForm"
               disabled={isProcessing}
-              className={`w-full font-black py-4 rounded-xl uppercase tracking-widest transition-all duration-300 flex justify-center items-center gap-2 shadow-lg ${isProcessing ? 'bg-slate-400 text-white cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 text-white hover:shadow-orange-500/30 hover:-translate-y-1'}`}
+              className={`${amzButton} mb-4 font-normal`}
             >
-              {isProcessing ? (
-                <><span className="animate-spin text-xl">⏳</span> Processing...</>
-              ) : (
-                <>Confirm Order <span className="text-lg">→</span></>
-              )}
+              {isProcessing ? 'Processing...' : 'Place your order'}
             </button>
             
-            <div className="mt-6 flex flex-col gap-2 border-t border-slate-100 pt-6">
-              <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
-                <span className="text-lg">🛡️</span> Your personal information is encrypted and securely processed.
+            <p className="text-[11px] text-[#565959] text-center border-b border-[#ddd] pb-4 mb-4 leading-tight">
+              By placing your order, you agree to Amazon Smarts's <Link href="/privacy" className="text-[#007185] hover:underline">privacy notice</Link> and <Link href="/conditions" className="text-[#007185] hover:underline">conditions of use</Link>.
+            </p>
+
+            <h3 className="font-bold text-[18px] text-[#111] mb-2">Order Summary</h3>
+            
+            <div className="space-y-1.5 text-[13px] text-[#111] border-b border-[#ddd] pb-3 mb-3">
+              <div className="flex justify-between">
+                <span>Items:</span>
+                <span>₹{itemsPrice.toLocaleString('en-IN')}</span>
               </div>
-              <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
-                <span className="text-lg">📦</span> 7-Day easy returns and replacements available.
+              <div className="flex justify-between">
+                <span>Delivery:</span>
+                <span>{shippingPrice === 0 ? '₹0.00' : `₹${shippingPrice.toLocaleString('en-IN')}`}</span>
               </div>
             </div>
+
+            <div className="flex justify-between items-center text-[#B12704] font-bold text-[18px] mb-4">
+              <span>Order Total:</span>
+              <span>₹{grandTotal.toLocaleString('en-IN')}</span>
+            </div>
+
+            <div className="bg-[#fef8f2] border border-[#fbd8b4] p-3 rounded-[4px] text-[12px] text-[#111]">
+              <span className="font-bold text-[#c45500]">Payment Method:</span> Pay on Delivery (Cash/UPI)
+            </div>
+            
           </div>
         </div>
 
