@@ -584,251 +584,6 @@
 // }
 
 
-// src/app/checkout/page.jsx
-'use client';
-import { useState, useEffect } from 'react';
-import { useCart } from '../../context/CartContext';
-import { useAuth } from '../../context/AuthContext';
-import { useRouter } from 'next/navigation';
-import axios from 'axios';
-import Link from 'next/link';
-
-export default function CheckoutPage() {
-  const { cart, clearCart } = useCart(); 
-  const { user } = useAuth();
-  const router = useRouter();
-
-  const [isHydrated, setIsHydrated] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const [shippingInfo, setShippingInfo] = useState({
-    fullName: user?.name || user?.user?.name || '', 
-    phone: '',
-    address: '',
-    city: '',
-    pincode: ''
-  });
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
-
-  const itemsPrice = cart.reduce((total, item) => total + ((item.discountPrice || item.price) * item.quantity), 0);
-  const shippingPrice = itemsPrice > 50000 ? 0 : 499; 
-  const grandTotal = itemsPrice + (cart.length > 0 ? shippingPrice : 0);
-
-  const getImageUrl = (imagePath) => {
-    if (!imagePath) return 'https://placehold.co/400x400?text=No+Image';
-    if (imagePath.startsWith('http')) {
-        return imagePath.replace('http://localhost:5000', process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000');
-    }
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
-    return `${baseUrl}/${imagePath}`;
-  };
-
-  // 🚀 AMAZON-SPECIFIC TAILWIND STYLES
-  const inputStyles = "w-full px-3 py-2 border border-[#a6a6a6] rounded-[3px] text-sm focus:outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_2px_rgba(228,121,17,0.5)] transition-shadow text-[#111]";
-  const labelStyles = "block text-[13px] font-bold text-[#111] mb-1";
-  const amzButton = "w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-lg py-[6px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer text-center";
-  const sectionTitle = "text-[18px] font-bold text-[#c45500] mb-4";
-
-  if (!isHydrated) return null;
-
-  if (cart.length === 0) {
-    return (
-      <div className="min-h-screen bg-white flex flex-col items-center pt-20">
-        <h2 className="text-[24px] font-bold text-[#111] mb-4">Your Amazon Smarts Cart is empty.</h2>
-        <Link href="/">
-          <button className={amzButton + " px-6 py-2 w-auto rounded-[3px]"}>
-            Continue Shopping
-          </button>
-        </Link>
-      </div>
-    );
-  }
-
-  const handlePlaceOrder = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-
-    try {
-      const orderPayload = {
-        userId: user?._id || user?.user?._id || undefined, 
-        orderItems: cart.map(item => ({
-          name: item.name,
-          quantity: item.quantity || 1,
-          image: item.images && item.images.length > 0 ? item.images[0] : '',
-          price: item.discountPrice || item.price,
-          product: item._id,
-          selectedOptions: item.selectedOptions || {} 
-        })),
-        itemsPrice,
-        shippingPrice,
-        totalPrice: grandTotal,
-        shippingAddress: shippingInfo,
-        paymentMethod: 'COD' 
-      };
-
-      const { data } = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders`, orderPayload);
-      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/${data.order._id}/pay`);
-
-      alert("Order Placed Successfully!");
-      if(clearCart) clearCart(); 
-      router.push('/orders'); 
-
-    } catch (error) {
-      console.error("Order Error:", error);
-      alert(error.response?.data?.message || "Error placing order. Please try again.");
-      setIsProcessing(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-white font-sans text-[#0F1111]">
-      
-      {/* 🚀 Distraction-Free Amazon Checkout Header */}
-
-      <div className="max-w-[1000px] mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
-        
-        {/* LEFT: Forms */}
-        <div className="flex-1 w-full space-y-4">
-          
-          <form id="checkoutForm" onSubmit={handlePlaceOrder} className="space-y-4">
-            
-            {/* Step 1: Shipping Address */}
-            <div className="border border-[#ddd] rounded-[8px] overflow-hidden">
-              <div className="bg-[#f0f2f2] p-4 border-b border-[#ddd]">
-                <h2 className={sectionTitle + " mb-0"}>1. Enter a shipping address</h2>
-              </div>
-              <div className="p-5">
-                <h3 className="text-[16px] font-bold text-[#111] mb-4">Add a new address</h3>
-                <div className="space-y-3 max-w-[500px]">
-                  <div>
-                    <label className={labelStyles}>Full name (First and Last name)</label>
-                    <input type="text" required className={inputStyles} value={shippingInfo.fullName} onChange={e => setShippingInfo({...shippingInfo, fullName: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className={labelStyles}>Mobile number</label>
-                    <input type="tel" required className={inputStyles} placeholder="10-digit mobile number" value={shippingInfo.phone} onChange={e => setShippingInfo({...shippingInfo, phone: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className={labelStyles}>Flat, House no., Building, Company, Apartment</label>
-                    <input type="text" required className={inputStyles} value={shippingInfo.address} onChange={e => setShippingInfo({...shippingInfo, address: e.target.value})} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelStyles}>Town/City</label>
-                      <input type="text" required className={inputStyles} value={shippingInfo.city} onChange={e => setShippingInfo({...shippingInfo, city: e.target.value})} />
-                    </div>
-                    <div>
-                      <label className={labelStyles}>Pincode</label>
-                      <input type="text" required className={inputStyles} placeholder="6 digits" value={shippingInfo.pincode} onChange={e => setShippingInfo({...shippingInfo, pincode: e.target.value})} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Step 2: Payment Method */}
-            <div className="border border-[#ddd] rounded-[8px] overflow-hidden">
-              <div className="bg-[#f0f2f2] p-4 border-b border-[#ddd]">
-                <h2 className={sectionTitle + " mb-0"}>2. Select a payment method</h2>
-              </div>
-              <div className="p-5">
-                <div className="flex items-start gap-3 p-3 border border-[#fbd8b4] bg-[#fef8f2] rounded-[4px]">
-                  <input type="radio" checked readOnly className="mt-1 accent-[#e77600]" />
-                  <div>
-                    <p className="font-bold text-[14px]">Pay on Delivery</p>
-                    <p className="text-[13px] text-[#565959] mt-1">Pay digitally with SMS link or pay cash. (We recommend paying digitally via UPI or Card).</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Step 3: Review Items */}
-            <div className="border border-[#ddd] rounded-[8px] overflow-hidden">
-              <div className="bg-[#f0f2f2] p-4 border-b border-[#ddd]">
-                <h2 className={sectionTitle + " mb-0"}>3. Review items and shipping</h2>
-              </div>
-              <div className="p-5">
-                <div className="space-y-4">
-                  {cart.map((item, idx) => (
-                    <div key={idx} className="flex gap-4">
-                      <div className="w-[100px] shrink-0">
-                        <img src={getImageUrl(item.images[0])} alt={item.name} className="w-full object-contain mix-blend-multiply" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-[#007185] text-[14px] leading-tight mb-1">{item.name}</h4>
-                        <div className="text-[14px] font-bold text-[#B12704] mb-1">₹{((item.discountPrice || item.price)).toLocaleString('en-IN')}</div>
-                        <div className="text-[13px] text-[#111]">
-                          <span className="font-bold">Qty:</span> {item.quantity || 1}
-                        </div>
-                        {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
-                          <div className="text-[12px] text-[#565959] mt-1">
-                            {Object.entries(item.selectedOptions).map(([key, val]) => (
-                              <span key={key} className="mr-2">{key}: <span className="text-[#111]">{val}</span></span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-          </form>
-        </div>
-
-        {/* RIGHT: Order Summary (Amazon Box) */}
-        <div className="w-full lg:w-[300px] shrink-0">
-          <div className="border border-[#ddd] bg-[#f3f3f3] rounded-[8px] p-4 sticky top-6">
-            
-            <button 
-              type="submit" 
-              form="checkoutForm"
-              disabled={isProcessing}
-              className={`${amzButton} mb-4 font-normal`}
-            >
-              {isProcessing ? 'Processing...' : 'Place your order'}
-            </button>
-            
-            <p className="text-[11px] text-[#565959] text-center border-b border-[#ddd] pb-4 mb-4 leading-tight">
-              By placing your order, you agree to Amazon Smarts's <Link href="/privacy" className="text-[#007185] hover:underline">privacy notice</Link> and <Link href="/conditions" className="text-[#007185] hover:underline">conditions of use</Link>.
-            </p>
-
-            <h3 className="font-bold text-[18px] text-[#111] mb-2">Order Summary</h3>
-            
-            <div className="space-y-1.5 text-[13px] text-[#111] border-b border-[#ddd] pb-3 mb-3">
-              <div className="flex justify-between">
-                <span>Items:</span>
-                <span>₹{itemsPrice.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Delivery:</span>
-                <span>{shippingPrice === 0 ? '₹0.00' : `₹${shippingPrice.toLocaleString('en-IN')}`}</span>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center text-[#B12704] font-bold text-[18px] mb-4">
-              <span>Order Total:</span>
-              <span>₹{grandTotal.toLocaleString('en-IN')}</span>
-            </div>
-
-            <div className="bg-[#fef8f2] border border-[#fbd8b4] p-3 rounded-[4px] text-[12px] text-[#111]">
-              <span className="font-bold text-[#c45500]">Payment Method:</span> Pay on Delivery (Cash/UPI)
-            </div>
-            
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
-
-
 // // src/app/checkout/page.jsx
 // 'use client';
 // import { useState, useEffect } from 'react';
@@ -844,16 +599,10 @@ export default function CheckoutPage() {
 //   const router = useRouter();
 
 //   const [isHydrated, setIsHydrated] = useState(false);
-  
-//   // 🚀 NEW: Page Flow States
-//   const [checkoutStep, setCheckoutStep] = useState('editing'); // 'editing', 'otp', 'success'
 //   const [isProcessing, setIsProcessing] = useState(false);
-//   const [otp, setOtp] = useState('');
-//   const [placedOrder, setPlacedOrder] = useState(null);
 
 //   const [shippingInfo, setShippingInfo] = useState({
 //     fullName: user?.name || user?.user?.name || '', 
-//     email: user?.email || user?.user?.email || '', // Added for OTP
 //     phone: '',
 //     address: '',
 //     city: '',
@@ -885,8 +634,7 @@ export default function CheckoutPage() {
 
 //   if (!isHydrated) return null;
 
-//   // --- 1. EMPTY CART STATE ---
-//   if (cart.length === 0 && checkoutStep === 'editing') {
+//   if (cart.length === 0) {
 //     return (
 //       <div className="min-h-screen bg-white flex flex-col items-center pt-20">
 //         <h2 className="text-[24px] font-bold text-[#111] mb-4">Your Amazon Smarts Cart is empty.</h2>
@@ -899,37 +647,11 @@ export default function CheckoutPage() {
 //     );
 //   }
 
-//   // --- 2. TRIGGER OTP (Before Order) ---
-//   const handleRequestOTP = async (e) => {
-//     e.preventDefault();
-//     if (!shippingInfo.email) return alert("Please enter an email address for OTP verification.");
-    
-//     setIsProcessing(true);
-//     try {
-//       // Assuming your backend has an endpoint to send an OTP
-//       await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/send-otp`, { email: shippingInfo.email });
-//       setCheckoutStep('otp');
-//     } catch (error) {
-//       console.error("OTP Send Error:", error);
-//       alert(error.response?.data?.message || "Error sending OTP. Check backend configuration.");
-//     } finally {
-//       setIsProcessing(false);
-//     }
-//   };
-
-//   // --- 3. VERIFY OTP & PLACE ORDER ---
-//   const handleVerifyAndPlaceOrder = async (e) => {
+//   const handlePlaceOrder = async (e) => {
 //     e.preventDefault();
 //     setIsProcessing(true);
 
 //     try {
-//       // 1. Verify the OTP first
-//       await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/verify-otp`, { 
-//         email: shippingInfo.email, 
-//         otp 
-//       });
-
-//       // 2. If OTP is successful, build and send the order payload
 //       const orderPayload = {
 //         userId: user?._id || user?.user?._id || undefined, 
 //         orderItems: cart.map(item => ({
@@ -948,93 +670,30 @@ export default function CheckoutPage() {
 //       };
 
 //       const { data } = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders`, orderPayload);
-      
-//       // Simulate Payment step
 //       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/${data.order._id}/pay`);
 
-//       // 3. Clear cart and show Success Screen
+//       alert("Order Placed Successfully!");
 //       if(clearCart) clearCart(); 
-//       setPlacedOrder(data.order);
-//       setCheckoutStep('success');
+//       router.push('/orders'); 
 
 //     } catch (error) {
-//       console.error("Verification/Order Error:", error);
-//       alert(error.response?.data?.message || "Invalid OTP or Error placing order.");
-//     } finally {
+//       console.error("Order Error:", error);
+//       alert(error.response?.data?.message || "Error placing order. Please try again.");
 //       setIsProcessing(false);
 //     }
 //   };
 
-//   // --- RENDER SUCCESS SCREEN ---
-//   if (checkoutStep === 'success' && placedOrder) {
-//     const estimatedDelivery = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
-    
-//     return (
-//       <div className="min-h-screen bg-white font-sans text-[#0F1111]">
-//         <header className="bg-[#F0F2F2] border-b border-[#ddd] py-3 text-center">
-//           <Link href="/">
-//             <h1 className="text-2xl font-normal tracking-tighter text-[#111] cursor-pointer inline-block">
-//               amazon<span className="text-[#e77600] font-bold tracking-normal">smarts</span>
-//             </h1>
-//           </Link>
-//         </header>
-
-//         <div className="max-w-[800px] mx-auto px-4 py-8">
-//           <div className="border-[2px] border-[#007600] rounded-[4px] p-6 mb-6 flex gap-4 items-start">
-//             <span className="text-[#007600] text-3xl leading-none">✓</span>
-//             <div>
-//               <h2 className="text-[#007600] font-bold text-[22px] mb-1">Order placed, thank you!</h2>
-//               <p className="text-[14px]">Confirmation will be sent to your email.</p>
-//               <div className="text-[14px] mt-4">
-//                 <span className="font-bold">Shipping to:</span> {shippingInfo.fullName}, {shippingInfo.city}, {shippingInfo.pincode}
-//               </div>
-//               <div className="text-[14px] mt-1 border-t border-[#ddd] pt-2">
-//                 <span className="font-bold">Estimated Delivery:</span> {estimatedDelivery}
-//               </div>
-//             </div>
-//           </div>
-
-//           <div className="bg-[#f3f3f3] border border-[#ddd] rounded-[4px] p-5">
-//             <h3 className="font-bold text-[18px] mb-3">Order Details</h3>
-//             <p className="text-[14px] mb-1"><span className="font-bold">Order Number:</span> {placedOrder._id.toUpperCase()}</p>
-//             <p className="text-[14px] mb-4"><span className="font-bold">Order Total:</span> ₹{placedOrder.totalPrice.toLocaleString('en-IN')}</p>
-            
-//             <Link href="/orders" className="text-[#007185] hover:text-[#C45500] hover:underline text-[14px]">
-//               Review or edit your recent orders
-//             </Link>
-//           </div>
-          
-//           <div className="mt-8 text-center">
-//             <Link href="/">
-//               <button className={`${amzButton} w-auto px-8 py-2`}>Continue Shopping</button>
-//             </Link>
-//           </div>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   // --- RENDER MAIN CHECKOUT FLOW ---
 //   return (
 //     <div className="min-h-screen bg-white font-sans text-[#0F1111]">
       
-//       <header className="bg-[#F0F2F2] border-b border-[#ddd] py-3">
-//         <div className="max-w-[1000px] mx-auto px-4 flex justify-between items-center">
-//           <Link href="/">
-//             <h1 className="text-2xl font-normal tracking-tighter text-[#111] cursor-pointer">
-//               amazon<span className="text-[#e77600] font-bold tracking-normal">smarts</span>
-//             </h1>
-//           </Link>
-//           <h2 className="text-[24px] font-normal text-[#111] hidden md:block">Checkout</h2>
-//           <div className="text-[24px] text-[#565959]">🔒</div>
-//         </div>
-//       </header>
+//       {/* 🚀 Distraction-Free Amazon Checkout Header */}
 
-//       <div className="max-w-[1000px] mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6 relative">
+//       <div className="max-w-[1000px] mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
         
 //         {/* LEFT: Forms */}
 //         <div className="flex-1 w-full space-y-4">
-//           <form id="checkoutForm" onSubmit={handleRequestOTP} className="space-y-4">
+          
+//           <form id="checkoutForm" onSubmit={handlePlaceOrder} className="space-y-4">
             
 //             {/* Step 1: Shipping Address */}
 //             <div className="border border-[#ddd] rounded-[8px] overflow-hidden">
@@ -1046,28 +705,24 @@ export default function CheckoutPage() {
 //                 <div className="space-y-3 max-w-[500px]">
 //                   <div>
 //                     <label className={labelStyles}>Full name (First and Last name)</label>
-//                     <input type="text" required className={inputStyles} value={shippingInfo.fullName} onChange={e => setShippingInfo({...shippingInfo, fullName: e.target.value})} disabled={checkoutStep !== 'editing'} />
-//                   </div>
-//                   <div>
-//                     <label className={labelStyles}>Email Address (For order confirmation)</label>
-//                     <input type="email" required className={inputStyles} placeholder="your@email.com" value={shippingInfo.email} onChange={e => setShippingInfo({...shippingInfo, email: e.target.value})} disabled={checkoutStep !== 'editing'} />
+//                     <input type="text" required className={inputStyles} value={shippingInfo.fullName} onChange={e => setShippingInfo({...shippingInfo, fullName: e.target.value})} />
 //                   </div>
 //                   <div>
 //                     <label className={labelStyles}>Mobile number</label>
-//                     <input type="tel" required className={inputStyles} placeholder="10-digit mobile number" value={shippingInfo.phone} onChange={e => setShippingInfo({...shippingInfo, phone: e.target.value})} disabled={checkoutStep !== 'editing'} />
+//                     <input type="tel" required className={inputStyles} placeholder="10-digit mobile number" value={shippingInfo.phone} onChange={e => setShippingInfo({...shippingInfo, phone: e.target.value})} />
 //                   </div>
 //                   <div>
 //                     <label className={labelStyles}>Flat, House no., Building, Company, Apartment</label>
-//                     <input type="text" required className={inputStyles} value={shippingInfo.address} onChange={e => setShippingInfo({...shippingInfo, address: e.target.value})} disabled={checkoutStep !== 'editing'} />
+//                     <input type="text" required className={inputStyles} value={shippingInfo.address} onChange={e => setShippingInfo({...shippingInfo, address: e.target.value})} />
 //                   </div>
 //                   <div className="grid grid-cols-2 gap-3">
 //                     <div>
 //                       <label className={labelStyles}>Town/City</label>
-//                       <input type="text" required className={inputStyles} value={shippingInfo.city} onChange={e => setShippingInfo({...shippingInfo, city: e.target.value})} disabled={checkoutStep !== 'editing'} />
+//                       <input type="text" required className={inputStyles} value={shippingInfo.city} onChange={e => setShippingInfo({...shippingInfo, city: e.target.value})} />
 //                     </div>
 //                     <div>
 //                       <label className={labelStyles}>Pincode</label>
-//                       <input type="text" required className={inputStyles} placeholder="6 digits" value={shippingInfo.pincode} onChange={e => setShippingInfo({...shippingInfo, pincode: e.target.value})} disabled={checkoutStep !== 'editing'} />
+//                       <input type="text" required className={inputStyles} placeholder="6 digits" value={shippingInfo.pincode} onChange={e => setShippingInfo({...shippingInfo, pincode: e.target.value})} />
 //                     </div>
 //                   </div>
 //                 </div>
@@ -1132,7 +787,7 @@ export default function CheckoutPage() {
 //             <button 
 //               type="submit" 
 //               form="checkoutForm"
-//               disabled={isProcessing || checkoutStep !== 'editing'}
+//               disabled={isProcessing}
 //               className={`${amzButton} mb-4 font-normal`}
 //             >
 //               {isProcessing ? 'Processing...' : 'Place your order'}
@@ -1168,51 +823,396 @@ export default function CheckoutPage() {
 //         </div>
 
 //       </div>
-
-//       {/* 🚀 OTP MODAL OVERLAY */}
-//       {checkoutStep === 'otp' && (
-//         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-//           <div className="bg-white rounded-[8px] max-w-[400px] w-full p-6 shadow-xl border border-[#ddd]">
-//             <h2 className="text-[22px] font-normal mb-2">Verify email address</h2>
-//             <p className="text-[13px] text-[#111] mb-4">
-//               To verify your purchase, we've sent a One Time Password (OTP) to <span className="font-bold">{shippingInfo.email}</span>.
-//             </p>
-            
-//             <form onSubmit={handleVerifyAndPlaceOrder} className="space-y-4">
-//               <div>
-//                 <label className={labelStyles}>Enter OTP</label>
-//                 <input 
-//                   type="text" 
-//                   maxLength="6"
-//                   required 
-//                   className={`${inputStyles} tracking-widest text-center text-lg py-3`}
-//                   value={otp} 
-//                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} 
-//                 />
-//               </div>
-              
-//               <button 
-//                 type="submit" 
-//                 disabled={isProcessing || otp.length < 6} 
-//                 className={amzButton}
-//               >
-//                 {isProcessing ? 'Verifying...' : 'Verify & Place Order'}
-//               </button>
-
-//               <div className="text-center mt-2">
-//                 <button 
-//                   type="button" 
-//                   onClick={() => setCheckoutStep('editing')} 
-//                   className="text-[13px] text-[#007185] hover:text-[#C45500] hover:underline"
-//                 >
-//                   Cancel and edit order
-//                 </button>
-//               </div>
-//             </form>
-//           </div>
-//         </div>
-//       )}
-
 //     </div>
 //   );
 // }
+
+
+
+// src/app/checkout/page.jsx
+'use client';
+import { useState, useEffect } from 'react';
+import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
+import { useRouter } from 'next/navigation';
+import axios from 'axios';
+import Link from 'next/link';
+
+export default function CheckoutPage() {
+  const { cart, clearCart } = useCart(); 
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const [isHydrated, setIsHydrated] = useState(false);
+  
+  // 🚀 NEW: Page Flow States
+  const [checkoutStep, setCheckoutStep] = useState('editing'); // 'editing', 'otp', 'success'
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [placedOrder, setPlacedOrder] = useState(null);
+
+  const [shippingInfo, setShippingInfo] = useState({
+    fullName: user?.name || user?.user?.name || '', 
+    email: user?.email || user?.user?.email || '', // Added for OTP
+    phone: '',
+    address: '',
+    city: '',
+    pincode: ''
+  });
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  const itemsPrice = cart.reduce((total, item) => total + ((item.discountPrice || item.price) * item.quantity), 0);
+  const shippingPrice = itemsPrice > 50000 ? 0 : 499; 
+  const grandTotal = itemsPrice + (cart.length > 0 ? shippingPrice : 0);
+
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return 'https://placehold.co/400x400?text=No+Image';
+    if (imagePath.startsWith('http')) {
+        return imagePath.replace('http://localhost:5000', process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000');
+    }
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+    return `${baseUrl}/${imagePath}`;
+  };
+
+  // 🚀 AMAZON-SPECIFIC TAILWIND STYLES
+  const inputStyles = "w-full px-3 py-2 border border-[#a6a6a6] rounded-[3px] text-sm focus:outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_2px_rgba(228,121,17,0.5)] transition-shadow text-[#111]";
+  const labelStyles = "block text-[13px] font-bold text-[#111] mb-1";
+  const amzButton = "w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-lg py-[6px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer text-center";
+  const sectionTitle = "text-[18px] font-bold text-[#c45500] mb-4";
+
+  if (!isHydrated) return null;
+
+  // --- 1. EMPTY CART STATE ---
+  if (cart.length === 0 && checkoutStep === 'editing') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center pt-20">
+        <h2 className="text-[24px] font-bold text-[#111] mb-4">Your Amazon Smarts Cart is empty.</h2>
+        <Link href="/">
+          <button className={amzButton + " px-6 py-2 w-auto rounded-[3px]"}>
+            Continue Shopping
+          </button>
+        </Link>
+      </div>
+    );
+  }
+
+  // --- 2. TRIGGER OTP (Before Order) ---
+  const handleRequestOTP = async (e) => {
+    e.preventDefault();
+    if (!shippingInfo.email) return alert("Please enter an email address for OTP verification.");
+    
+    setIsProcessing(true);
+    try {
+      // Assuming your backend has an endpoint to send an OTP
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/send-otp`, { email: shippingInfo.email });
+      setCheckoutStep('otp');
+    } catch (error) {
+      console.error("OTP Send Error:", error);
+      alert(error.response?.data?.message || "Error sending OTP. Check backend configuration.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // --- 3. VERIFY OTP & PLACE ORDER ---
+  const handleVerifyAndPlaceOrder = async (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
+
+    try {
+      // 1. Verify the OTP first
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/verify-otp`, { 
+        email: shippingInfo.email, 
+        otp 
+      });
+
+      // 2. If OTP is successful, build and send the order payload
+      const orderPayload = {
+        userId: user?._id || user?.user?._id || undefined, 
+        orderItems: cart.map(item => ({
+          name: item.name,
+          quantity: item.quantity || 1,
+          image: item.images && item.images.length > 0 ? item.images[0] : '',
+          price: item.discountPrice || item.price,
+          product: item._id,
+          selectedOptions: item.selectedOptions || {} 
+        })),
+        itemsPrice,
+        shippingPrice,
+        totalPrice: grandTotal,
+        shippingAddress: shippingInfo,
+        paymentMethod: 'COD' 
+      };
+
+      const { data } = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders`, orderPayload);
+      
+      // Simulate Payment step
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/${data.order._id}/pay`);
+
+      // 3. Clear cart and show Success Screen
+      if(clearCart) clearCart(); 
+      setPlacedOrder(data.order);
+      setCheckoutStep('success');
+
+    } catch (error) {
+      console.error("Verification/Order Error:", error);
+      alert(error.response?.data?.message || "Invalid OTP or Error placing order.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // --- RENDER SUCCESS SCREEN ---
+  if (checkoutStep === 'success' && placedOrder) {
+    const estimatedDelivery = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+    
+    return (
+      <div className="min-h-screen bg-white font-sans text-[#0F1111]">
+        <header className="bg-[#F0F2F2] border-b border-[#ddd] py-3 text-center">
+          <Link href="/">
+            <h1 className="text-2xl font-normal tracking-tighter text-[#111] cursor-pointer inline-block">
+              amazon<span className="text-[#e77600] font-bold tracking-normal">smarts</span>
+            </h1>
+          </Link>
+        </header>
+
+        <div className="max-w-[800px] mx-auto px-4 py-8">
+          <div className="border-[2px] border-[#007600] rounded-[4px] p-6 mb-6 flex gap-4 items-start">
+            <span className="text-[#007600] text-3xl leading-none">✓</span>
+            <div>
+              <h2 className="text-[#007600] font-bold text-[22px] mb-1">Order placed, thank you!</h2>
+              <p className="text-[14px]">Confirmation will be sent to your email.</p>
+              <div className="text-[14px] mt-4">
+                <span className="font-bold">Shipping to:</span> {shippingInfo.fullName}, {shippingInfo.city}, {shippingInfo.pincode}
+              </div>
+              <div className="text-[14px] mt-1 border-t border-[#ddd] pt-2">
+                <span className="font-bold">Estimated Delivery:</span> {estimatedDelivery}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#f3f3f3] border border-[#ddd] rounded-[4px] p-5">
+            <h3 className="font-bold text-[18px] mb-3">Order Details</h3>
+            <p className="text-[14px] mb-1"><span className="font-bold">Order Number:</span> {placedOrder._id.toUpperCase()}</p>
+            <p className="text-[14px] mb-4"><span className="font-bold">Order Total:</span> ₹{placedOrder.totalPrice.toLocaleString('en-IN')}</p>
+            
+            <Link href="/orders" className="text-[#007185] hover:text-[#C45500] hover:underline text-[14px]">
+              Review or edit your recent orders
+            </Link>
+          </div>
+          
+          <div className="mt-8 text-center">
+            <Link href="/">
+              <button className={`${amzButton} w-auto px-8 py-2`}>Continue Shopping</button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- RENDER MAIN CHECKOUT FLOW ---
+  return (
+    <div className="min-h-screen bg-white font-sans text-[#0F1111]">
+      
+      <header className="bg-[#F0F2F2] border-b border-[#ddd] py-3">
+        <div className="max-w-[1000px] mx-auto px-4 flex justify-between items-center">
+          <Link href="/">
+            <h1 className="text-2xl font-normal tracking-tighter text-[#111] cursor-pointer">
+              amazon<span className="text-[#e77600] font-bold tracking-normal">smarts</span>
+            </h1>
+          </Link>
+          <h2 className="text-[24px] font-normal text-[#111] hidden md:block">Checkout</h2>
+          <div className="text-[24px] text-[#565959]">🔒</div>
+        </div>
+      </header>
+
+      <div className="max-w-[1000px] mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6 relative">
+        
+        {/* LEFT: Forms */}
+        <div className="flex-1 w-full space-y-4">
+          <form id="checkoutForm" onSubmit={handleRequestOTP} className="space-y-4">
+            
+            {/* Step 1: Shipping Address */}
+            <div className="border border-[#ddd] rounded-[8px] overflow-hidden">
+              <div className="bg-[#f0f2f2] p-4 border-b border-[#ddd]">
+                <h2 className={sectionTitle + " mb-0"}>1. Enter a shipping address</h2>
+              </div>
+              <div className="p-5">
+                <h3 className="text-[16px] font-bold text-[#111] mb-4">Add a new address</h3>
+                <div className="space-y-3 max-w-[500px]">
+                  <div>
+                    <label className={labelStyles}>Full name (First and Last name)</label>
+                    <input type="text" required className={inputStyles} value={shippingInfo.fullName} onChange={e => setShippingInfo({...shippingInfo, fullName: e.target.value})} disabled={checkoutStep !== 'editing'} />
+                  </div>
+                  <div>
+                    <label className={labelStyles}>Email Address (For order confirmation)</label>
+                    <input type="email" required className={inputStyles} placeholder="your@email.com" value={shippingInfo.email} onChange={e => setShippingInfo({...shippingInfo, email: e.target.value})} disabled={checkoutStep !== 'editing'} />
+                  </div>
+                  <div>
+                    <label className={labelStyles}>Mobile number</label>
+                    <input type="tel" required className={inputStyles} placeholder="10-digit mobile number" value={shippingInfo.phone} onChange={e => setShippingInfo({...shippingInfo, phone: e.target.value})} disabled={checkoutStep !== 'editing'} />
+                  </div>
+                  <div>
+                    <label className={labelStyles}>Flat, House no., Building, Company, Apartment</label>
+                    <input type="text" required className={inputStyles} value={shippingInfo.address} onChange={e => setShippingInfo({...shippingInfo, address: e.target.value})} disabled={checkoutStep !== 'editing'} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelStyles}>Town/City</label>
+                      <input type="text" required className={inputStyles} value={shippingInfo.city} onChange={e => setShippingInfo({...shippingInfo, city: e.target.value})} disabled={checkoutStep !== 'editing'} />
+                    </div>
+                    <div>
+                      <label className={labelStyles}>Pincode</label>
+                      <input type="text" required className={inputStyles} placeholder="6 digits" value={shippingInfo.pincode} onChange={e => setShippingInfo({...shippingInfo, pincode: e.target.value})} disabled={checkoutStep !== 'editing'} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2: Payment Method */}
+            <div className="border border-[#ddd] rounded-[8px] overflow-hidden">
+              <div className="bg-[#f0f2f2] p-4 border-b border-[#ddd]">
+                <h2 className={sectionTitle + " mb-0"}>2. Select a payment method</h2>
+              </div>
+              <div className="p-5">
+                <div className="flex items-start gap-3 p-3 border border-[#fbd8b4] bg-[#fef8f2] rounded-[4px]">
+                  <input type="radio" checked readOnly className="mt-1 accent-[#e77600]" />
+                  <div>
+                    <p className="font-bold text-[14px]">Pay on Delivery</p>
+                    <p className="text-[13px] text-[#565959] mt-1">Pay digitally with SMS link or pay cash. (We recommend paying digitally via UPI or Card).</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3: Review Items */}
+            <div className="border border-[#ddd] rounded-[8px] overflow-hidden">
+              <div className="bg-[#f0f2f2] p-4 border-b border-[#ddd]">
+                <h2 className={sectionTitle + " mb-0"}>3. Review items and shipping</h2>
+              </div>
+              <div className="p-5">
+                <div className="space-y-4">
+                  {cart.map((item, idx) => (
+                    <div key={idx} className="flex gap-4">
+                      <div className="w-[100px] shrink-0">
+                        <img src={getImageUrl(item.images[0])} alt={item.name} className="w-full object-contain mix-blend-multiply" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-[#007185] text-[14px] leading-tight mb-1">{item.name}</h4>
+                        <div className="text-[14px] font-bold text-[#B12704] mb-1">₹{((item.discountPrice || item.price)).toLocaleString('en-IN')}</div>
+                        <div className="text-[13px] text-[#111]">
+                          <span className="font-bold">Qty:</span> {item.quantity || 1}
+                        </div>
+                        {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                          <div className="text-[12px] text-[#565959] mt-1">
+                            {Object.entries(item.selectedOptions).map(([key, val]) => (
+                              <span key={key} className="mr-2">{key}: <span className="text-[#111]">{val}</span></span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+          </form>
+        </div>
+
+        {/* RIGHT: Order Summary (Amazon Box) */}
+        <div className="w-full lg:w-[300px] shrink-0">
+          <div className="border border-[#ddd] bg-[#f3f3f3] rounded-[8px] p-4 sticky top-6">
+            
+            <button 
+              type="submit" 
+              form="checkoutForm"
+              disabled={isProcessing || checkoutStep !== 'editing'}
+              className={`${amzButton} mb-4 font-normal`}
+            >
+              {isProcessing ? 'Processing...' : 'Place your order'}
+            </button>
+            
+            <p className="text-[11px] text-[#565959] text-center border-b border-[#ddd] pb-4 mb-4 leading-tight">
+              By placing your order, you agree to Amazon Smarts's <Link href="/privacy" className="text-[#007185] hover:underline">privacy notice</Link> and <Link href="/conditions" className="text-[#007185] hover:underline">conditions of use</Link>.
+            </p>
+
+            <h3 className="font-bold text-[18px] text-[#111] mb-2">Order Summary</h3>
+            
+            <div className="space-y-1.5 text-[13px] text-[#111] border-b border-[#ddd] pb-3 mb-3">
+              <div className="flex justify-between">
+                <span>Items:</span>
+                <span>₹{itemsPrice.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Delivery:</span>
+                <span>{shippingPrice === 0 ? '₹0.00' : `₹${shippingPrice.toLocaleString('en-IN')}`}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center text-[#B12704] font-bold text-[18px] mb-4">
+              <span>Order Total:</span>
+              <span>₹{grandTotal.toLocaleString('en-IN')}</span>
+            </div>
+
+            <div className="bg-[#fef8f2] border border-[#fbd8b4] p-3 rounded-[4px] text-[12px] text-[#111]">
+              <span className="font-bold text-[#c45500]">Payment Method:</span> Pay on Delivery (Cash/UPI)
+            </div>
+            
+          </div>
+        </div>
+
+      </div>
+
+      {/* 🚀 OTP MODAL OVERLAY */}
+      {checkoutStep === 'otp' && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-[8px] max-w-[400px] w-full p-6 shadow-xl border border-[#ddd]">
+            <h2 className="text-[22px] font-normal mb-2">Verify email address</h2>
+            <p className="text-[13px] text-[#111] mb-4">
+              To verify your purchase, we've sent a One Time Password (OTP) to <span className="font-bold">{shippingInfo.email}</span>.
+            </p>
+            
+            <form onSubmit={handleVerifyAndPlaceOrder} className="space-y-4">
+              <div>
+                <label className={labelStyles}>Enter OTP</label>
+                <input 
+                  type="text" 
+                  maxLength="6"
+                  required 
+                  className={`${inputStyles} tracking-widest text-center text-lg py-3`}
+                  value={otp} 
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} 
+                />
+              </div>
+              
+              <button 
+                type="submit" 
+                disabled={isProcessing || otp.length < 6} 
+                className={amzButton}
+              >
+                {isProcessing ? 'Verifying...' : 'Verify & Place Order'}
+              </button>
+
+              <div className="text-center mt-2">
+                <button 
+                  type="button" 
+                  onClick={() => setCheckoutStep('editing')} 
+                  className="text-[13px] text-[#007185] hover:text-[#C45500] hover:underline"
+                >
+                  Cancel and edit order
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
