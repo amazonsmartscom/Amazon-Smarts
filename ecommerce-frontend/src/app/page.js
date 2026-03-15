@@ -1159,6 +1159,412 @@
 // }
 
 
+// // src/app/page.jsx
+// 'use client';
+// import { useState, useEffect, Suspense } from 'react';
+// import axios from 'axios';
+// import { useCart } from '../context/CartContext';
+// import { useAuth } from '../context/AuthContext';
+// import Link from 'next/link';
+// import { useSearchParams, useRouter } from 'next/navigation'; // 🚀 Added for search
+
+// // --- 🎨 PREMIUM PRODUCT CARD ---
+// const ProductCard = ({ product, onAddToCart, getImageUrl }) => (
+//   <div className="group flex flex-col bg-white rounded-2xl border border-slate-200/60 hover:border-orange-500/30 shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-500 overflow-hidden relative min-w-[260px] h-full">
+//     {/* Badges */}
+//     <div className="absolute top-3 left-3 z-30 flex flex-col gap-2 pointer-events-none">
+//       {product.isBestSeller && (
+//         <span className="backdrop-blur-md bg-white/90 text-orange-600 border border-orange-100 text-[10px] font-black px-3 py-1 rounded-full shadow-sm uppercase tracking-wider">
+//           Best Seller
+//         </span>
+//       )}
+//       {product.discountPrice && (
+//         <span className="backdrop-blur-md bg-red-500/90 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-sm uppercase tracking-wider">
+//           {Math.round(((product.price - product.discountPrice) / product.price) * 100)}% OFF
+//         </span>
+//       )}
+//     </div>
+
+//     {/* Image Container - Ensure z-10 so it stays behind badges */}
+//     <Link href={`/product/${product._id}`} className="block relative aspect-square overflow-hidden bg-slate-50 p-6 z-10">
+//       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0" />
+//       <img 
+//         src={getImageUrl(product.images?.[0])} 
+//         alt={product.name} 
+//         className="w-full h-full object-contain relative z-20 group-hover:scale-110 group-hover:-translate-y-2 transition-transform duration-700 ease-out drop-shadow-sm group-hover:drop-shadow-xl" 
+//       />
+//     </Link>
+
+//     {/* Content */}
+//     <div className="flex flex-col flex-1 p-5">
+//       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1.5">
+//         {product.brand || 'Generic'}
+//       </p>
+//       <Link href={`/product/${product._id}`}>
+//         <h3 className="text-sm font-bold text-slate-900 line-clamp-2 mb-2 group-hover:text-orange-500 transition-colors leading-snug">
+//           {product.name}
+//         </h3>
+//       </Link>
+      
+//       <div className="flex items-center gap-1.5 mb-4 mt-auto">
+//         <div className="flex text-amber-400 text-xs">
+//           {'★'.repeat(Math.floor(product.ratings || 5))}{'☆'.repeat(5 - Math.floor(product.ratings || 5))}
+//         </div>
+//         <span className="text-slate-400 text-[11px] font-medium hover:text-slate-700 cursor-pointer transition-colors">
+//           ({product.numOfReviews || 0} reviews)
+//         </span>
+//       </div>
+
+//       <div className="pt-4 border-t border-slate-100 flex flex-col gap-3">
+//         <div className="flex items-baseline gap-2">
+//           <span className="text-xl font-black text-slate-900 tracking-tight">
+//             ₹{product.discountPrice?.toLocaleString('en-IN') || product.price?.toLocaleString('en-IN')}
+//           </span>
+//           {product.discountPrice && (
+//             <span className="text-xs line-through text-slate-400 font-medium">
+//               ₹{product.price?.toLocaleString('en-IN')}
+//             </span>
+//           )}
+//         </div>
+//         <button 
+//           onClick={() => onAddToCart(product)} 
+//           className="w-full bg-slate-900 hover:bg-orange-500 text-white font-bold py-2.5 rounded-xl shadow-md hover:shadow-orange-500/25 transition-all duration-300 text-sm flex justify-center items-center gap-2 group/btn active:scale-95"
+//         >
+//           <span className="group-hover/btn:-rotate-12 transition-transform duration-300">🛒</span> Add to Cart
+//         </button>
+//       </div>
+//     </div>
+//   </div>
+// );
+
+
+//   // CAROUSEL STATE
+//   const SkeletonCard = () => (
+//   <div className="animate-pulse flex flex-col bg-white rounded-2xl border border-slate-100 p-5 h-[380px]">
+//     <div className="bg-slate-200 h-48 rounded-xl mb-4"></div>
+//     <div className="bg-slate-200 h-3 w-1/3 rounded-full mb-3"></div>
+//     <div className="bg-slate-200 h-4 w-full rounded-full mb-2"></div>
+//     <div className="bg-slate-200 h-10 w-full rounded-xl mt-auto"></div>
+//   </div>
+// );
+
+// function StoreContent() {
+//   const [products, setProducts] = useState([]);
+//   const [dynamicBanners, setDynamicBanners] = useState([]); // 🚀 NEW: State for uploaded banners
+//   const [loading, setLoading] = useState(true);
+  
+//   const { addToCart } = useCart();
+//   const searchParams = useSearchParams();
+//   const router = useRouter();
+//   const urlSearchQuery = searchParams.get('search')?.toLowerCase() || '';
+
+//   const [selectedCategory, setSelectedCategory] = useState('All');
+//   const [selectedBrand, setSelectedBrand] = useState('All');
+//   const [maxPrice, setMaxPrice] = useState(200000);
+//   const [currentSlide, setCurrentSlide] = useState(0);
+
+//   const getImageUrl = (imagePath) => {
+//     if (!imagePath) return 'https://placehold.co/400x400/e2e8f0/64748b?text=No+Image';
+//     if (imagePath.startsWith('http')) {
+//         return imagePath.replace('http://localhost:5000', process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '');
+//     }
+//     const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+//     return `${baseUrl}/${imagePath}`;
+//   };
+
+//   useEffect(() => {
+//     const fetchData = async () => {
+//       try {
+//         const [prodRes, bannerRes] = await Promise.all([
+//           axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products`),
+//           axios.get(`${process.env.NEXT_PUBLIC_API_URL}/banners`) // 🚀 Fetching uploaded banners
+//         ]);
+//         setProducts(prodRes.data);
+//         setDynamicBanners(bannerRes.data);
+//       } catch (error) {
+//         console.error('Error fetching data:', error);
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+//     fetchData();
+//   }, []);
+
+//   // 🚀 Auto-rotate carousel logic
+//   useEffect(() => {
+//     if (dynamicBanners.length > 1) {
+//       const timer = setInterval(() => {
+//         setCurrentSlide((prev) => (prev === dynamicBanners.length - 1 ? 0 : prev + 1));
+//       }, 6000);
+//       return () => clearInterval(timer);
+//     }
+//   }, [dynamicBanners.length]);
+
+//   // --- DYNAMIC INVENTORY LISTS ---
+//   const uniqueCategories = ['All', ...new Set(products.map(p => p.category))];
+//   const uniqueBrands = ['All', ...new Set(products.map(p => p.brand || 'Generic'))];
+
+//   // 🚀 SEARCH & FILTER LOGIC
+//   const filteredProducts = products.filter(product => {
+//     const matchCategory = selectedCategory === 'All' || product.category === selectedCategory;
+//     const matchBrand = selectedBrand === 'All' || (product.brand || 'Generic') === selectedBrand;
+//     const currentPrice = product.discountPrice || product.price;
+//     const matchPrice = currentPrice <= maxPrice;
+    
+//     const matchSearch = urlSearchQuery === '' || 
+//       product.name.toLowerCase().includes(urlSearchQuery) || 
+//       (product.brand && product.brand.toLowerCase().includes(urlSearchQuery));
+
+//     return matchCategory && matchBrand && matchPrice && matchSearch;
+//   });
+
+//   const discountedProducts = filteredProducts.filter(p => p.discountPrice && p.discountPrice < p.price);
+
+//   const handleAddToCart = (product) => {
+//     addToCart(product);
+//     console.log(`${product.name} added to cart!`); 
+//   };
+
+//   const clearSearch = () => {
+//     router.push('/');
+//   };
+
+//   return (
+//     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20 selection:bg-orange-200">
+      
+//       {/* ENGAGING GRAPHIC BANNER CAROUSEL (Hide if user is searching) */}
+//       {/* 🚀 DYNAMIC BANNER CAROUSEL (Show only if not searching) */}
+//       {/* 🚀 DYNAMIC BANNER CAROUSEL (Show only if not searching) */}
+//       {!urlSearchQuery && dynamicBanners.length > 0 && (
+//         <div className="relative w-full h-[300px] md:h-[450px] lg:h-[550px] bg-slate-900 overflow-hidden group">
+//           {dynamicBanners.map((slide, index) => {
+//             // Check if this slide has text content
+//             const hasText = slide.title || slide.subtitle;
+            
+//             // The core image component
+//             const BannerImage = (
+//               <img src={getImageUrl(slide.image)} alt={slide.title || 'Promo Banner'} className="w-full h-full object-cover object-center" />
+//             );
+
+//             return (
+//               <div 
+//                 key={slide._id} 
+//                 className={`absolute inset-0 w-full h-full transition-all duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-105 z-0'}`}
+//               >
+//                 {/* 🚀 FIXED: Make whole banner clickable if a link exists */}
+//                 {slide.link && slide.link !== '/' ? (
+//                   <Link href={slide.link} className="block w-full h-full cursor-pointer">
+//                     {BannerImage}
+//                   </Link>
+//                 ) : (
+//                   <div className="w-full h-full">{BannerImage}</div>
+//                 )}
+
+//                 {/* 🚀 FIXED: Only show gradient and text if text actually exists! */}
+//                 {hasText && (
+//                   <>
+//                     <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-transparent pointer-events-none"></div>
+//                     <div className={`absolute left-8 md:left-20 top-1/2 -translate-y-1/2 max-w-xl transition-all duration-700 delay-300 pointer-events-none ${index === currentSlide ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0'}`}>
+//                       {slide.title && <h2 className="text-4xl md:text-6xl font-black text-white mb-4 leading-tight tracking-tight">{slide.title}</h2>}
+//                       {slide.subtitle && <p className="text-lg md:text-xl text-slate-200 font-medium mb-8">{slide.subtitle}</p>}
+                      
+//                       {/* Only show the Shop Now button if there is a specific link */}
+//                       {slide.link && slide.link !== '/' && (
+//                         <Link href={slide.link} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3.5 rounded-full font-bold shadow-lg transition-all hover:-translate-y-1 inline-block pointer-events-auto">
+//                           Shop Now
+//                         </Link>
+//                       )}
+//                     </div>
+//                   </>
+//                 )}
+//               </div>
+//             );
+//           })}
+          
+//           {/* Controls - Only show if more than 1 banner */}
+//           {dynamicBanners.length > 1 && (
+//             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 z-20 bg-slate-900/40 backdrop-blur-md px-6 py-3 rounded-full border border-white/10">
+//               <button onClick={() => setCurrentSlide(prev => prev === 0 ? dynamicBanners.length - 1 : prev - 1)} className="text-white hover:text-orange-400">←</button>
+//               <div className="flex gap-2">
+//                 {dynamicBanners.map((_, index) => (
+//                   <button key={index} onClick={() => setCurrentSlide(index)} className={`h-1.5 rounded-full transition-all duration-500 ${index === currentSlide ? 'w-8 bg-orange-500' : 'w-2 bg-white/40'}`} />
+//                 ))}
+//               </div>
+//               <button onClick={() => setCurrentSlide(prev => prev === dynamicBanners.length - 1 ? 0 : prev + 1)} className="text-white hover:text-orange-400">→</button>
+//             </div>
+//           )}
+//         </div>
+//       )}
+
+//       {/* Placeholder if no banners uploaded */}
+//       {!urlSearchQuery && dynamicBanners.length === 0 && !loading && (
+//         <div className="w-full h-[300px] bg-slate-200 flex items-center justify-center text-slate-400 font-bold uppercase tracking-widest">
+//            No Banners Uploaded
+//         </div>
+//       )}
+
+//       {/* QUICK CATEGORIES & TRUST BADGES (Hide if user is searching) */}
+//       {!urlSearchQuery && (
+//         <div className="max-w-[1600px] mx-auto px-4 md:px-6 -mt-8 relative z-30">
+//           <div className="bg-white rounded-2xl p-4 md:p-6 shadow-xl shadow-slate-200/50 border border-slate-100 flex flex-wrap justify-center lg:justify-between items-center gap-6 md:gap-8">
+//             {[
+//               { icon: "🚚", title: "Free Shipping", sub: "On orders over ₹10k" },
+//               { icon: "🛡️", title: "Secure Checkout", sub: "100% encrypted" },
+//               { icon: "🔄", title: "Easy Returns", sub: "7-day policy" },
+//               { icon: "🎧", title: "24/7 Support", sub: "Expert assistance" }
+//             ].map((badge, i) => (
+//               <div key={i} className="flex items-center gap-4 group">
+//                 <span className="text-3xl group-hover:scale-110 transition-transform">{badge.icon}</span>
+//                 <div>
+//                   <p className="font-bold text-slate-900 text-sm">{badge.title}</p>
+//                   <p className="text-xs text-slate-500">{badge.sub}</p>
+//                 </div>
+//               </div>
+//             ))}
+//           </div>
+//         </div>
+//       )}
+
+//       {/* SEARCH RESULTS BANNER */}
+//       {urlSearchQuery && (
+//         <div className="max-w-[1600px] mx-auto px-4 md:px-6 mt-8">
+//           <div className="bg-slate-900 text-white rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between shadow-lg">
+//             <div>
+//               <h2 className="text-2xl font-black mb-1">Search Results for "{searchParams.get('search')}"</h2>
+//               <p className="text-slate-400 text-sm">Found {filteredProducts.length} items matching your query.</p>
+//             </div>
+//             <button onClick={clearSearch} className="mt-4 md:mt-0 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-6 py-2.5 rounded-full font-bold text-sm transition-colors">
+//               Clear Search ✕
+//             </button>
+//           </div>
+//         </div>
+//       )}
+
+//       {/* MAIN LAYOUT WITH FILTER SIDEBAR */}
+//       <div className="flex flex-col lg:flex-row max-w-[1600px] mx-auto px-4 md:px-6 gap-8 py-12">
+        
+//         {/* Sleek Sticky Sidebar */}
+//         <aside className="w-full lg:w-72 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-fit lg:sticky lg:top-28 shrink-0">
+//           <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+//             <h2 className="text-lg font-black text-slate-900">Filters</h2>
+//             <button onClick={() => { setSelectedCategory('All'); setSelectedBrand('All'); setMaxPrice(200000); }} className="text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors">Reset All</button>
+//           </div>
+          
+//           <div className="mb-8">
+//             <h3 className="font-bold text-slate-400 mb-3 uppercase tracking-wider text-xs">Categories</h3>
+//             <div className="space-y-1">
+//               {uniqueCategories.map(cat => (
+//                 <button 
+//                   key={cat} 
+//                   onClick={() => setSelectedCategory(cat)} 
+//                   className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${selectedCategory === cat ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+//                 >
+//                   {cat}
+//                 </button>
+//               ))}
+//             </div>
+//           </div>
+
+//           <div className="mb-8">
+//             <h3 className="font-bold text-slate-400 mb-3 uppercase tracking-wider text-xs">Brands</h3>
+//             <div className="flex flex-wrap gap-2">
+//               {uniqueBrands.map(brand => (
+//                 <button 
+//                   key={brand} 
+//                   onClick={() => setSelectedBrand(brand)} 
+//                   className={`text-xs font-bold px-4 py-2 rounded-full border transition-all ${selectedBrand === brand ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
+//                 >
+//                   {brand}
+//                 </button>
+//               ))}
+//             </div>
+//           </div>
+
+//           <div>
+//             <h3 className="font-bold text-slate-400 mb-3 uppercase tracking-wider text-xs">Max Price</h3>
+//             <p className="text-xl font-black text-slate-900 mb-4">₹{maxPrice.toLocaleString('en-IN')}</p>
+//             <input 
+//               type="range" min="1000" max="200000" step="1000" value={maxPrice} 
+//               onChange={(e) => setMaxPrice(Number(e.target.value))} 
+//               className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-orange-500" 
+//             />
+//           </div>
+//         </aside>
+
+//         {/* Main Product Area */}
+//         <main className="flex-1 min-w-0">
+//           {loading ? (
+//             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+//               {[...Array(8)].map((_, i) => <SkeletonCard key={i} />)}
+//             </div>
+//           ) : filteredProducts.length === 0 ? (
+//              <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-slate-200 text-center px-4">
+//                <span className="text-6xl mb-4 opacity-50">🔍</span>
+//                <h3 className="text-2xl font-black text-slate-800 mb-2">No gadgets found</h3>
+//                <p className="text-slate-500 mb-6">We couldn't find anything matching "{searchParams.get('search') || 'your filters'}".</p>
+//                <button onClick={() => { clearSearch(); setSelectedCategory('All'); setSelectedBrand('All'); setMaxPrice(200000); }} className="bg-slate-900 text-white px-6 py-2.5 rounded-full font-bold hover:bg-orange-500 transition-colors">
+//                  Clear Filters & Search
+//                </button>
+//              </div>
+//           ) : (
+//             <div className="space-y-16">
+              
+//               {/* TOP DEALS SECTION (Only show if not searching) */}
+//               {!urlSearchQuery && discountedProducts.length > 0 && (
+//                 <section>
+//                   <h2 className="text-2xl font-black text-slate-900 mb-6 flex items-center gap-2">
+//                     <span className="text-orange-500">🔥</span> Top Deals
+//                   </h2>
+//                   <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory pr-6" style={{scrollbarWidth: 'none'}}>
+//                     {discountedProducts.map(product => (
+//                       <div key={`deal-${product._id}`} className="snap-start shrink-0 w-[280px]">
+//                         <ProductCard product={product} onAddToCart={handleAddToCart} getImageUrl={getImageUrl} />
+//                       </div>
+//                     ))}
+//                   </div>
+//                 </section>
+//               )}
+
+//               {/* DYNAMIC GRID SECTION */}
+//               <section>
+//                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 border-b border-slate-200 pb-4 gap-4">
+//                   <h2 className="text-2xl font-black text-slate-900">
+//                     {urlSearchQuery ? 'Search Results' : selectedCategory === 'All' ? 'All Gadgets' : selectedCategory}
+//                   </h2>
+//                   <span className="text-sm font-bold text-slate-500 bg-white px-4 py-1.5 rounded-full border border-slate-200 shadow-sm">
+//                     {filteredProducts.length} Results
+//                   </span>
+//                 </div>
+                
+//                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+//                   {filteredProducts.map(product => (
+//                     <ProductCard key={`grid-${product._id}`} product={product} onAddToCart={handleAddToCart} getImageUrl={getImageUrl} />
+//                   ))}
+//                 </div>
+//               </section>
+
+//             </div>
+//           )}
+//         </main>
+//       </div>
+//     </div>
+//   );
+// }
+
+// // 🚀 DEFAULT EXPORT WITH SUSPENSE (Required by Next.js for useSearchParams)
+// export default function AdvancedStoreDashboard() {
+//   return (
+//     <Suspense fallback={
+//       <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4 space-y-4">
+//         <div className="animate-spin rounded-full h-14 w-14 border-4 border-slate-200 border-t-orange-500"></div>
+//       </div>
+//     }>
+//       <StoreContent />
+//     </Suspense>
+//   );
+// }
+
+
 // src/app/page.jsx
 'use client';
 import { useState, useEffect, Suspense } from 'react';
@@ -1166,91 +1572,87 @@ import axios from 'axios';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation'; // 🚀 Added for search
+import { useSearchParams, useRouter } from 'next/navigation';
 
-// --- 🎨 PREMIUM PRODUCT CARD ---
+// --- 🎨 AMAZON STYLE PRODUCT CARD ---
 const ProductCard = ({ product, onAddToCart, getImageUrl }) => (
-  <div className="group flex flex-col bg-white rounded-2xl border border-slate-200/60 hover:border-orange-500/30 shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-500 overflow-hidden relative min-w-[260px] h-full">
-    {/* Badges */}
-    <div className="absolute top-3 left-3 z-30 flex flex-col gap-2 pointer-events-none">
-      {product.isBestSeller && (
-        <span className="backdrop-blur-md bg-white/90 text-orange-600 border border-orange-100 text-[10px] font-black px-3 py-1 rounded-full shadow-sm uppercase tracking-wider">
-          Best Seller
-        </span>
-      )}
-      {product.discountPrice && (
-        <span className="backdrop-blur-md bg-red-500/90 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-sm uppercase tracking-wider">
-          {Math.round(((product.price - product.discountPrice) / product.price) * 100)}% OFF
-        </span>
-      )}
-    </div>
+  <div className="bg-white flex flex-col relative z-10 p-4 h-full border border-[#ddd] rounded-[4px] hover:shadow-[0_0_10px_rgba(0,0,0,0.1)] transition-shadow">
+    {/* Best Seller Badge */}
+    {product.isBestSeller && (
+      <div className="absolute top-0 left-0 bg-[#e77600] text-white text-[11px] px-2 py-1 font-bold z-20 rounded-tl-[3px] rounded-br-[3px]">
+        Best Seller
+      </div>
+    )}
 
-    {/* Image Container - Ensure z-10 so it stays behind badges */}
-    <Link href={`/product/${product._id}`} className="block relative aspect-square overflow-hidden bg-slate-50 p-6 z-10">
-      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0" />
+    {/* Image */}
+    <Link href={`/product/${product._id}`} className="block relative h-48 w-full mb-3 z-10">
       <img 
         src={getImageUrl(product.images?.[0])} 
         alt={product.name} 
-        className="w-full h-full object-contain relative z-20 group-hover:scale-110 group-hover:-translate-y-2 transition-transform duration-700 ease-out drop-shadow-sm group-hover:drop-shadow-xl" 
+        className="w-full h-full object-contain mix-blend-multiply" 
       />
     </Link>
 
     {/* Content */}
-    <div className="flex flex-col flex-1 p-5">
-      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1.5">
-        {product.brand || 'Generic'}
-      </p>
+    <div className="flex flex-col flex-1">
       <Link href={`/product/${product._id}`}>
-        <h3 className="text-sm font-bold text-slate-900 line-clamp-2 mb-2 group-hover:text-orange-500 transition-colors leading-snug">
+        <h2 className="text-[15px] font-medium text-[#007185] hover:text-[#C45500] hover:underline line-clamp-3 leading-snug mb-1">
+          {product.brand && <span className="font-bold mr-1">{product.brand}</span>}
           {product.name}
-        </h3>
+        </h2>
       </Link>
       
-      <div className="flex items-center gap-1.5 mb-4 mt-auto">
-        <div className="flex text-amber-400 text-xs">
+      {/* Ratings */}
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[#FFA41C] text-sm">
           {'★'.repeat(Math.floor(product.ratings || 5))}{'☆'.repeat(5 - Math.floor(product.ratings || 5))}
-        </div>
-        <span className="text-slate-400 text-[11px] font-medium hover:text-slate-700 cursor-pointer transition-colors">
-          ({product.numOfReviews || 0} reviews)
+        </span>
+        <span className="text-[#007185] text-xs hover:text-[#C45500] hover:underline cursor-pointer">
+          {product.numOfReviews || 0}
         </span>
       </div>
 
-      <div className="pt-4 border-t border-slate-100 flex flex-col gap-3">
-        <div className="flex items-baseline gap-2">
-          <span className="text-xl font-black text-slate-900 tracking-tight">
-            ₹{product.discountPrice?.toLocaleString('en-IN') || product.price?.toLocaleString('en-IN')}
+      {/* Price */}
+      <div className="mt-auto flex flex-col">
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[21px] font-normal text-[#0F1111]">
+            <span className="text-[11px] align-top relative top-1">₹</span>
+            {product.discountPrice ? product.discountPrice.toLocaleString('en-IN') : product.price?.toLocaleString('en-IN')}
           </span>
-          {product.discountPrice && (
-            <span className="text-xs line-through text-slate-400 font-medium">
-              ₹{product.price?.toLocaleString('en-IN')}
-            </span>
-          )}
         </div>
+        {product.discountPrice && (
+          <span className="text-[12px] text-[#565959]">
+            M.R.P: <span className="line-through">₹{product.price?.toLocaleString('en-IN')}</span> 
+            <span className="text-[#CC0C39] ml-2">({Math.round(((product.price - product.discountPrice) / product.price) * 100)}% off)</span>
+          </span>
+        )}
+        
+        {/* Amazon Yellow Button */}
         <button 
           onClick={() => onAddToCart(product)} 
-          className="w-full bg-slate-900 hover:bg-orange-500 text-white font-bold py-2.5 rounded-xl shadow-md hover:shadow-orange-500/25 transition-all duration-300 text-sm flex justify-center items-center gap-2 group/btn active:scale-95"
+          className="mt-4 w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-full py-[6px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer"
         >
-          <span className="group-hover/btn:-rotate-12 transition-transform duration-300">🛒</span> Add to Cart
+          Add to cart
         </button>
       </div>
     </div>
   </div>
 );
 
-
-  // CAROUSEL STATE
-  const SkeletonCard = () => (
-  <div className="animate-pulse flex flex-col bg-white rounded-2xl border border-slate-100 p-5 h-[380px]">
-    <div className="bg-slate-200 h-48 rounded-xl mb-4"></div>
-    <div className="bg-slate-200 h-3 w-1/3 rounded-full mb-3"></div>
-    <div className="bg-slate-200 h-4 w-full rounded-full mb-2"></div>
-    <div className="bg-slate-200 h-10 w-full rounded-xl mt-auto"></div>
+// --- 💀 AMAZON SKELETON LOADER ---
+const SkeletonCard = () => (
+  <div className="animate-pulse flex flex-col bg-white border border-[#ddd] p-4 h-[380px]">
+    <div className="bg-gray-200 h-48 w-full mb-4"></div>
+    <div className="bg-gray-200 h-3 w-full mb-2"></div>
+    <div className="bg-gray-200 h-3 w-2/3 mb-4"></div>
+    <div className="bg-gray-200 h-6 w-1/3 mt-auto mb-4"></div>
+    <div className="bg-gray-200 h-8 w-full rounded-full"></div>
   </div>
 );
 
 function StoreContent() {
   const [products, setProducts] = useState([]);
-  const [dynamicBanners, setDynamicBanners] = useState([]); // 🚀 NEW: State for uploaded banners
+  const [dynamicBanners, setDynamicBanners] = useState([]);
   const [loading, setLoading] = useState(true);
   
   const { addToCart } = useCart();
@@ -1274,15 +1676,23 @@ function StoreContent() {
 
   useEffect(() => {
     const fetchData = async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'MISSING_API_URL';
+      console.log(`🌐 Frontend is attempting to fetch from: ${apiUrl}`);
+
       try {
-        const [prodRes, bannerRes] = await Promise.all([
-          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products`),
-          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/banners`) // 🚀 Fetching uploaded banners
-        ]);
+        const prodRes = await axios.get(`${apiUrl}/products`);
         setProducts(prodRes.data);
+      } catch (error) {
+        console.error(`🚨 Failed to fetch products from ${apiUrl}/products`, error.message);
+        setProducts([]); 
+      }
+
+      try {
+        const bannerRes = await axios.get(`${apiUrl}/banners`);
         setDynamicBanners(bannerRes.data);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error(`🚨 Failed to fetch banners from ${apiUrl}/banners`, error.message);
+        setDynamicBanners([]); 
       } finally {
         setLoading(false);
       }
@@ -1290,21 +1700,19 @@ function StoreContent() {
     fetchData();
   }, []);
 
-  // 🚀 Auto-rotate carousel logic
+  // Auto-rotate carousel
   useEffect(() => {
     if (dynamicBanners.length > 1) {
       const timer = setInterval(() => {
         setCurrentSlide((prev) => (prev === dynamicBanners.length - 1 ? 0 : prev + 1));
-      }, 6000);
+      }, 5000);
       return () => clearInterval(timer);
     }
   }, [dynamicBanners.length]);
 
-  // --- DYNAMIC INVENTORY LISTS ---
   const uniqueCategories = ['All', ...new Set(products.map(p => p.category))];
   const uniqueBrands = ['All', ...new Set(products.map(p => p.brand || 'Generic'))];
 
-  // 🚀 SEARCH & FILTER LOGIC
   const filteredProducts = products.filter(product => {
     const matchCategory = selectedCategory === 'All' || product.category === selectedCategory;
     const matchBrand = selectedBrand === 'All' || (product.brand || 'Generic') === selectedBrand;
@@ -1319,230 +1727,140 @@ function StoreContent() {
   });
 
   const discountedProducts = filteredProducts.filter(p => p.discountPrice && p.discountPrice < p.price);
-
-  const handleAddToCart = (product) => {
-    addToCart(product);
-    console.log(`${product.name} added to cart!`); 
-  };
-
-  const clearSearch = () => {
-    router.push('/');
-  };
+  const handleAddToCart = (product) => { addToCart(product); };
+  const clearSearch = () => { router.push('/'); };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20 selection:bg-orange-200">
+    <div className="min-h-screen bg-[#EAEDED] font-sans text-[#0F1111]">
       
-      {/* ENGAGING GRAPHIC BANNER CAROUSEL (Hide if user is searching) */}
-      {/* 🚀 DYNAMIC BANNER CAROUSEL (Show only if not searching) */}
-      {/* 🚀 DYNAMIC BANNER CAROUSEL (Show only if not searching) */}
+      {/* 🚀 AMAZON HERO BANNER (Full width, fades at bottom, hidden on search) */}
       {!urlSearchQuery && dynamicBanners.length > 0 && (
-        <div className="relative w-full h-[300px] md:h-[450px] lg:h-[550px] bg-slate-900 overflow-hidden group">
-          {dynamicBanners.map((slide, index) => {
-            // Check if this slide has text content
-            const hasText = slide.title || slide.subtitle;
-            
-            // The core image component
-            const BannerImage = (
-              <img src={getImageUrl(slide.image)} alt={slide.title || 'Promo Banner'} className="w-full h-full object-cover object-center" />
-            );
-
-            return (
-              <div 
-                key={slide._id} 
-                className={`absolute inset-0 w-full h-full transition-all duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-105 z-0'}`}
-              >
-                {/* 🚀 FIXED: Make whole banner clickable if a link exists */}
-                {slide.link && slide.link !== '/' ? (
-                  <Link href={slide.link} className="block w-full h-full cursor-pointer">
-                    {BannerImage}
-                  </Link>
-                ) : (
-                  <div className="w-full h-full">{BannerImage}</div>
-                )}
-
-                {/* 🚀 FIXED: Only show gradient and text if text actually exists! */}
-                {hasText && (
-                  <>
-                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-transparent pointer-events-none"></div>
-                    <div className={`absolute left-8 md:left-20 top-1/2 -translate-y-1/2 max-w-xl transition-all duration-700 delay-300 pointer-events-none ${index === currentSlide ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0'}`}>
-                      {slide.title && <h2 className="text-4xl md:text-6xl font-black text-white mb-4 leading-tight tracking-tight">{slide.title}</h2>}
-                      {slide.subtitle && <p className="text-lg md:text-xl text-slate-200 font-medium mb-8">{slide.subtitle}</p>}
-                      
-                      {/* Only show the Shop Now button if there is a specific link */}
-                      {slide.link && slide.link !== '/' && (
-                        <Link href={slide.link} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3.5 rounded-full font-bold shadow-lg transition-all hover:-translate-y-1 inline-block pointer-events-auto">
-                          Shop Now
-                        </Link>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
+        <div className="relative w-full h-[300px] sm:h-[400px] lg:h-[600px] max-w-[1500px] mx-auto overflow-hidden bg-[#EAEDED]">
+          {dynamicBanners.map((slide, index) => (
+            <div 
+              key={slide._id || index} 
+              className={`absolute inset-0 w-full h-full transition-opacity duration-700 ease-in-out ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+            >
+              {slide.link && slide.link !== '/' ? (
+                <Link href={slide.link} className="block w-full h-full cursor-pointer">
+                  <img src={getImageUrl(slide.image)} alt="Banner" className="w-full h-full object-cover object-top" />
+                </Link>
+              ) : (
+                <img src={getImageUrl(slide.image)} alt="Banner" className="w-full h-full object-cover object-top" />
+              )}
+            </div>
+          ))}
           
-          {/* Controls - Only show if more than 1 banner */}
+          {/* The signature Amazon bottom gradient that blends into the background */}
+          <div className="absolute inset-0 z-10 pointer-events-none" style={{ background: 'linear-gradient(to bottom, rgba(234,237,237,0) 60%, #EAEDED 100%)' }}></div>
+
+          {/* Amazon Carousel Controls */}
           {dynamicBanners.length > 1 && (
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 z-20 bg-slate-900/40 backdrop-blur-md px-6 py-3 rounded-full border border-white/10">
-              <button onClick={() => setCurrentSlide(prev => prev === 0 ? dynamicBanners.length - 1 : prev - 1)} className="text-white hover:text-orange-400">←</button>
-              <div className="flex gap-2">
-                {dynamicBanners.map((_, index) => (
-                  <button key={index} onClick={() => setCurrentSlide(index)} className={`h-1.5 rounded-full transition-all duration-500 ${index === currentSlide ? 'w-8 bg-orange-500' : 'w-2 bg-white/40'}`} />
-                ))}
-              </div>
-              <button onClick={() => setCurrentSlide(prev => prev === dynamicBanners.length - 1 ? 0 : prev + 1)} className="text-white hover:text-orange-400">→</button>
+            <div className="absolute top-1/3 w-full flex justify-between px-4 z-20">
+              <button onClick={() => setCurrentSlide(prev => prev === 0 ? dynamicBanners.length - 1 : prev - 1)} className="bg-transparent hover:border-2 border-white text-transparent hover:text-[#0F1111] py-8 px-4 rounded transition-all focus:outline-none focus:border-2 focus:border-[#008296]">
+                <svg className="w-8 h-8 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </button>
+              <button onClick={() => setCurrentSlide(prev => prev === dynamicBanners.length - 1 ? 0 : prev + 1)} className="bg-transparent hover:border-2 border-white text-transparent hover:text-[#0F1111] py-8 px-4 rounded transition-all focus:outline-none focus:border-2 focus:border-[#008296]">
+                <svg className="w-8 h-8 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </button>
             </div>
           )}
         </div>
       )}
 
-      {/* Placeholder if no banners uploaded */}
-      {!urlSearchQuery && dynamicBanners.length === 0 && !loading && (
-        <div className="w-full h-[300px] bg-slate-200 flex items-center justify-center text-slate-400 font-bold uppercase tracking-widest">
-           No Banners Uploaded
-        </div>
-      )}
-
-      {/* QUICK CATEGORIES & TRUST BADGES (Hide if user is searching) */}
-      {!urlSearchQuery && (
-        <div className="max-w-[1600px] mx-auto px-4 md:px-6 -mt-8 relative z-30">
-          <div className="bg-white rounded-2xl p-4 md:p-6 shadow-xl shadow-slate-200/50 border border-slate-100 flex flex-wrap justify-center lg:justify-between items-center gap-6 md:gap-8">
-            {[
-              { icon: "🚚", title: "Free Shipping", sub: "On orders over ₹10k" },
-              { icon: "🛡️", title: "Secure Checkout", sub: "100% encrypted" },
-              { icon: "🔄", title: "Easy Returns", sub: "7-day policy" },
-              { icon: "🎧", title: "24/7 Support", sub: "Expert assistance" }
-            ].map((badge, i) => (
-              <div key={i} className="flex items-center gap-4 group">
-                <span className="text-3xl group-hover:scale-110 transition-transform">{badge.icon}</span>
-                <div>
-                  <p className="font-bold text-slate-900 text-sm">{badge.title}</p>
-                  <p className="text-xs text-slate-500">{badge.sub}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* SEARCH RESULTS BANNER */}
+      {/* SEARCH RESULTS HEADER */}
       {urlSearchQuery && (
-        <div className="max-w-[1600px] mx-auto px-4 md:px-6 mt-8">
-          <div className="bg-slate-900 text-white rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between shadow-lg">
-            <div>
-              <h2 className="text-2xl font-black mb-1">Search Results for "{searchParams.get('search')}"</h2>
-              <p className="text-slate-400 text-sm">Found {filteredProducts.length} items matching your query.</p>
-            </div>
-            <button onClick={clearSearch} className="mt-4 md:mt-0 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-6 py-2.5 rounded-full font-bold text-sm transition-colors">
-              Clear Search ✕
+        <div className="bg-white border-b border-[#ddd] shadow-[0_1px_2px_rgba(0,0,0,0.1)] py-2 px-4 md:px-6 mb-4">
+          <div className="flex items-center text-[14px]">
+            <span className="font-bold mr-1">1-{filteredProducts.length} of over {filteredProducts.length} results for</span> 
+            <span className="text-[#c45500] font-bold">"{searchParams.get('search')}"</span>
+            <button onClick={clearSearch} className="ml-4 text-[#007185] hover:text-[#c45500] hover:underline text-sm border-l border-gray-300 pl-4">
+              Clear filters
             </button>
           </div>
         </div>
       )}
 
-      {/* MAIN LAYOUT WITH FILTER SIDEBAR */}
-      <div className="flex flex-col lg:flex-row max-w-[1600px] mx-auto px-4 md:px-6 gap-8 py-12">
+      {/* MAIN CONTENT GRID (Overlaps the banner negative margin) */}
+      <div className={`flex flex-col lg:flex-row max-w-[1500px] mx-auto px-4 sm:px-6 gap-6 pb-12 relative z-20 ${!urlSearchQuery && dynamicBanners.length > 0 ? '-mt-[150px] lg:-mt-[280px]' : ''}`}>
         
-        {/* Sleek Sticky Sidebar */}
-        <aside className="w-full lg:w-72 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-fit lg:sticky lg:top-28 shrink-0">
-          <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-            <h2 className="text-lg font-black text-slate-900">Filters</h2>
-            <button onClick={() => { setSelectedCategory('All'); setSelectedBrand('All'); setMaxPrice(200000); }} className="text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors">Reset All</button>
-          </div>
-          
-          <div className="mb-8">
-            <h3 className="font-bold text-slate-400 mb-3 uppercase tracking-wider text-xs">Categories</h3>
-            <div className="space-y-1">
-              {uniqueCategories.map(cat => (
-                <button 
-                  key={cat} 
-                  onClick={() => setSelectedCategory(cat)} 
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${selectedCategory === cat ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-                >
-                  {cat}
-                </button>
-              ))}
+        {/* Amazon Left Sidebar (Hidden on mobile by default) */}
+        <aside className="w-full lg:w-[240px] shrink-0 bg-transparent">
+          <div className="bg-white lg:bg-transparent p-4 lg:p-0 rounded border lg:border-none border-[#ddd] mb-4">
+            
+            <div className="mb-4">
+              <h3 className="font-bold text-[14px] text-[#0F1111] mb-2">Department</h3>
+              <ul className="space-y-1">
+                {uniqueCategories.map(cat => (
+                  <li key={cat}>
+                    <button 
+                      onClick={() => setSelectedCategory(cat)} 
+                      className={`text-[14px] text-left w-full hover:text-[#c45500] hover:underline transition-colors ${selectedCategory === cat ? 'font-bold text-[#0F1111]' : 'text-[#0F1111]'}`}
+                    >
+                      {cat}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
 
-          <div className="mb-8">
-            <h3 className="font-bold text-slate-400 mb-3 uppercase tracking-wider text-xs">Brands</h3>
-            <div className="flex flex-wrap gap-2">
-              {uniqueBrands.map(brand => (
-                <button 
-                  key={brand} 
-                  onClick={() => setSelectedBrand(brand)} 
-                  className={`text-xs font-bold px-4 py-2 rounded-full border transition-all ${selectedBrand === brand ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
-                >
-                  {brand}
-                </button>
-              ))}
+            <div className="mb-4">
+              <h3 className="font-bold text-[14px] text-[#0F1111] mb-2">Brands</h3>
+              <ul className="space-y-1">
+                {uniqueBrands.map(brand => (
+                  <li key={brand} className="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      id={brand}
+                      checked={selectedBrand === brand}
+                      onChange={() => setSelectedBrand(selectedBrand === brand ? 'All' : brand)}
+                      className="w-4 h-4 accent-[#007185] cursor-pointer"
+                    />
+                    <label htmlFor={brand} className="text-[14px] text-[#0F1111] cursor-pointer hover:text-[#c45500] hover:underline">
+                      {brand}
+                    </label>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
 
-          <div>
-            <h3 className="font-bold text-slate-400 mb-3 uppercase tracking-wider text-xs">Max Price</h3>
-            <p className="text-xl font-black text-slate-900 mb-4">₹{maxPrice.toLocaleString('en-IN')}</p>
-            <input 
-              type="range" min="1000" max="200000" step="1000" value={maxPrice} 
-              onChange={(e) => setMaxPrice(Number(e.target.value))} 
-              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-orange-500" 
-            />
+            <div>
+              <h3 className="font-bold text-[14px] text-[#0F1111] mb-2">Price</h3>
+              <div className="flex flex-col">
+                <input 
+                  type="range" min="1000" max="200000" step="1000" value={maxPrice} 
+                  onChange={(e) => setMaxPrice(Number(e.target.value))} 
+                  className="w-full h-1 bg-gray-300 rounded outline-none accent-[#007185] cursor-pointer mb-2" 
+                />
+                <span className="text-[14px] text-[#0F1111]">Under ₹{maxPrice.toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+
           </div>
         </aside>
 
-        {/* Main Product Area */}
         <main className="flex-1 min-w-0">
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {[...Array(8)].map((_, i) => <SkeletonCard key={i} />)}
             </div>
           ) : filteredProducts.length === 0 ? (
-             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-slate-200 text-center px-4">
-               <span className="text-6xl mb-4 opacity-50">🔍</span>
-               <h3 className="text-2xl font-black text-slate-800 mb-2">No gadgets found</h3>
-               <p className="text-slate-500 mb-6">We couldn't find anything matching "{searchParams.get('search') || 'your filters'}".</p>
-               <button onClick={() => { clearSearch(); setSelectedCategory('All'); setSelectedBrand('All'); setMaxPrice(200000); }} className="bg-slate-900 text-white px-6 py-2.5 rounded-full font-bold hover:bg-orange-500 transition-colors">
-                 Clear Filters & Search
+             <div className="flex flex-col items-center justify-center py-20 bg-white rounded border border-[#ddd]">
+               <h3 className="text-xl font-bold text-[#0F1111] mb-2">No results for {searchParams.get('search') || 'your filters'}.</h3>
+               <p className="text-[14px] text-[#565959] mb-4">Try checking your spelling or use more general terms</p>
+               <button onClick={() => { clearSearch(); setSelectedCategory('All'); setSelectedBrand('All'); setMaxPrice(200000); }} className="text-[#007185] hover:text-[#c45500] hover:underline text-sm">
+                 Clear all filters
                </button>
              </div>
           ) : (
-            <div className="space-y-16">
+            <div className="space-y-6">
               
-              {/* TOP DEALS SECTION (Only show if not searching) */}
-              {!urlSearchQuery && discountedProducts.length > 0 && (
-                <section>
-                  <h2 className="text-2xl font-black text-slate-900 mb-6 flex items-center gap-2">
-                    <span className="text-orange-500">🔥</span> Top Deals
-                  </h2>
-                  <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory pr-6" style={{scrollbarWidth: 'none'}}>
-                    {discountedProducts.map(product => (
-                      <div key={`deal-${product._id}`} className="snap-start shrink-0 w-[280px]">
-                        <ProductCard product={product} onAddToCart={handleAddToCart} getImageUrl={getImageUrl} />
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* DYNAMIC GRID SECTION */}
-              <section>
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 border-b border-slate-200 pb-4 gap-4">
-                  <h2 className="text-2xl font-black text-slate-900">
-                    {urlSearchQuery ? 'Search Results' : selectedCategory === 'All' ? 'All Gadgets' : selectedCategory}
-                  </h2>
-                  <span className="text-sm font-bold text-slate-500 bg-white px-4 py-1.5 rounded-full border border-slate-200 shadow-sm">
-                    {filteredProducts.length} Results
-                  </span>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {filteredProducts.map(product => (
-                    <ProductCard key={`grid-${product._id}`} product={product} onAddToCart={handleAddToCart} getImageUrl={getImageUrl} />
-                  ))}
-                </div>
-              </section>
-
+              {/* Product Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {filteredProducts.map(product => (
+                  <ProductCard key={`grid-${product._id}`} product={product} onAddToCart={handleAddToCart} getImageUrl={getImageUrl} />
+                ))}
+              </div>
             </div>
           )}
         </main>
@@ -1551,12 +1869,12 @@ function StoreContent() {
   );
 }
 
-// 🚀 DEFAULT EXPORT WITH SUSPENSE (Required by Next.js for useSearchParams)
+// 🚀 DEFAULT EXPORT
 export default function AdvancedStoreDashboard() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4 space-y-4">
-        <div className="animate-spin rounded-full h-14 w-14 border-4 border-slate-200 border-t-orange-500"></div>
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <div className="w-10 h-10 border-4 border-[#e7e7e7] border-t-[#e77600] rounded-full animate-spin"></div>
       </div>
     }>
       <StoreContent />
