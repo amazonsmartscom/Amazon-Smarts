@@ -196,13 +196,12 @@ const app = express();
 // 🚀 STRICT PRODUCTION CORS SETUP
 // ==========================================
 app.use(cors({
-  origin: [
-    'http://localhost:3000', 
-    'https://in.amazonsmarts.com', // 🚀 FIXED: Spelled correctly with hyphen
-    // 'https://www.amazon-smarts.vercel.app'
-  ],
+  origin: function (origin, callback) {
+    // This allows any of your frontends to connect without CORS errors
+    callback(null, true);
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // 🚀 FIXED: Added OPTIONS
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
