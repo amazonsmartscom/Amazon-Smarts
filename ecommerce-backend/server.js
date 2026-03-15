@@ -195,13 +195,16 @@ const app = express();
 // ==========================================
 // 🚀 STRICT PRODUCTION CORS SETUP
 // ==========================================
+// Replace the CORS section in your server.js with exactly this:
 app.use(cors({
-  origin: function (origin, callback) {
-    // This allows any of your frontends to connect without CORS errors
-    callback(null, true);
-  },
+  origin: [
+    'http://localhost:3000', 
+    'https://in.amazonsmarts.com', 
+    'https://amazon-smarts.vercel.app',    // <--- No slash at the end!
+    'https://www.amazon-smarts.vercel.app'
+  ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], 
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
