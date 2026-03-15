@@ -1575,7 +1575,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 // --- 🎨 AMAZON STYLE PRODUCT CARD ---
-const ProductCard = ({ product, onAddToCart, getImageUrl }) => (
+const ProductCard = ({ product, onAddToCart, onBuyNow, getImageUrl }) => (
   <div className="bg-white flex flex-col relative z-10 p-4 h-full border border-[#ddd] rounded-[4px] hover:shadow-[0_0_10px_rgba(0,0,0,0.1)] transition-shadow">
     {/* Best Seller Badge */}
     {product.isBestSeller && (
@@ -1627,13 +1627,23 @@ const ProductCard = ({ product, onAddToCart, getImageUrl }) => (
           </span>
         )}
         
-        {/* Amazon Yellow Button */}
-        <button 
-          onClick={() => onAddToCart(product)} 
-          className="mt-4 w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-full py-[6px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer"
-        >
-          Add to cart
-        </button>
+        <div className="flex flex-col gap-2 mt-4">
+          {/* Amazon Yellow Button (Add to Cart) */}
+          <button 
+            onClick={(e) => { e.preventDefault(); onAddToCart(product); }} 
+            className="w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-full py-[6px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer"
+          >
+            Add to cart
+          </button>
+
+          {/* 🚀 NEW: Amazon Orange Button (Buy Now) */}
+          <button 
+            onClick={(e) => { e.preventDefault(); onBuyNow(product); }} 
+            className="w-full bg-[#FFA41C] hover:bg-[#FF9900] border border-[#FF8F00] rounded-full py-[6px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer"
+          >
+            Buy Now
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -1646,6 +1656,7 @@ const SkeletonCard = () => (
     <div className="bg-gray-200 h-3 w-full mb-2"></div>
     <div className="bg-gray-200 h-3 w-2/3 mb-4"></div>
     <div className="bg-gray-200 h-6 w-1/3 mt-auto mb-4"></div>
+    <div className="bg-gray-200 h-8 w-full rounded-full mb-2"></div>
     <div className="bg-gray-200 h-8 w-full rounded-full"></div>
   </div>
 );
@@ -1677,7 +1688,6 @@ function StoreContent() {
   useEffect(() => {
     const fetchData = async () => {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'MISSING_API_URL';
-      console.log(`🌐 Frontend is attempting to fetch from: ${apiUrl}`);
 
       try {
         const prodRes = await axios.get(`${apiUrl}/products`);
@@ -1727,7 +1737,17 @@ function StoreContent() {
   });
 
   const discountedProducts = filteredProducts.filter(p => p.discountPrice && p.discountPrice < p.price);
-  const handleAddToCart = (product) => { addToCart(product); };
+  
+  const handleAddToCart = (product) => { 
+    addToCart(product); 
+  };
+
+  // 🚀 NEW: Buy Now Handler
+  const handleBuyNow = (product) => {
+    addToCart(product);
+    router.push('/cart'); // Takes them instantly to the cart/checkout page
+  };
+
   const clearSearch = () => { router.push('/'); };
 
   return (
@@ -1858,7 +1878,13 @@ function StoreContent() {
               {/* Product Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                 {filteredProducts.map(product => (
-                  <ProductCard key={`grid-${product._id}`} product={product} onAddToCart={handleAddToCart} getImageUrl={getImageUrl} />
+                  <ProductCard 
+                    key={`grid-${product._id}`} 
+                    product={product} 
+                    onAddToCart={handleAddToCart} 
+                    onBuyNow={handleBuyNow} // 🚀 Pass the new handler
+                    getImageUrl={getImageUrl} 
+                  />
                 ))}
               </div>
             </div>
