@@ -687,17 +687,6 @@ export default function CheckoutPage() {
 //     <div className="min-h-screen bg-white font-sans text-[#0F1111]">
       
 //       {/* 🚀 Distraction-Free Amazon Checkout Header */}
-//       <header className="bg-[#F0F2F2] border-b border-[#ddd] py-3">
-//         <div className="max-w-[1000px] mx-auto px-4 flex justify-between items-center">
-//           <Link href="/">
-//             <h1 className="text-2xl font-normal tracking-tighter text-[#111] cursor-pointer">
-//               amazon<span className="text-[#e77600] font-bold tracking-normal">smarts</span>
-//             </h1>
-//           </Link>
-//           <h2 className="text-[24px] font-normal text-[#111] hidden md:block">Checkout</h2>
-//           <div className="text-[24px] text-[#565959]">🔒</div>
-//         </div>
-//       </header>
 
 //       <div className="max-w-[1000px] mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
         
