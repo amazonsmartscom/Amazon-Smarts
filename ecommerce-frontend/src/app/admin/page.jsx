@@ -1422,45 +1422,1543 @@
 // }
 
 
+// // src/app/admin/page.jsx
+// 'use client';
+// import { useState, useEffect } from 'react';
+// import { useAuth } from '../../context/AuthContext';
+// import { useRouter } from 'next/navigation';
+// import axios from 'axios';
+// import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
+// export default function AdminDashboard() {
+//   const { user, login, logout } = useAuth(); 
+//   const router = useRouter();
+  
+//   const adminRole = user?.user?.role || user?.role;
+//   const adminId = user?.user?._id || user?._id || user?.id;
+
+//   // Integrated Login States
+//   const [adminEmail, setAdminEmail] = useState('');
+//   const [adminPassword, setAdminPassword] = useState('');
+//   const [loginError, setLoginError] = useState('');
+//   const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+//   // Dashboard States
+//   const [withdrawals, setWithdrawals] = useState([]);
+//   const [products, setProducts] = useState([]); 
+//   const [orders, setOrders] = useState([]);
+//   const [stats, setStats] = useState(null); 
+//   const [pendingReviews, setPendingReviews] = useState([]); 
+//   const [chartData, setChartData] = useState([]);
+//   const [isHydrated, setIsHydrated] = useState(false);
+
+//   // HOMEPAGE BANNER STATES
+//   const [allBanners, setAllBanners] = useState([]);
+//   const [bannerTitle, setBannerTitle] = useState('');
+//   const [bannerSubtitle, setBannerSubtitle] = useState('');
+//   const [bannerLink, setBannerLink] = useState('/');
+//   const [bannerImage, setBannerImage] = useState(null);
+//   const [isBannerUploading, setIsBannerUploading] = useState(false);
+
+//   // Add Product States
+//   const [name, setName] = useState('');
+//   const [brand, setBrand] = useState(''); 
+//   const [price, setPrice] = useState('');
+//   const [discountPrice, setDiscountPrice] = useState('');
+//   const [category, setCategory] = useState('Smartphones');
+//   const [stock, setStock] = useState('');
+//   const [description, setDescription] = useState('');
+//   const [isBestSeller, setIsBestSeller] = useState(false); 
+//   const [images, setImages] = useState([]);
+//   const [banners, setBanners] = useState([]);
+//   const [features, setFeatures] = useState(['']); 
+//   const [specs, setSpecs] = useState([{ name: '', value: '' }]); 
+//   const [variants, setVariants] = useState([{ name: '', options: '' }]); 
+//   const [returnPolicy, setReturnPolicy] = useState('7 Days Replacement');
+//   const [warrantyPolicy, setWarrantyPolicy] = useState('1 Year Warranty');
+//   const [seoTitle, setSeoTitle] = useState('');
+//   const [seoDescription, setSeoDescription] = useState('');
+//   const [seoKeywords, setSeoKeywords] = useState('');
+
+//   // 🚀 Cancellation States
+//   const [isCancellable, setIsCancellable] = useState(true);
+//   const [cancellationWindowHours, setCancellationWindowHours] = useState(24);
+
+//   const [editingProduct, setEditingProduct] = useState(null);
+//   const [editForm, setEditForm] = useState(null);
+
+//   const getImageUrl = (imagePath) => {
+//     if (!imagePath) return 'https://placehold.co/400x400?text=No+Image';
+//     if (imagePath.startsWith('http')) {
+//         return imagePath.replace('http://localhost:5000', process.env.NEXT_PUBLIC_API_URL.replace('/api', ''));
+//     }
+//     const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+//     return `${baseUrl}/${imagePath}`;
+//   };
+
+//   useEffect(() => { setIsHydrated(true); }, []);
+
+//   useEffect(() => {
+//     if (isHydrated && user && adminRole === 'admin') { 
+//       fetchWithdrawals(); 
+//       fetchProducts(); 
+//       fetchAllOrders(); 
+//       fetchStats(); 
+//       fetchPendingReviews(); 
+//       fetchBanners(); 
+//     }
+//   }, [user, adminRole, isHydrated]);
+
+//   useEffect(() => {
+//     if (orders.length > 0) {
+//       const groupedData = orders.reduce((acc, order) => {
+//         const date = new Date(order.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+//         if (!acc[date]) acc[date] = { date, revenue: 0, orders: 0 };
+//         acc[date].revenue += order.totalPrice || 0;
+//         acc[date].orders += 1;
+//         return acc;
+//       }, {});
+//       const formattedData = Object.values(groupedData).reverse();
+//       setChartData(formattedData.slice(-14));
+//     }
+//   }, [orders]);
+
+//   const fetchBanners = async () => {
+//     try {
+//       const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/banners`);
+//       setAllBanners(data);
+//     } catch (err) {
+//       console.error("Error fetching banners:", err);
+//     }
+//   };
+
+//   // 🚀 FIXED: Added reset for the file input after successful upload
+//   const handleUploadInvoice = async (orderId, e) => {
+//     const file = e.target.files[0];
+//     if (!file) return;
+
+//     const formData = new FormData();
+//     formData.append('invoice', file);
+
+//     try {
+//       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${orderId}/invoice?adminId=${adminId}`, formData);
+//       alert("✅ Invoice uploaded successfully! The customer will be notified.");
+//       e.target.value = null; // Reset input field
+//       fetchAllOrders(); // Refresh the list
+//     } catch (err) {
+//       console.error(err);
+//       alert("Failed to upload invoice.");
+//     }
+//   };
+
+
+//   const handleUploadBanner = async (e) => {
+//     e.preventDefault();
+//     if (!bannerImage) return alert("Please select an image");
+    
+//     setIsBannerUploading(true);
+//     const formData = new FormData();
+//     formData.append('image', bannerImage);
+//     formData.append('title', bannerTitle);
+//     formData.append('subtitle', bannerSubtitle);
+//     formData.append('link', bannerLink);
+//     formData.append('adminId', adminId);
+
+//     try {
+//       await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/banners`, formData);
+//       alert("✅ Homepage Slide Published!");
+//       setBannerTitle(''); setBannerSubtitle(''); setBannerLink('/'); setBannerImage(null);
+//       fetchBanners();
+//     } catch (err) {
+//       alert("Upload failed. Check backend console.");
+//     } finally {
+//       setIsBannerUploading(false);
+//     }
+//   };
+
+//   const handleDeleteBanner = async (id) => {
+//     if (window.confirm("Remove this slide from homepage?")) {
+//       try {
+//         await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/banners/${id}?adminId=${adminId}`);
+//         fetchBanners();
+//       } catch (err) { alert("Delete failed"); }
+//     }
+//   };
+  
+//   // API FETCHERS
+//   const fetchStats = async () => { try { const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/admin/stats?adminId=${adminId}`); setStats(data); } catch (err) {} };
+//   const fetchWithdrawals = async () => { const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/withdrawals/admin/all?adminId=${adminId}`); setWithdrawals(data); };
+//   const fetchProducts = async () => { const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products`); setProducts(data); };
+//   const fetchAllOrders = async () => { 
+//     try {
+//       const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/all?adminId=${adminId}`); 
+//       setOrders(data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))); 
+//     } catch (err) {}
+//   };
+//   const fetchPendingReviews = async () => {
+//     try {
+//       const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products/admin/pending-reviews?adminId=${adminId}`);
+//       setPendingReviews(data);
+//     } catch (err) {}
+//   };
+
+//   // INTEGRATED LOGIN HANDLER
+//   const handleAdminLoginSubmit = async (e) => {
+//     e.preventDefault();
+//     setIsLoggingIn(true);
+//     setLoginError('');
+//     const result = await login(adminEmail, adminPassword);
+//     if (result.success) setIsLoggingIn(false);
+//     else { setLoginError(result.message); setIsLoggingIn(false); }
+//   };
+
+//   // ACTION HANDLERS
+//   const handleUpdateOrderStatus = async (orderId, newStatus) => {
+//     await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${orderId}/status?adminId=${adminId}`, { status: newStatus });
+//     alert(`Status updated`); 
+//     fetchAllOrders(); fetchStats();
+//   };
+
+//   const handleStatusUpdate = async (id, status) => {
+//     try {
+//       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/withdrawals/admin/${id}?adminId=${adminId}`, { status, adminComment: "Processed successfully" });
+//       alert(`Withdrawal ${status}`); fetchWithdrawals();
+//     } catch (error) { alert("Error updating withdrawal status"); }
+//   };
+
+//   const handleDeleteProduct = async (id) => {
+//     if (window.confirm("Are you sure?")) {
+//       await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/products/${id}?adminId=${adminId}`); 
+//       fetchProducts();
+//     }
+//   };
+
+//   const handleReviewAction = async (productId, reviewId, status) => {
+//     try {
+//       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/products/admin/reviews/status?adminId=${adminId}`, { productId, reviewId, status });
+//       alert(`Review ${status}!`);
+//       fetchPendingReviews(); fetchProducts();
+//     } catch (error) { alert("Error processing review"); }
+//   };
+
+//   const formatVariantsForEdit = (dbVariants) => {
+//     if (!dbVariants || dbVariants.length === 0) return [{ name: '', options: '' }];
+//     return dbVariants.map(v => ({ name: v.name, options: v.options.map(o => o.priceModifier ? `${o.name}(+${o.priceModifier})` : o.name).join(', ') }));
+//   };
+
+//   const handleEditClick = (product) => {
+//     setEditingProduct(product);
+//     setEditForm({ 
+//       ...product, 
+//       existingImages: product.images || [], newImagesFiles: [], 
+//       existingBanners: product.banners || [], newBannersFiles: [],
+//       variants: formatVariantsForEdit(product.variants), 
+//       features: product.features && product.features.length > 0 ? product.features : [''],
+//       specs: product.specs && product.specs.length > 0 ? product.specs : [{ name: '', value: '' }],
+//       returnPolicy: product.returnPolicy || '7 Days Replacement',
+//       warrantyPolicy: product.warrantyPolicy || '1 Year Warranty', 
+//       seoTitle: product.seoTitle || '', seoDescription: product.seoDescription || '', seoKeywords: product.seoKeywords || '',
+//       isCancellable: product.isCancellable !== undefined ? product.isCancellable : true,
+//       cancellationWindowHours: product.cancellationWindowHours !== undefined ? product.cancellationWindowHours : 24,
+//     });
+//   };
+
+//   const parseVariantsForDB = (variantArray) => {
+//     return variantArray.map(v => {
+//       const parsedOptions = typeof v.options === 'string' ? v.options.split(',').map(opt => {
+//         let optName = opt.trim(); let priceModifier = 0; const match = optName.match(/\(([\+\-]?\d+)\)/); 
+//         if (match) { priceModifier = parseInt(match[1], 10); optName = optName.replace(match[0], '').trim(); }
+//         return { name: optName, priceModifier };
+//       }).filter(o => o.name !== '') : [];
+//       return { name: v.name, options: parsedOptions };
+//     }).filter(v => v.name.trim() !== '' && v.options.length > 0);
+//   };
+
+//   const handleUpdateProduct = async (e) => {
+//     e.preventDefault();
+//     try {
+//       const formData = new FormData();
+      
+//       Object.keys(editForm).forEach(key => {
+//         const excludedFields = [
+//           'existingImages', 'newImagesFiles', 'existingBanners', 'newBannersFiles', 
+//           'features', 'specs', 'variants', 'reviews', 'ratings', 'numOfReviews'
+//         ];
+//         if (!excludedFields.includes(key)) formData.append(key, editForm[key]);
+//       });
+
+//       formData.append('existingImages', JSON.stringify(editForm.existingImages)); 
+//       formData.append('features', JSON.stringify(editForm.features.filter(f => f.trim() !== '')));
+//       formData.append('specs', JSON.stringify(editForm.specs.filter(s => s.name.trim() !== ''))); 
+//       formData.append('variants', JSON.stringify(parseVariantsForDB(editForm.variants))); 
+
+//       if (editForm.newImagesFiles) {
+//         for (let i = 0; i < editForm.newImagesFiles.length; i++) formData.append('images', editForm.newImagesFiles[i]);
+//       }
+//       if (editForm.newBannersFiles) {
+//         for (let i = 0; i < editForm.newBannersFiles.length; i++) formData.append('banners', editForm.newBannersFiles[i]);
+//       }
+
+//       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/products/${editingProduct._id}?adminId=${adminId}`, formData);
+      
+//       alert("✅ Product Updated Successfully!");
+//       setEditingProduct(null); 
+//       fetchProducts(); 
+//     } catch (err) {
+//       console.error("Update Error:", err.response?.data);
+//       alert("Update failed. Check console.");
+//     }
+//   };
+
+//   const handleAddProduct = async (e) => {
+//     e.preventDefault();
+//     const formData = new FormData();
+//     formData.append('name', name); formData.append('brand', brand); formData.append('price', price); formData.append('discountPrice', discountPrice);
+//     formData.append('category', category); formData.append('stock', stock); formData.append('description', description); formData.append('isBestSeller', isBestSeller);
+//     formData.append('returnPolicy', returnPolicy); formData.append('warrantyPolicy', warrantyPolicy);
+//     formData.append('seoTitle', seoTitle); formData.append('seoDescription', seoDescription); formData.append('seoKeywords', seoKeywords);
+    
+//     formData.append('isCancellable', isCancellable);
+//     formData.append('cancellationWindowHours', cancellationWindowHours);
+
+//     formData.append('features', JSON.stringify(features.filter(f => f.trim() !== ''))); 
+//     formData.append('specs', JSON.stringify(specs.filter(s => s.name.trim() !== '')));
+//     formData.append('variants', JSON.stringify(parseVariantsForDB(variants))); 
+//     for (let i = 0; i < images.length; i++) formData.append('images', images[i]);
+//     for (let i = 0; i < banners.length; i++) formData.append('banners', banners[i]);
+    
+//     await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/products?adminId=${adminId}`, formData);
+//     alert("✅ Published!"); 
+    
+//     setName(''); setBrand(''); setPrice(''); setDiscountPrice(''); setStock(''); setDescription('');
+//     setImages([]); setBanners([]); setFeatures(['']); setSpecs([{ name: '', value: '' }]); setVariants([{ name: '', options: '' }]);
+//     setSeoTitle(''); setSeoDescription(''); setSeoKeywords('');
+//     setIsCancellable(true); setCancellationWindowHours(24);
+//     fetchProducts(); 
+//   };
+
+//   const inputStyles = "w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-gray-900 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all shadow-sm";
+//   const labelStyles = "block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1";
+//   const sectionCardStyles = "bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100 mb-6";
+//   const sectionTitleStyles = "text-lg font-black text-slate-900 mb-6 flex items-center gap-2 border-b border-slate-100 pb-4";
+
+//   if (isHydrated && (!user || adminRole !== 'admin')) {
+//     return (
+//       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+//         <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-blue-500/10 z-0"></div>
+//         <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-10 w-full max-w-md shadow-2xl relative z-10 border border-white/20">
+//           <div className="text-center mb-8">
+//             <h1 className="text-3xl font-black text-orange-500 tracking-widest mb-1">SECURE<span className="text-slate-900">ADMIN</span></h1>
+//             <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mt-2">Authorized Personnel Only</p>
+//           </div>
+          
+//           {loginError && <div className="bg-red-50 border border-red-100 text-red-600 p-3 rounded-xl text-sm font-bold text-center mb-6 shadow-sm">{loginError}</div>}
+          
+//           <form onSubmit={handleAdminLoginSubmit} className="space-y-6">
+//             <div>
+//               <label className={labelStyles}>Admin Email</label>
+//               <input type="email" required className={inputStyles} value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} />
+//             </div>
+//             <div>
+//               <label className={labelStyles}>Master Password</label>
+//               <input type="password" required className={inputStyles} value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} />
+//             </div>
+//             <button type="submit" disabled={isLoggingIn} className={`w-full font-black py-4 rounded-xl text-white tracking-widest shadow-lg transition-all mt-6 ${isLoggingIn ? 'bg-slate-400' : 'bg-slate-900 hover:bg-orange-500 hover:shadow-orange-500/30 hover:-translate-y-1'}`}>
+//               {isLoggingIn ? 'AUTHENTICATING...' : 'ACCESS DASHBOARD'}
+//             </button>
+//           </form>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   if (!isHydrated) return null;
+
+//   return (
+//     <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8 font-sans pb-20 text-gray-900 selection:bg-orange-200">
+      
+//       {/* DASHBOARD HEADER */}
+//       <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+//         <div>
+//           <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Control Panel</h1>
+//           <p className="text-slate-500 font-medium mt-1">Manage inventory, orders, and store analytics.</p>
+//         </div>
+//         <div className="flex gap-4">
+//           <button onClick={() => router.push('/')} className="bg-white text-slate-700 font-bold px-6 py-2.5 rounded-full border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors">View Store</button>
+//           <button onClick={logout} className="bg-slate-900 text-white font-bold px-6 py-2.5 rounded-full shadow-md hover:bg-orange-500 transition-colors">Logout</button>
+//         </div>
+//       </div>
+
+//       <div className="max-w-[1600px] mx-auto">
+//         {/* STATS ROW */}
+//         {stats && (
+//           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+//             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group">
+//               <div className="absolute right-0 top-0 w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-bl-full opacity-10 group-hover:scale-110 transition-transform"></div>
+//               <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Total Revenue</p>
+//               <h3 className="text-3xl font-black text-slate-900">₹{stats.revenue.toLocaleString('en-IN')}</h3>
+//             </div>
+//             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group">
+//               <div className="absolute right-0 top-0 w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-bl-full opacity-10 group-hover:scale-110 transition-transform"></div>
+//               <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Total Orders</p>
+//               <h3 className="text-3xl font-black text-slate-900">{stats.orderCount}</h3>
+//             </div>
+//             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group">
+//               <div className="absolute right-0 top-0 w-16 h-16 bg-gradient-to-br from-orange-400 to-red-600 rounded-bl-full opacity-10 group-hover:scale-110 transition-transform"></div>
+//               <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Customers</p>
+//               <h3 className="text-3xl font-black text-slate-900">{stats.userCount}</h3>
+//             </div>
+//             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group">
+//               <div className="absolute right-0 top-0 w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-600 rounded-bl-full opacity-10 group-hover:scale-110 transition-transform"></div>
+//               <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Inventory</p>
+//               <h3 className="text-3xl font-black text-slate-900">{stats.productCount} <span className="text-lg font-bold text-slate-400">Items</span></h3>
+//             </div>
+//           </div>
+//         )}
+
+//         {/* BANNER MANAGEMENT SECTION UI */}
+//         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 md:p-10 mb-10">
+//           <h2 className="text-2xl font-black text-slate-900 mb-8 border-b border-slate-100 pb-4">🖼️ Homepage Slides</h2>
+//           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+//             <form onSubmit={handleUploadBanner} className="lg:col-span-1 space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+//               <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest mb-4">Add New Slide</h3>
+//               <div><label className={labelStyles}>Main Heading (Optional)</label><input type="text" className={inputStyles} value={bannerTitle} onChange={e => setBannerTitle(e.target.value)} /></div>
+//               <div><label className={labelStyles}>Sub-heading (Optional)</label><input type="text" className={inputStyles} value={bannerSubtitle} onChange={e => setBannerSubtitle(e.target.value)} /></div>
+//               <div><label className={labelStyles}>Redirect Link (Optional)</label><input type="text" className={inputStyles} placeholder="e.g. /product/123" value={bannerLink} onChange={e => setBannerLink(e.target.value)} /></div>
+//               <div>
+//                 <label className={labelStyles}>Slide Image (1920x800 recommended)</label>
+//                 <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl hover:border-orange-400 transition-colors bg-white cursor-pointer relative">
+//                     <div className="space-y-1 text-center">
+//                     <div className="text-3xl mb-2">📸</div>
+//                     <div className="flex text-sm text-gray-600">
+//                         <label className="relative cursor-pointer rounded-md font-black text-orange-500 hover:text-orange-600 focus-within:outline-none">
+//                         <span>Click to select image</span>
+//                         <input type="file" className="sr-only" accept="image/*" onChange={e => setBannerImage(e.target.files[0])} required />
+//                         </label>
+//                     </div>
+//                     <p className="text-xs text-gray-500">PNG, JPG up to 5MB</p>
+//                     {bannerImage && <p className="mt-2 text-xs font-bold text-emerald-600 truncate max-w-[150px]">✅ {bannerImage.name}</p>}
+//                     </div>
+//                 </div>
+//               </div>
+//               <button type="submit" disabled={isBannerUploading} className="w-full bg-slate-900 text-white font-black py-3 rounded-xl hover:bg-orange-500 transition-all uppercase text-xs tracking-widest shadow-md">
+//                 {isBannerUploading ? 'Uploading...' : 'Publish Slide'}
+//               </button>
+//             </form>
+
+//             <div className="lg:col-span-2 space-y-4">
+//                <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest mb-4">Active Slides ({allBanners.length})</h3>
+//                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//                   {allBanners.map((banner) => (
+//                     <div key={banner._id} className="relative group bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+//                       <img src={getImageUrl(banner.image)} className="w-full h-32 object-cover" alt="slide" />
+//                       <div className="p-4 flex justify-between items-center bg-white">
+//                         <div className="truncate pr-4">
+//                           <p className="font-bold text-slate-900 text-sm truncate">{banner.title}</p>
+//                           <p className="text-[10px] text-slate-400 font-bold uppercase">{banner.subtitle}</p>
+//                         </div>
+//                         <button onClick={() => handleDeleteBanner(banner._id)} className="bg-red-50 text-red-500 p-2 rounded-lg hover:bg-red-500 hover:text-white transition-colors">
+//                           🗑️
+//                         </button>
+//                       </div>
+//                     </div>
+//                   ))}
+//                </div>
+//                {allBanners.length === 0 && <p className="text-center py-10 text-slate-400 font-bold italic">No slides uploaded. Using default banners.</p>}
+//             </div>
+//           </div>
+//         </div>
+
+//         {/* ANALYTICS CHART */}
+//         {chartData.length > 0 && (
+//           <div className={sectionCardStyles}>
+//             <h2 className={sectionTitleStyles}>📈 Sales & Revenue Trends</h2>
+//             <div className="h-[350px] w-full pt-4">
+//               <ResponsiveContainer width="100%" height="100%">
+//                 <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+//                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+//                   <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} dy={10} />
+//                   <YAxis yAxisId="left" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val}`} dx={-10} />
+//                   <YAxis yAxisId="right" orientation="right" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} dx={10} />
+//                   <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} formatter={(value, name) => [name === 'Revenue' ? `₹${value.toLocaleString()}` : value, name]} />
+//                   <Legend wrapperStyle={{ paddingTop: '20px' }} />
+//                   <Bar yAxisId="left" dataKey="revenue" name="Revenue" fill="#f97316" radius={[6, 6, 0, 0]} maxBarSize={40} />
+//                   <Bar yAxisId="right" dataKey="orders" name="Orders" fill="#334155" radius={[6, 6, 0, 0]} maxBarSize={40} />
+//                 </BarChart>
+//               </ResponsiveContainer>
+//             </div>
+//           </div>
+//         )}
+
+//         {/* INVENTORY TABLE */}
+//         <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-10 border border-slate-100">
+//           <div className="p-6 md:p-8 bg-white border-b border-slate-100 flex justify-between items-center">
+//             <h2 className="text-xl font-black text-slate-900">🛒 Manage Inventory</h2>
+//             <span className="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-full">{products.length} Products</span>
+//           </div>
+//           <div className="overflow-x-auto">
+//             <table className="w-full text-left whitespace-nowrap">
+//               <thead className="bg-slate-50 border-b border-slate-100">
+//                 <tr>
+//                   <th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">Product</th>
+//                   <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Price</th>
+//                   <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Stock</th>
+//                   <th className="p-4 md:px-8 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th>
+//                 </tr>
+//               </thead>
+//               <tbody className="divide-y divide-slate-100">
+//                 {products.map((p) => (
+//                   <tr key={p._id} className="hover:bg-slate-50/50 transition-colors">
+//                     <td className="p-4 md:px-8 flex items-center gap-4">
+//                       <img src={getImageUrl(p.images[0])} className="w-14 h-14 object-contain rounded-xl border border-slate-200 bg-white p-1 shadow-sm" alt="thumbnail" />
+//                       <div>
+//                         <span className="font-bold text-slate-900 block">{p.name}</span>
+//                         <span className="text-xs font-bold text-slate-400 uppercase">{p.brand || 'Generic'}</span>
+//                       </div>
+//                     </td>
+//                     <td className="p-4 font-black text-slate-900">₹{p.discountPrice || p.price}</td>
+//                     <td className="p-4"><span className={`px-3 py-1 rounded-full text-[10px] uppercase font-black tracking-wider ${p.stock > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{p.stock} In Stock</span></td>
+//                     <td className="p-4 md:px-8 text-right space-x-3">
+//                       <button onClick={() => handleEditClick(p)} className="text-slate-500 hover:text-blue-600 font-bold text-sm bg-slate-100 hover:bg-blue-50 px-4 py-2 rounded-lg transition-colors">Edit</button>
+//                       <button onClick={() => handleDeleteProduct(p._id)} className="text-red-500 hover:text-red-700 font-bold text-sm bg-red-50 hover:bg-red-100 px-4 py-2 rounded-lg transition-colors">Delete</button>
+//                     </td>
+//                   </tr>
+//                 ))}
+//               </tbody>
+//             </table>
+//           </div>
+//         </div>
+
+//         {/* CUSTOMER ORDERS TABLE */}
+//         <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-10 border border-slate-100">
+//           <div className="p-6 md:p-8 bg-white border-b border-slate-100"><h2 className="text-xl font-black text-slate-900">📦 Logistics & Orders</h2></div>
+//           <div className="overflow-x-auto">
+//             <table className="w-full text-left whitespace-nowrap">
+//               <thead className="bg-slate-50 border-b border-slate-100">
+//                 <tr>
+//                   <th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">Order Info</th>
+//                   <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Customer</th>
+//                   <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Items</th>
+//                   <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Total</th>
+//                   <th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">Status</th>
+//                 </tr>
+//               </thead>
+//               <tbody className="divide-y divide-slate-100">
+//                 {orders.map((order) => (
+//                   <tr key={order._id} className="hover:bg-slate-50/50 transition-colors">
+//                     <td className="p-4 md:px-8 align-top pt-6">
+//                       <p className="font-mono font-black text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded inline-block uppercase tracking-wider mb-2">#{order._id.slice(-6)}</p>
+//                       <p className="text-xs font-bold text-slate-500">{new Date(order.createdAt).toLocaleDateString('en-IN')}</p>
+//                     </td>
+//                     <td className="p-4 align-top pt-6">
+//                       <div className="mb-3">
+//                         <p className="font-bold text-slate-900">{order.user?.name || 'Guest User'}</p>
+//                         <p className="text-xs text-slate-500">{order.user?.email}</p>
+//                       </div>
+//                       {order.shippingAddress ? (
+//                         <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl shadow-sm text-xs text-slate-700 max-w-[280px] whitespace-normal">
+//                           <p className="font-black text-slate-900 mb-2 border-b border-slate-200 pb-2">📍 Ship To:</p>
+//                           <p className="font-bold text-slate-800">{order.shippingAddress.fullName || order.shippingAddress.name || order.user?.name}</p>
+//                           <p className="leading-relaxed mt-1 text-slate-600">{order.shippingAddress.address}</p>
+//                           <p className="font-bold mt-1">{order.shippingAddress.city} - {order.shippingAddress.postalCode || order.shippingAddress.pincode}</p>
+//                           <p className="mt-3 pt-3 border-t border-slate-200 font-bold text-blue-600">📞 {order.shippingAddress.phone}</p>
+//                         </div>
+//                       ) : (
+//                         <span className="text-red-500 text-[10px] uppercase tracking-wider font-black bg-red-50 px-2 py-1 rounded">No shipping info</span>
+//                       )}
+//                     </td>
+//                     <td className="p-4 align-top pt-6">
+//                       <div className="text-xs text-slate-700 space-y-3 whitespace-normal min-w-[200px]">
+//                         {order.orderItems?.map((i, idx) => (
+//                           <div key={idx} className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+//                             <span className="font-black text-slate-900 bg-white px-1.5 py-0.5 rounded shadow-sm mr-2">{i.quantity || i.qty}x</span> 
+//                             <span className="font-semibold">{i.name}</span>
+//                             {i.selectedOptions && Object.keys(i.selectedOptions).length > 0 && (
+//                               <div className="mt-2 flex flex-wrap gap-1">
+//                                 {Object.entries(i.selectedOptions).map(([key, val]) => (<span key={key} className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">{key}: {val}</span>))}
+//                               </div>
+//                             )}
+//                           </div>
+//                         ))}
+//                       </div>
+//                     </td>
+//                     <td className="p-4 align-top pt-6 font-black text-slate-900 text-lg">₹{order.totalPrice?.toLocaleString('en-IN')}</td>
+//                     <td className="p-4 md:px-8 align-top pt-6">
+//                       <select value={order.status} onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)} className={`w-full p-2 mb-3 rounded-xl text-xs font-black uppercase tracking-wider outline-none cursor-pointer border-2 transition-colors ${order.status === 'Delivered' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : order.status === 'Shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' : order.status === 'Cancelled' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-orange-50 border-orange-200 text-orange-700'}`}>
+//                         <option value="Processing">Processing</option><option value="Shipped">Shipped</option><option value="Delivered">Delivered</option><option value="Cancelled">Cancelled</option>
+//                       </select>
+
+//                       {/* 🚀 INVOICE UPLOAD UI */}
+//                       <div className="mt-3 pt-3 border-t border-slate-200">
+//                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Upload Invoice (PDF)</label>
+//                         <input 
+//                           type="file" 
+//                           accept=".pdf, image/*" 
+//                           onChange={(e) => handleUploadInvoice(order._id, e)} 
+//                           className="w-full text-[10px] file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-200 file:text-slate-700 cursor-pointer" 
+//                         />
+//                         {order.invoiceUrl && (
+//                           <a href={getImageUrl(order.invoiceUrl)} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-600 hover:underline font-bold block mt-1">
+//                             📄 View Current Invoice
+//                           </a>
+//                         )}
+//                       </div>
+//                     </td>
+//                   </tr>
+//                 ))}
+//               </tbody>
+//             </table>
+//           </div>
+//         </div>
+
+//         {/* 🚀 UPGRADED: AFFILIATE PAYOUT APPROVALS */}
+//         <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-10 border border-slate-100">
+//           <div className="p-6 md:p-8 bg-white border-b border-slate-100"><h2 className="text-xl font-black text-slate-900">💳 Affiliate Payouts</h2></div>
+//           <div className="overflow-x-auto">
+//             <table className="w-full text-left whitespace-nowrap">
+//               <thead className="bg-slate-50 border-b border-slate-100"><tr><th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">User</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Amount</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Payout Details</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Status</th><th className="p-4 md:px-8 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th></tr></thead>
+//               <tbody className="divide-y divide-slate-100">
+//                 {withdrawals.map((req) => (
+//                   <tr key={req._id} className="hover:bg-slate-50/50">
+//                     <td className="p-4 md:px-8 font-bold text-slate-900">{req.userId?.name}</td>
+//                     <td className="p-4 font-black text-emerald-600">₹{req.amount?.toLocaleString()}</td>
+                    
+//                     {/* 🚀 UPGRADED: Dynamic Payout Details Display */}
+//                     <td className="p-4 align-top">
+//                       {req.details?.upiId ? (
+//                         <div className="bg-slate-50 p-2 rounded border border-slate-200 mt-2 inline-block">
+//                           <p className="text-[10px] font-black text-slate-400 uppercase">UPI ID</p>
+//                           <p className="font-mono text-xs font-bold text-slate-700">{req.details.upiId}</p>
+//                         </div>
+//                       ) : req.details?.accountNumber ? (
+//                         <div className="bg-slate-50 p-2 rounded border border-slate-200 text-xs mt-2 inline-block">
+//                           <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Bank Transfer</p>
+//                           <p><span className="font-bold text-slate-500">Name:</span> {req.details.accountName}</p>
+//                           <p><span className="font-bold text-slate-500">A/C:</span> <span className="font-mono font-bold text-slate-700">{req.details.accountNumber}</span></p>
+//                           <p><span className="font-bold text-slate-500">IFSC:</span> <span className="font-mono text-slate-700">{req.details.ifsc}</span></p>
+//                           <p><span className="font-bold text-slate-500">Bank:</span> {req.details.bankName}</p>
+//                         </div>
+//                       ) : (
+//                         <span className="text-red-500 text-xs font-bold">No details provided</span>
+//                       )}
+//                     </td>
+
+//                     <td className="p-4"><span className={`px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-black ${req.status === 'pending' ? 'bg-orange-100 text-orange-700' : req.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{req.status}</span></td>
+//                     <td className="p-4 md:px-8 text-right space-x-2">
+//                       {req.status === 'pending' && (<><button onClick={() => handleStatusUpdate(req._id, 'approved')} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm">Approve</button><button onClick={() => handleStatusUpdate(req._id, 'rejected')} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm">Reject</button></>)}
+//                     </td>
+//                   </tr>
+//                 ))}
+//               </tbody>
+//             </table>
+//           </div>
+//         </div>
+
+//         {/* PENDING REVIEWS APPROVAL TABLE */}
+//         <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-10 border border-slate-100">
+//           <div className="p-6 md:p-8 bg-white border-b border-slate-100"><h2 className="text-xl font-black text-slate-900">⭐ Pending Reviews</h2></div>
+//           <div className="overflow-x-auto">
+//             <table className="w-full text-left">
+//               <thead className="bg-slate-50 border-b border-slate-100"><tr><th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">Product & Customer</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest w-1/2">Review</th><th className="p-4 md:px-8 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th></tr></thead>
+//               <tbody className="divide-y divide-slate-100">
+//                 {pendingReviews.map((item) => (
+//                   <tr key={item.review._id} className="hover:bg-slate-50/50">
+//                     <td className="p-4 md:px-8 align-top pt-6">
+//                       <p className="font-black text-slate-900 text-sm mb-1">{item.productName}</p>
+//                       <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">By: {item.review.name}</p>
+//                     </td>
+//                     <td className="p-4 align-top pt-6">
+//                       <div className="text-yellow-400 text-sm mb-2 drop-shadow-sm">{'★'.repeat(item.review.rating)}{'☆'.repeat(5 - item.review.rating)}</div>
+//                       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative">
+//                         <span className="absolute -top-3 left-4 text-2xl text-slate-200">"</span>
+//                         <p className="text-sm text-slate-700 italic relative z-10">{item.review.comment}</p>
+//                       </div>
+//                     </td>
+//                     <td className="p-4 md:px-8 align-top pt-6 text-right space-x-2 whitespace-nowrap">
+//                       <button onClick={() => handleReviewAction(item.productId, item.review._id, 'approved')} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm">Approve</button>
+//                       <button onClick={() => handleReviewAction(item.productId, item.review._id, 'rejected')} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm">Reject</button>
+//                     </td>
+//                   </tr>
+//                 ))}
+//                 {pendingReviews.length === 0 && (<tr><td colSpan="3" className="p-12 text-center text-slate-400 font-bold uppercase tracking-widest text-sm bg-slate-50/50">No pending reviews.</td></tr>)}
+//               </tbody>
+//             </table>
+//           </div>
+//         </div>
+
+//         {/* ADD NEW PRODUCT FORM
+//         <div className="bg-white rounded-3xl shadow-sm p-6 md:p-10 border border-slate-100">
+//           <h2 className="text-2xl md:text-3xl font-black mb-8 border-b border-slate-100 pb-6 text-slate-900">📦 Publish New Gadget</h2>
+//           <form onSubmit={handleAddProduct} className="space-y-6">
+            
+//             SECTION 1: BASIC INFO
+//             <div className={sectionCardStyles}>
+//               <h3 className={sectionTitleStyles}>Basic Information</h3>
+//               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                 <div><label className={labelStyles}>Product Name</label><input type="text" className={inputStyles} value={name} onChange={e => setName(e.target.value)} required /></div>
+//                 <div><label className={labelStyles}>Brand</label><input type="text" className={inputStyles} value={brand} onChange={e => setBrand(e.target.value)} required /></div>
+//                 <div className="md:col-span-2"><label className={labelStyles}>Description</label><textarea className={`${inputStyles} h-32 resize-none`} value={description} onChange={e => setDescription(e.target.value)} required /></div>
+//                 <div><label className={labelStyles}>Category</label><select className={inputStyles} value={category} onChange={e => setCategory(e.target.value)}><option value="Smartphones">Smartphones</option><option value="Laptops">Laptops</option><option value="Audio">Audio</option><option value="Wearables">Wearables</option></select></div>
+//                 <div className="flex items-center mt-6">
+//                   <label className="flex items-center cursor-pointer">
+//                     <input type="checkbox" className="sr-only peer" checked={isBestSeller} onChange={e => setIsBestSeller(e.target.checked)} />
+//                     <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 relative"></div>
+//                     <span className="ml-3 text-sm font-bold text-slate-700 uppercase tracking-wider">Highlight as Best Seller</span>
+//                   </label>
+//                 </div>
+//               </div>
+//             </div>
+
+//             SECTION 2: PRICING & INVENTORY
+//             <div className={sectionCardStyles}>
+//               <h3 className={sectionTitleStyles}>Pricing & Inventory</h3>
+//               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+//                 <div><label className={labelStyles}>Base MRP (₹)</label><input type="number" className={inputStyles} value={price} onChange={e => setPrice(e.target.value)} required /></div>
+//                 <div><label className={labelStyles}>Discount Price (₹)</label><input type="number" className={inputStyles} value={discountPrice} onChange={e => setDiscountPrice(e.target.value)} /></div>
+//                 <div><label className={labelStyles}>Total Stock</label><input type="number" className={inputStyles} value={stock} onChange={e => setStock(e.target.value)} required /></div>
+//               </div>
+//             </div> */}
+
+// {/* ADD NEW PRODUCT FORM CONTAINER */}
+// <div className="max-w-[1000px] mx-auto pb-20">
+//   <div className="flex items-center justify-between mb-6 border-b border-[#DDD] pb-4">
+//     <div>
+//       <h2 className="text-[22px] font-bold text-[#111]">Add a Product</h2>
+//       <p className="text-[13px] text-[#565959]">Vital Info {'>'} Offer {'>'} Images {'>'} Description</p>
+//     </div>
+//     <div className="flex gap-2">
+//       <button onClick={() => setActiveTab('inventory')} className="bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-1.5 px-4 rounded-[8px] text-[13px] shadow-sm">Cancel</button>
+//       <button type="submit" form="addProductForm" className="bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-1.5 px-6 rounded-[8px] text-[13px] font-medium shadow-sm">Save and finish</button>
+//     </div>
+//   </div>
+
+//   <form id="addProductForm" onSubmit={handleAddProduct} className="space-y-6">
+    
+//     {/* SECTION 1: PRODUCT IDENTITY (BASIC INFO) */}
+//     <div className="bg-white border border-[#DDD] rounded-[4px] shadow-sm overflow-hidden">
+//       <div className="bg-[#F0F2F2] px-6 py-3 border-b border-[#DDD]">
+//         <h3 className="text-[14px] font-bold text-[#111]">Product Identity</h3>
+//       </div>
+      
+//       <div className="p-6">
+//         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//           <div className="md:col-span-2">
+//             <label className="block text-[13px] font-bold text-[#111] mb-1">Product Name (Title)</label>
+//             <input 
+//               type="text" 
+//               className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
+//               placeholder="e.g. Apple iPhone 15 Pro (128 GB) - Natural Titanium"
+//               value={name} 
+//               onChange={e => setName(e.target.value)} 
+//               required 
+//             />
+//             <p className="text-[10px] text-[#565959] mt-1">Recommended length: 60-150 characters for better visibility.</p>
+//           </div>
+
+//           <div>
+//             <label className="block text-[13px] font-bold text-[#111] mb-1">Brand Name</label>
+//             <input 
+//               type="text" 
+//               className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
+//               value={brand} 
+//               onChange={e => setBrand(e.target.value)} 
+//               required 
+//             />
+//           </div>
+
+//           <div>
+//             <label className="block text-[13px] font-bold text-[#111] mb-1">Category</label>
+//             <select 
+//               className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] outline-none bg-white cursor-pointer" 
+//               value={category} 
+//               onChange={e => setCategory(e.target.value)}
+//             >
+//               <option value="Smartphones">Smartphones</option>
+//               <option value="Laptops">Laptops</option>
+//               <option value="Audio">Audio</option>
+//               <option value="Wearables">Wearables</option>
+//               <option value="Accessories">Accessories</option>
+//             </select>
+//           </div>
+
+//           <div className="md:col-span-2">
+//             <label className="block text-[13px] font-bold text-[#111] mb-1">Product Description</label>
+//             <textarea 
+//               className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] h-32 focus:border-[#e77600] outline-none resize-none" 
+//               placeholder="Provide a detailed overview of the product..."
+//               value={description} 
+//               onChange={e => setDescription(e.target.value)} 
+//               required 
+//             />
+//           </div>
+
+//           <div className="bg-[#F7FAFA] border border-[#D5D9D9] p-4 rounded-[4px] md:col-span-2">
+//             <label className="flex items-center gap-3 cursor-pointer">
+//               <input 
+//                 type="checkbox" 
+//                 className="w-4 h-4 accent-[#e77600]" 
+//                 checked={isBestSeller} 
+//                 onChange={e => setIsBestSeller(e.target.checked)} 
+//               />
+//               <div>
+//                 <span className="text-[13px] font-bold text-[#111]">Apply "Best Seller" Badge</span>
+//                 <p className="text-[11px] text-[#565959]">This adds an orange ribbon to the product on the storefront.</p>
+//               </div>
+//             </label>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+
+//     {/* SECTION 2: OFFER (PRICING & INVENTORY) */}
+//     <div className="bg-white border border-[#DDD] rounded-[4px] shadow-sm overflow-hidden">
+//       <div className="bg-[#F0F2F2] px-6 py-3 border-b border-[#DDD]">
+//         <h3 className="text-[14px] font-bold text-[#111]">Pricing & Inventory</h3>
+//       </div>
+      
+//       <div className="p-6">
+//         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+//           <div>
+//             <label className="block text-[13px] font-bold text-[#111] mb-1">List Price (MRP)</label>
+//             <div className="relative">
+//               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[13px]">₹</span>
+//               <input 
+//                 type="number" 
+//                 className="w-full border border-[#888C8C] rounded-[3px] p-2 pl-6 text-[13px] focus:border-[#e77600] outline-none" 
+//                 value={price} 
+//                 onChange={e => setPrice(e.target.value)} 
+//                 required 
+//               />
+//             </div>
+//           </div>
+
+//           <div>
+//             <label className="block text-[13px] font-bold text-[#111] mb-1">Your Price (Discounted)</label>
+//             <div className="relative">
+//               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[13px]">₹</span>
+//               <input 
+//                 type="number" 
+//                 className="w-full border border-[#888C8C] rounded-[3px] p-2 pl-6 text-[13px] focus:border-[#e77600] outline-none" 
+//                 value={discountPrice} 
+//                 onChange={e => setDiscountPrice(e.target.value)} 
+//               />
+//             </div>
+//             <p className="text-[10px] text-[#B12704] mt-1 font-bold">Leave blank if no discount.</p>
+//           </div>
+
+//           <div>
+//             <label className="block text-[13px] font-bold text-[#111] mb-1">Quantity in Stock</label>
+//             <input 
+//               type="number" 
+//               className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] outline-none" 
+//               value={stock} 
+//               onChange={e => setStock(e.target.value)} 
+//               required 
+//             />
+//             <p className="text-[10px] text-[#565959] mt-1">Status: {stock > 0 ? 'In Stock' : 'Out of Stock'}</p>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+
+//             {/* SECTION 3: FEATURES & SPECS */}
+//             {/* <div className={sectionCardStyles}>
+//               <h3 className={sectionTitleStyles}>Technical Details</h3>
+//               <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+//                 <div>
+//                   <div className="flex justify-between items-center mb-4"><label className={labelStyles}>Tech Specs (Table)</label><button type="button" onClick={() => setSpecs([...specs, { name: '', value: '' }])} className="text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Row</button></div>
+//                   <div className="space-y-3">
+//                     {specs.map((spec, index) => (
+//                       <div key={index} className="flex gap-3 relative group">
+//                         <input type="text" placeholder="e.g. RAM" className={`${inputStyles} w-1/3`} value={spec.name} onChange={e => {const newSpecs=[...specs]; newSpecs[index].name=e.target.value; setSpecs(newSpecs)}} />
+//                         <input type="text" placeholder="e.g. 12GB Unified" className={`${inputStyles} flex-1`} value={spec.value} onChange={e => {const newSpecs=[...specs]; newSpecs[index].value=e.target.value; setSpecs(newSpecs)}} />
+//                         {specs.length > 1 && <button type="button" onClick={() => setSpecs(specs.filter((_, i) => i !== index))} className="absolute -right-3 top-1/2 -translate-y-1/2 bg-red-100 text-red-600 w-6 h-6 rounded-full flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity">×</button>}
+//                       </div>
+//                     ))}
+//                   </div>
+//                 </div>
+//                 <div>
+//                   <div className="flex justify-between items-center mb-4"><label className={labelStyles}>Key Features (Bullets)</label><button type="button" onClick={() => setFeatures([...features, ''])} className="text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Feature</button></div>
+//                   <div className="space-y-3">
+//                     {features.map((f, index) => (
+//                       <div key={index} className="flex gap-3 relative group">
+//                         <input type="text" placeholder="e.g. Aerospace-grade titanium design" className={inputStyles} value={f} onChange={e => {const newFeatures=[...features]; newFeatures[index]=e.target.value; setFeatures(newFeatures)}} />
+//                         {features.length > 1 && <button type="button" onClick={() => setFeatures(features.filter((_, i) => i !== index))} className="absolute -right-3 top-1/2 -translate-y-1/2 bg-red-100 text-red-600 w-6 h-6 rounded-full flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity">×</button>}
+//                       </div>
+//                     ))}
+//                   </div>
+//                 </div>
+//               </div>
+//             </div> */}
+// {/* SECTION 3: FEATURES & SPECS */}
+// <div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-6 shadow-sm">
+//   <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6">
+//     <span className="text-xl">🛠️</span>
+//     <h3 className="text-[18px] font-bold text-[#111]">Technical Details & Product Highlights</h3>
+//   </div>
+
+//   <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+    
+//     {/* LEFT COLUMN: TECH SPECS */}
+//     <div className="space-y-4">
+//       <div className="flex justify-between items-center">
+//         <div>
+//           <label className="block text-[13px] font-bold text-[#111]">Technical Specifications</label>
+//           <p className="text-[11px] text-[#565959]">Appear in the "Details" table on product page</p>
+//         </div>
+//         <button 
+//           type="button" 
+//           onClick={() => setSpecs([...specs, { name: '', value: '' }])} 
+//           className="bg-[#F7FAFA] border border-[#D5D9D9] hover:bg-[#F0F2F2] text-[#0F1111] px-3 py-1 rounded-[8px] text-[12px] font-medium shadow-sm transition-all flex items-center gap-1"
+//         >
+//           <span className="text-lg font-light">+</span> Add Attribute
+//         </button>
+//       </div>
+
+//       <div className="bg-[#F9F9F9] border border-[#EEE] rounded-[4px] p-4 space-y-3">
+//         {specs.map((spec, index) => (
+//           <div key={index} className="flex gap-2 relative group items-start animate-in fade-in slide-in-from-left-2 duration-200">
+//             <div className="w-1/3">
+//               <input 
+//                 type="text" 
+//                 placeholder="Attribute (e.g. RAM)" 
+//                 className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none bg-white" 
+//                 value={spec.name} 
+//                 onChange={e => {const newSpecs=[...specs]; newSpecs[index].name=e.target.value; setSpecs(newSpecs)}} 
+//               />
+//             </div>
+//             <div className="flex-1">
+//               <input 
+//                 type="text" 
+//                 placeholder="Value (e.g. 16GB)" 
+//                 className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none bg-white" 
+//                 value={spec.value} 
+//                 onChange={e => {const newSpecs=[...specs]; newSpecs[index].value=e.target.value; setSpecs(newSpecs)}} 
+//               />
+//             </div>
+//             {specs.length > 1 && (
+//               <button 
+//                 type="button" 
+//                 onClick={() => setSpecs(specs.filter((_, i) => i !== index))} 
+//                 className="p-2 text-[#565959] hover:text-[#B12704] hover:bg-red-50 rounded-md transition-colors"
+//                 title="Remove Row"
+//               >
+//                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+//               </button>
+//             )}
+//           </div>
+//         ))}
+//       </div>
+//     </div>
+
+//     {/* RIGHT COLUMN: BULLET FEATURES */}
+//     <div className="space-y-4">
+//       <div className="flex justify-between items-center">
+//         <div>
+//           <label className="block text-[13px] font-bold text-[#111]">Key Features</label>
+//           <p className="text-[11px] text-[#565959]">Appear as bullet points near the product image</p>
+//         </div>
+//         <button 
+//           type="button" 
+//           onClick={() => setFeatures([...features, ''])} 
+//           className="bg-[#F7FAFA] border border-[#D5D9D9] hover:bg-[#F0F2F2] text-[#0F1111] px-3 py-1 rounded-[8px] text-[12px] font-medium shadow-sm transition-all flex items-center gap-1"
+//         >
+//           <span className="text-lg font-light">+</span> Add Bullet
+//         </button>
+//       </div>
+
+//       <div className="space-y-3">
+//         {features.map((f, index) => (
+//           <div key={index} className="flex gap-2 group items-center animate-in fade-in slide-in-from-right-2 duration-200">
+//             <div className="h-2 w-2 rounded-full bg-[#e77600] shrink-0"></div>
+//             <input 
+//               type="text" 
+//               placeholder="Enter a key selling point..." 
+//               className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
+//               value={f} 
+//               onChange={e => {const newFeatures=[...features]; newFeatures[index]=e.target.value; setFeatures(newFeatures)}} 
+//             />
+//             {features.length > 1 && (
+//               <button 
+//                 type="button" 
+//                 onClick={() => setFeatures(features.filter((_, i) => i !== index))} 
+//                 className="p-2 text-[#565959] hover:text-[#B12704] hover:bg-red-50 rounded-md opacity-0 group-hover:opacity-100 transition-all"
+//               >
+//                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+//               </button>
+//             )}
+//           </div>
+//         ))}
+//       </div>
+//     </div>
+
+//   </div>
+// </div>
+//             {/* SECTION 4: VARIANTS
+//             <div className={sectionCardStyles}>
+//               <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-4">
+//                 <div><h3 className="text-lg font-black text-slate-900">Variants & Pricing Modifiers</h3><p className="text-xs font-bold text-slate-400 mt-1">Format: <span className="text-orange-500 bg-orange-50 px-2 py-0.5 rounded border border-orange-100 font-mono">128GB, 256GB(+5000)</span></p></div>
+//                 <button type="button" onClick={() => setVariants([...variants, { name: '', options: '' }])} className="text-[10px] bg-slate-900 text-white px-4 py-2 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Variant Group</button>
+//               </div>
+//               <div className="space-y-4">
+//                 {variants.map((variant, index) => (
+//                   <div key={index} className="flex flex-col md:flex-row gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 relative group">
+//                     <div className="w-full md:w-1/4"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Variant Name</label><input type="text" placeholder="e.g. Storage" className={inputStyles} value={variant.name} onChange={e => { const newVars = [...variants]; newVars[index].name = e.target.value; setVariants(newVars); }} /></div>
+//                     <div className="w-full md:flex-1"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Options (Comma separated)</label><input type="text" placeholder="128GB, 256GB(+5000)" className={inputStyles} value={variant.options} onChange={e => { const newVars = [...variants]; newVars[index].options = e.target.value; setVariants(newVars); }} /></div>
+//                     {variants.length > 1 && <button type="button" onClick={() => setVariants(variants.filter((_, i) => i !== index))} className="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center font-bold shadow-md hover:scale-110 transition-transform">×</button>}
+//                   </div>
+//                 ))}
+//               </div>
+//             </div> */}
+// {/* SECTION 4: VARIANTS & PRICING */}
+// <div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-6 shadow-sm">
+//   <div className="flex items-center justify-between border-b border-[#EEE] pb-4 mb-6">
+//     <div className="flex items-center gap-2">
+//       <span className="text-xl">🎭</span>
+//       <h3 className="text-[18px] font-bold text-[#111]">Variants & Pricing Modifiers</h3>
+//     </div>
+//     <button 
+//       type="button" 
+//       onClick={() => setVariants([...variants, { name: '', options: '' }])} 
+//       className="bg-[#F7FAFA] border border-[#D5D9D9] hover:bg-[#F0F2F2] text-[#0F1111] px-4 py-1.5 rounded-[8px] text-[12px] font-medium shadow-sm transition-all flex items-center gap-1"
+//     >
+//       <span className="text-lg font-light">+</span> Add Variant Group
+//     </button>
+//   </div>
+
+//   {/* Helpful Instruction Banner */}
+//   <div className="bg-[#F0F7FF] border border-[#007185] rounded-[4px] p-3 mb-6 flex gap-3">
+//     <span className="text-[#007185] font-bold mt-0.5">ℹ️</span>
+//     <div>
+//       <p className="text-[12px] text-[#007185] font-bold uppercase tracking-tight">How to set dynamic pricing:</p>
+//       <p className="text-[12px] text-[#111]">
+//         List options separated by commas. Use <code className="bg-white px-1 border rounded text-[#e77600] font-bold">(+Value)</code> to increase price for that option.
+//         <br />
+//         <span className="text-[#565959] italic">Example: Black, Titanium(+5000), Gold(+2500)</span>
+//       </p>
+//     </div>
+//   </div>
+
+//   <div className="space-y-4">
+//     {variants.map((variant, index) => (
+//       <div 
+//         key={index} 
+//         className="flex flex-col md:flex-row gap-4 bg-[#F9F9F9] p-5 rounded-[4px] border border-[#EEE] relative group animate-in fade-in slide-in-from-bottom-2 duration-300"
+//       >
+//         {/* Delete Button - Floating top right */}
+//         {variants.length > 1 && (
+//           <button 
+//             type="button" 
+//             onClick={() => setVariants(variants.filter((_, i) => i !== index))} 
+//             className="absolute -top-2 -right-2 bg-white border border-[#DDD] text-[#565959] hover:text-[#B12704] hover:border-[#B12704] w-7 h-7 rounded-full flex items-center justify-center shadow-sm transition-all z-10 opacity-0 group-hover:opacity-100"
+//           >
+//             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+//           </button>
+//         )}
+
+//         <div className="w-full md:w-1/4">
+//           <label className="block text-[11px] font-bold text-[#565959] uppercase mb-1.5 ml-1">Attribute Name</label>
+//           <input 
+//             type="text" 
+//             placeholder="e.g. Storage" 
+//             className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none bg-white font-bold" 
+//             value={variant.name} 
+//             onChange={e => { const newVars = [...variants]; newVars[index].name = e.target.value; setVariants(newVars); }} 
+//           />
+//         </div>
+
+//         <div className="w-full md:flex-1">
+//           <label className="block text-[11px] font-bold text-[#565959] uppercase mb-1.5 ml-1">Options & Price Adjustments</label>
+//           <input 
+//             type="text" 
+//             placeholder="e.g. 128GB, 256GB(+5000), 512GB(+12000)" 
+//             className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none bg-white font-mono" 
+//             value={variant.options} 
+//             onChange={e => { const newVars = [...variants]; newVars[index].options = e.target.value; setVariants(newVars); }} 
+//           />
+//         </div>
+//       </div>
+//     ))}
+//   </div>
+// </div>
+//             {/* SECTION 5: SEO & META
+//             <div className={sectionCardStyles}>
+//               <h3 className={sectionTitleStyles}>Search Engine Optimization (SEO)</h3>
+//               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                 <div><label className={labelStyles}>SEO Title (Meta Title)</label><input type="text" placeholder="e.g. Buy iPhone 17 Pro Max Online | AMAZON SMARTS" className={inputStyles} value={seoTitle} onChange={e => setSeoTitle(e.target.value)} /></div>
+//                 <div><label className={labelStyles}>SEO Keywords (Comma separated)</label><input type="text" placeholder="iphone 17, apple smartphone, buy iphone online" className={inputStyles} value={seoKeywords} onChange={e => setSeoKeywords(e.target.value)} /></div>
+//                 <div className="md:col-span-2"><label className={labelStyles}>SEO Description (Max 160 characters)</label><textarea placeholder="Get the best deals on the new iPhone 17. Free shipping and 7-day returns..." className={`${inputStyles} h-20 resize-none`} value={seoDescription} onChange={e => setSeoDescription(e.target.value)} /></div>
+//               </div>
+//             </div> */}
+// {/* SECTION 5: SEO & META */}
+// <div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-6 shadow-sm">
+//   <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6">
+//     <span className="text-xl">🔍</span>
+//     <h3 className="text-[18px] font-bold text-[#111]">Search Engine Optimization (SEO)</h3>
+//   </div>
+
+//   <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+    
+//     {/* LEFT: INPUT FIELDS */}
+//     <div className="space-y-5">
+//       <div>
+//         <label className="block text-[13px] font-bold text-[#111] mb-1">Meta Title</label>
+//         <input 
+//           type="text" 
+//           placeholder="e.g. Buy iPhone 17 Pro Max Online | AMAZON SMARTS" 
+//           className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
+//           value={seoTitle} 
+//           onChange={e => setSeoTitle(e.target.value)} 
+//         />
+//         <div className="flex justify-between mt-1">
+//           <p className="text-[10px] text-[#565959]">Appears as the clickable link in search results.</p>
+//           <p className={`text-[10px] font-bold ${seoTitle.length > 60 ? 'text-[#B12704]' : 'text-green-700'}`}>
+//             {seoTitle.length}/60
+//           </p>
+//         </div>
+//       </div>
+
+//       <div>
+//         <label className="block text-[13px] font-bold text-[#111] mb-1">Focus Keywords</label>
+//         <input 
+//           type="text" 
+//           placeholder="iphone 17 pro, apple smartphone, best flagship" 
+//           className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
+//           value={seoKeywords} 
+//           onChange={e => setSeoKeywords(e.target.value)} 
+//         />
+//         <p className="text-[10px] text-[#565959] mt-1">Separate keywords with commas.</p>
+//       </div>
+
+//       <div>
+//         <label className="block text-[13px] font-bold text-[#111] mb-1">Meta Description</label>
+//         <textarea 
+//           placeholder="Get the best deals on the new iPhone 17. Free shipping and 7-day returns..." 
+//           className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] h-24 resize-none focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
+//           value={seoDescription} 
+//           onChange={e => setSeoDescription(e.target.value)} 
+//         />
+//         <div className="flex justify-between mt-1">
+//           <p className="text-[10px] text-[#565959]">Brief summary for search engine snippets.</p>
+//           <p className={`text-[10px] font-bold ${seoDescription.length > 160 ? 'text-[#B12704]' : 'text-green-700'}`}>
+//             {seoDescription.length}/160
+//           </p>
+//         </div>
+//       </div>
+//     </div>
+
+//     {/* RIGHT: SEARCH PREVIEW CARD */}
+//     <div className="bg-[#F9F9F9] border border-[#EEE] rounded-[4px] p-6 flex flex-col justify-center">
+//       <p className="text-[12px] font-bold text-[#565959] uppercase tracking-wider mb-4 flex items-center gap-2">
+//         <span>🌐</span> Google Search Preview
+//       </p>
+      
+//       <div className="bg-white p-5 border border-[#DDD] rounded shadow-sm max-w-[500px]">
+//         {/* Mock URL */}
+//         <p className="text-[12px] text-[#202124] mb-1 truncate">
+//           https://amazonsmarts.com › products › <span className="text-[#5f6368]">{name ? name.toLowerCase().replace(/ /g, '-') : 'product-url'}</span>
+//         </p>
+//         {/* Mock Title */}
+//         <h4 className="text-[18px] text-[#1a0dab] hover:underline cursor-pointer font-medium leading-tight mb-1 truncate">
+//           {seoTitle || (name ? `${name} | AMAZON SMARTS` : 'Page Title Notification Goes Here')}
+//         </h4>
+//         {/* Mock Description */}
+//         <p className="text-[13px] text-[#4d5156] line-clamp-2 leading-relaxed">
+//           {seoDescription || 'Provide a meta description to see how your product will appear in search engine results. This summary helps customers find your store.'}
+//         </p>
+//       </div>
+
+//       <div className="mt-6 space-y-2">
+//         <p className="text-[11px] text-[#565959] flex items-center gap-2">
+//           <span className={seoTitle.length > 30 && seoTitle.length < 60 ? 'text-green-600' : 'text-gray-300'}>●</span> 
+//           Title length is optimal for mobile and desktop.
+//         </p>
+//         <p className="text-[11px] text-[#565959] flex items-center gap-2">
+//           <span className={seoDescription.length > 70 && seoDescription.length < 160 ? 'text-green-600' : 'text-gray-300'}>●</span> 
+//           Description is within the recommended character limit.
+//         </p>
+//       </div>
+//     </div>
+
+//   </div>
+// </div>
+//             {/* SECTION 6: POLICIES & CANCELLATIONS
+//             <div className={sectionCardStyles}>
+//               <h3 className={sectionTitleStyles}>Trust, Policies & Cancellations</h3>
+//               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                 <div><label className={labelStyles}>Return Policy</label><input type="text" placeholder="e.g. 7 Days Replacement" className={inputStyles} value={returnPolicy} onChange={e => setReturnPolicy(e.target.value)} required /></div>
+//                 <div><label className={labelStyles}>Warranty Policy</label><input type="text" placeholder="e.g. 1 Year Brand Warranty" className={inputStyles} value={warrantyPolicy} onChange={e => setWarrantyPolicy(e.target.value)} required /></div>
+                
+//                 🚀 CANCELLATION CONTROLS
+//                 <div className="flex flex-col justify-center mt-2">
+//                   <label className="flex items-center cursor-pointer mb-2">
+//                     <input type="checkbox" className="sr-only peer" checked={isCancellable} onChange={e => setIsCancellable(e.target.checked)} />
+//                     <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 relative"></div>
+//                     <span className="ml-3 text-sm font-bold text-slate-700 uppercase tracking-wider">Allow Customer Cancellations</span>
+//                   </label>
+//                 </div>
+//                 <div>
+//                   <label className={labelStyles}>Cancellation Window (Hours)</label>
+//                   <input type="number" min="0" placeholder="e.g. 24" className={inputStyles} value={cancellationWindowHours} onChange={e => setCancellationWindowHours(e.target.value)} disabled={!isCancellable} required={isCancellable} />
+//                 </div>
+//               </div>
+//             </div>
+
+//             SECTION 7: MEDIA
+//             <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 rounded-2xl shadow-lg border border-slate-700">
+//               <h3 className="text-lg font-black text-white mb-6 flex items-center gap-2 border-b border-slate-700 pb-4">📸 Upload Media Assets</h3>
+//               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+//                 <div className="bg-slate-900/50 p-6 rounded-xl border border-white/10 border-dashed">
+//                   <label className="block text-sm font-black text-orange-400 uppercase tracking-widest mb-3 text-center">Gallery Images</label>
+//                   <input type="file" multiple accept="image/*" className="w-full text-slate-300 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:tracking-wider file:bg-orange-500 file:text-white hover:file:bg-orange-600 transition-colors cursor-pointer" onChange={e => setImages(e.target.files)} required />
+//                 </div>
+//                 <div className="bg-slate-900/50 p-6 rounded-xl border border-white/10 border-dashed">
+//                   <label className="block text-sm font-black text-blue-400 uppercase tracking-widest mb-3 text-center">Promo Banners (A+ Content)</label>
+//                   <input type="file" multiple accept="image/*" className="w-full text-slate-300 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:tracking-wider file:bg-blue-500 file:text-white hover:file:bg-blue-600 transition-colors cursor-pointer" onChange={e => setBanners(e.target.files)} />
+//                 </div>
+//               </div>
+//             </div>
+
+//             <button type="submit" className="w-full bg-orange-500 text-white font-black py-5 rounded-2xl text-xl hover:bg-orange-600 hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(249,115,22,0.5)] transition-all uppercase tracking-widest">
+//               🚀 Publish to Live Store
+//             </button>
+//           </form>
+//         </div>
+//       </div> */}
+
+// {/* SECTION 6: TRUST, POLICIES & CANCELLATIONS */}
+// <div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-6 shadow-sm">
+//   <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6">
+//     <span className="text-xl">🛡️</span>
+//     <h3 className="text-[18px] font-bold text-[#111]">Compliance & Customer Policies</h3>
+//   </div>
+
+//   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+//     <div className="space-y-4">
+//       <div>
+//         <label className="block text-[13px] font-bold text-[#111] mb-1">Return Policy</label>
+//         <input 
+//           type="text" 
+//           placeholder="e.g. 7 Days Replacement" 
+//           className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
+//           value={returnPolicy} 
+//           onChange={e => setReturnPolicy(e.target.value)} 
+//           required 
+//         />
+//       </div>
+//       <div>
+//         <label className="block text-[13px] font-bold text-[#111] mb-1">Warranty Details</label>
+//         <input 
+//           type="text" 
+//           placeholder="e.g. 1 Year Brand Warranty" 
+//           className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
+//           value={warrantyPolicy} 
+//           onChange={e => setWarrantyPolicy(e.target.value)} 
+//           required 
+//         />
+//       </div>
+//     </div>
+
+//     <div className="bg-[#F7FAFA] border border-[#D5D9D9] p-5 rounded-[4px]">
+//       <div className="flex items-center justify-between mb-4">
+//         <div>
+//           <h4 className="text-[13px] font-bold text-[#111]">Cancellation Control</h4>
+//           <p className="text-[11px] text-[#565959]">Allow users to cancel before shipping</p>
+//         </div>
+//         <label className="relative inline-flex items-center cursor-pointer">
+//           <input 
+//             type="checkbox" 
+//             className="sr-only peer" 
+//             checked={isCancellable} 
+//             onChange={e => setIsCancellable(e.target.checked)} 
+//           />
+//           <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00a8e1]"></div>
+//         </label>
+//       </div>
+
+//       <div className={`transition-all duration-300 ${isCancellable ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+//         <label className="block text-[12px] font-bold text-[#111] mb-1">Cancellation Window (Hours)</label>
+//         <div className="flex items-center gap-3">
+//           <input 
+//             type="number" 
+//             className="w-24 border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] outline-none bg-white" 
+//             value={cancellationWindowHours} 
+//             onChange={e => setCancellationWindowHours(e.target.value)} 
+//           />
+//           <span className="text-[12px] text-[#565959]">hours after placing order</span>
+//         </div>
+//       </div>
+//     </div>
+//   </div>
+// </div>
+// {/* SECTION 7: MEDIA ASSETS (Fixed Variable Name) */}
+// <div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-12 shadow-sm">
+//   <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6">
+//     <span className="text-xl">📸</span>
+//     <h3 className="text-[18px] font-bold text-[#111]">Product Media & A+ Content</h3>
+//   </div>
+
+//   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+//     {/* Main Gallery */}
+//     <div className="space-y-2">
+//       <label className="block text-[13px] font-bold text-[#111]">Gallery Images (Main Display)</label>
+//       <div className="border-2 border-dashed border-[#D5D9D9] rounded-[4px] p-8 text-center hover:bg-[#F7FAFA] transition-colors relative cursor-pointer group">
+//         <input 
+//           type="file" 
+//           multiple 
+//           accept="image/*" 
+//           className="absolute inset-0 opacity-0 cursor-pointer" 
+//           onChange={e => setImages(e.target.files)} 
+//           required 
+//         />
+//         <div className="text-[#565959] group-hover:text-[#111]">
+//           <p className="text-2xl mb-1">📤</p>
+//           <p className="text-[13px] font-medium">Click to upload product photos</p>
+//           <p className="text-[11px] mt-1">{images.length > 0 ? `✅ ${images.length} files selected` : 'Minimum 1 image required'}</p>
+//         </div>
+//       </div>
+//     </div>
+
+//     {/* A+ Content / Banners */}
+//     <div className="space-y-2">
+//       <label className="block text-[13px] font-bold text-[#111]">Promo Banners (Description Area)</label>
+//       <div className="border-2 border-dashed border-[#D5D9D9] rounded-[4px] p-8 text-center hover:bg-[#F7FAFA] transition-colors relative cursor-pointer group">
+//         <input 
+//           type="file" 
+//           multiple 
+//           accept="image/*" 
+//           className="absolute inset-0 opacity-0 cursor-pointer" 
+//           onChange={e => setBanners(e.target.files)} // Uses 'setBanners'
+//         />
+//         <div className="text-[#565959] group-hover:text-[#111]">
+//           <p className="text-2xl mb-1">🖼️</p>
+//           <p className="text-[13px] font-medium">Add manufacturer info banners</p>
+//           <p className="text-[11px] mt-1">{banners.length > 0 ? `✅ ${banners.length} banners selected` : 'A+ Content is optional'}</p> 
+//         </div>
+        
+//       </div>
+//     </div>
+//   </div>
+// </div>
+// <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#DDD] p-4 z-50 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] lg:left-[220px]">
+//   <div className="max-w-[1000px] mx-auto flex justify-end gap-4 items-center">
+//     <div className="hidden md:block text-right pr-4 border-r border-[#EEE]">
+//       <p className="text-[11px] text-[#565959] uppercase font-bold">Current Status</p>
+//       <p className="text-[13px] text-green-700 font-bold">Ready to Publish</p>
+//     </div>
+//     <button 
+//       type="button" 
+//       onClick={() => setActiveTab('inventory')}
+//       className="bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-2 px-8 rounded-[8px] text-[14px] font-medium transition-all"
+//     >
+//       Discard
+//     </button>
+//     <button 
+//       type="submit" 
+//       className="bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-2 px-12 rounded-[8px] text-[14px] font-bold shadow-sm active:scale-95 transition-all"
+//     >
+//       Publish Product Listing
+//     </button>
+//   </div>
+// </div>
+// </form>
+// </div>
+// </div>
+
+
+
+//       {/* THE ULTIMATE EDIT MODAL */}
+//       {editingProduct && editForm && (
+//         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 z-50 overflow-y-auto">
+//           <div className="bg-slate-50 rounded-3xl w-full max-w-6xl shadow-2xl relative my-auto border border-white/20">
+            
+//             {/* Modal Header (Sticky) */}
+//             <div className="sticky top-0 bg-white/90 backdrop-blur-md px-8 py-6 border-b border-slate-200 flex justify-between items-center rounded-t-3xl z-20">
+//               <div>
+//                 <h2 className="text-2xl font-black text-slate-900 tracking-tight">Edit <span className="text-orange-500">{editingProduct.name}</span></h2>
+//                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Make changes below and save.</p>
+//               </div>
+//               <button onClick={() => setEditingProduct(null)} className="w-10 h-10 bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600 rounded-full flex items-center justify-center font-black transition-colors text-xl pb-1">×</button>
+//             </div>
+            
+//             <div className="p-8 max-h-[75vh] overflow-y-auto overflow-x-hidden custom-scrollbar">
+//               <form id="editForm" onSubmit={handleUpdateProduct} className="space-y-6">
+                
+//                 {/* Edit: Basic Info */}
+//                 <div className={sectionCardStyles}>
+//                   <h3 className={sectionTitleStyles}>Basic Information</h3>
+//                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                     <div><label className={labelStyles}>Product Name</label><input type="text" className={inputStyles} value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} required /></div>
+//                     <div><label className={labelStyles}>Brand</label><input type="text" className={inputStyles} value={editForm.brand} onChange={e => setEditForm({...editForm, brand: e.target.value})} required /></div>
+//                     <div className="md:col-span-2"><label className={labelStyles}>Description</label><textarea className={`${inputStyles} h-32 resize-none`} value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} required /></div>
+//                     <div><label className={labelStyles}>Category</label><select className={inputStyles} value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})}><option value="Smartphones">Smartphones</option><option value="Laptops">Laptops</option><option value="Audio">Audio</option><option value="Wearables">Wearables</option></select></div>
+//                     <div className="flex items-center mt-6">
+//                       <label className="flex items-center cursor-pointer">
+//                         <input type="checkbox" className="sr-only peer" checked={editForm.isBestSeller} onChange={e => setEditForm({...editForm, isBestSeller: e.target.checked})} />
+//                         <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 relative"></div>
+//                         <span className="ml-3 text-sm font-bold text-slate-700 uppercase tracking-wider">Highlight as Best Seller</span>
+//                       </label>
+//                     </div>
+//                   </div>
+//                 </div>
+
+//                 {/* Edit: Pricing & Inventory */}
+//                 <div className={sectionCardStyles}>
+//                   <h3 className={sectionTitleStyles}>Pricing & Inventory</h3>
+//                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+//                     <div><label className={labelStyles}>Base MRP (₹)</label><input type="number" className={inputStyles} value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} required /></div>
+//                     <div><label className={labelStyles}>Discount Price (₹)</label><input type="number" className={inputStyles} value={editForm.discountPrice || ''} onChange={e => setEditForm({...editForm, discountPrice: e.target.value})} /></div>
+//                     <div><label className={labelStyles}>Total Stock</label><input type="number" className={inputStyles} value={editForm.stock} onChange={e => setEditForm({...editForm, stock: e.target.value})} required /></div>
+//                   </div>
+//                 </div>
+
+//                 {/* Edit: Features & Specs */}
+//                 <div className={sectionCardStyles}>
+//                   <h3 className={sectionTitleStyles}>Technical Details</h3>
+//                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+//                     <div>
+//                       <div className="flex justify-between items-center mb-4"><label className={labelStyles}>Tech Specs</label><button type="button" onClick={() => setEditForm({...editForm, specs: [...editForm.specs, { name: '', value: '' }]})} className="text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Row</button></div>
+//                       <div className="space-y-3">
+//                         {editForm.specs.map((spec, index) => (
+//                           <div key={index} className="flex gap-3 relative group">
+//                             <input type="text" placeholder="Name" className={`${inputStyles} w-1/3`} value={spec.name} onChange={e => {const newSpecs=[...editForm.specs]; newSpecs[index].name=e.target.value; setEditForm({...editForm, specs: newSpecs})}} />
+//                             <input type="text" placeholder="Value" className={`${inputStyles} flex-1`} value={spec.value} onChange={e => {const newSpecs=[...editForm.specs]; newSpecs[index].value=e.target.value; setEditForm({...editForm, specs: newSpecs})}} />
+//                             {editForm.specs.length > 1 && <button type="button" onClick={() => {const newSpecs=editForm.specs.filter((_, i) => i !== index); setEditForm({...editForm, specs: newSpecs})}} className="absolute -right-3 top-1/2 -translate-y-1/2 bg-red-100 text-red-600 w-6 h-6 rounded-full flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity">×</button>}
+//                           </div>
+//                         ))}
+//                       </div>
+//                     </div>
+//                     <div>
+//                       <div className="flex justify-between items-center mb-4"><label className={labelStyles}>Key Features</label><button type="button" onClick={() => setEditForm({...editForm, features: [...editForm.features, '']})} className="text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Feature</button></div>
+//                       <div className="space-y-3">
+//                         {editForm.features.map((f, index) => (
+//                           <div key={index} className="flex gap-3 relative group">
+//                             <input type="text" placeholder="Feature" className={inputStyles} value={f} onChange={e => {const newFeatures=[...editForm.features]; newFeatures[index]=e.target.value; setEditForm({...editForm, features: newFeatures})}} />
+//                             {editForm.features.length > 1 && <button type="button" onClick={() => {const newFeatures=editForm.features.filter((_, i) => i !== index); setEditForm({...editForm, features: newFeatures})}} className="absolute -right-3 top-1/2 -translate-y-1/2 bg-red-100 text-red-600 w-6 h-6 rounded-full flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity">×</button>}
+//                           </div>
+//                         ))}
+//                       </div>
+//                     </div>
+//                   </div>
+//                 </div>
+
+//                 {/* Edit: Variants */}
+//                 <div className={sectionCardStyles}>
+//                   <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-4">
+//                     <div><h3 className="text-lg font-black text-slate-900">Variants & Pricing Modifiers</h3></div>
+//                     <button type="button" onClick={() => setEditForm({...editForm, variants: [...editForm.variants, { name: '', options: '' }]})} className="text-[10px] bg-slate-900 text-white px-4 py-2 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Variant</button>
+//                   </div>
+//                   <div className="space-y-4">
+//                     {editForm.variants.map((variant, index) => (
+//                       <div key={index} className="flex flex-col md:flex-row gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 relative group">
+//                         <div className="w-full md:w-1/4"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Variant Name</label><input type="text" className={inputStyles} value={variant.name} onChange={e => { const newVars = [...editForm.variants]; newVars[index].name = e.target.value; setEditForm({...editForm, variants: newVars}); }} /></div>
+//                         <div className="w-full md:flex-1"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Options</label><input type="text" className={inputStyles} value={variant.options} onChange={e => { const newVars = [...editForm.variants]; newVars[index].options = e.target.value; setEditForm({...editForm, variants: newVars}); }} /></div>
+//                         {editForm.variants.length > 1 && <button type="button" onClick={() => { const newVars = editForm.variants.filter((_, i) => i !== index); setEditForm({...editForm, variants: newVars}); }} className="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center font-bold shadow-md hover:scale-110 transition-transform">×</button>}
+//                       </div>
+//                     ))}
+//                   </div>
+//                 </div>
+
+//                 {/* Edit: SEO & Meta */}
+//                 <div className={sectionCardStyles}>
+//                   <h3 className={sectionTitleStyles}>Search Engine Optimization (SEO)</h3>
+//                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                     <div><label className={labelStyles}>SEO Title</label><input type="text" className={inputStyles} value={editForm.seoTitle || ''} onChange={e => setEditForm({...editForm, seoTitle: e.target.value})} /></div>
+//                     <div><label className={labelStyles}>SEO Keywords</label><input type="text" className={inputStyles} value={editForm.seoKeywords || ''} onChange={e => setEditForm({...editForm, seoKeywords: e.target.value})} /></div>
+//                     <div className="md:col-span-2"><label className={labelStyles}>SEO Description</label><textarea className={`${inputStyles} h-20 resize-none`} value={editForm.seoDescription || ''} onChange={e => setEditForm({...editForm, seoDescription: e.target.value})} /></div>
+//                   </div>
+//                 </div>
+
+//                 {/* Edit: Policies & Cancellations */}
+//                 <div className={sectionCardStyles}>
+//                   <h3 className={sectionTitleStyles}>Trust, Policies & Cancellations</h3>
+//                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                     <div><label className={labelStyles}>Return Policy</label><input type="text" className={inputStyles} value={editForm.returnPolicy} onChange={e => setEditForm({...editForm, returnPolicy: e.target.value})} required /></div>
+//                     <div><label className={labelStyles}>Warranty Policy</label><input type="text" className={inputStyles} value={editForm.warrantyPolicy} onChange={e => setEditForm({...editForm, warrantyPolicy: e.target.value})} required /></div>
+                    
+//                     {/* 🚀 EDIT CANCELLATION CONTROLS */}
+//                     <div className="flex flex-col justify-center mt-2">
+//                       <label className="flex items-center cursor-pointer mb-2">
+//                         <input type="checkbox" className="sr-only peer" checked={editForm.isCancellable} onChange={e => setEditForm({...editForm, isCancellable: e.target.checked})} />
+//                         <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 relative"></div>
+//                         <span className="ml-3 text-sm font-bold text-slate-700 uppercase tracking-wider">Allow Customer Cancellations</span>
+//                       </label>
+//                     </div>
+//                     <div>
+//                       <label className={labelStyles}>Cancellation Window (Hours)</label>
+//                       <input type="number" min="0" placeholder="e.g. 24" className={inputStyles} value={editForm.cancellationWindowHours} onChange={e => setEditForm({...editForm, cancellationWindowHours: e.target.value})} disabled={!editForm.isCancellable} required={editForm.isCancellable} />
+//                     </div>
+//                   </div>
+//                 </div>
+
+//                 {/* Edit: Upload Media */}
+//                 <div className={sectionCardStyles}>
+//                   <h3 className={sectionTitleStyles}>Update Media Assets</h3>
+//                   <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl mb-6">
+//                     <p className="text-sm font-bold text-orange-800">Note: Uploading new files will ADD to existing media.</p>
+//                   </div>
+//                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                     <div><label className={labelStyles}>Add Gallery Images</label><input type="file" multiple accept="image/*" className="w-full text-slate-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer" onChange={e => setEditForm({...editForm, newImagesFiles: e.target.files})} /></div>
+//                     <div><label className={labelStyles}>Upload New Promo Banners</label><input type="file" multiple accept="image/*" className="w-full text-slate-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer" onChange={e => setEditForm({...editForm, newBannersFiles: e.target.files})} /></div>
+//                   </div>
+//                 </div>
+
+//               </form>
+//             </div>
+            
+//             {/* Modal Footer (Sticky) */}
+//             <div className="sticky bottom-0 bg-white/90 backdrop-blur-md px-8 py-5 border-t border-slate-200 flex gap-4 rounded-b-3xl z-20">
+//               <button type="button" onClick={() => setEditingProduct(null)} className="flex-1 py-3.5 bg-slate-100 text-slate-700 font-black rounded-xl hover:bg-slate-200 uppercase tracking-widest text-sm transition-colors">Cancel Edit</button>
+//               <button type="submit" form="editForm" className="flex-1 py-3.5 bg-orange-500 text-white font-black rounded-xl hover:bg-orange-600 hover:shadow-lg hover:-translate-y-0.5 uppercase tracking-widest text-sm transition-all shadow-md">💾 Save All Changes</button>
+//             </div>
+            
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+
 // src/app/admin/page.jsx
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import Link from 'next/link';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function AdminDashboard() {
-  const { user, login, logout } = useAuth(); 
+  const { user, login, logout } = useAuth();
   const router = useRouter();
-  
+
+  const [isHydrated, setIsHydrated] = useState(false);
   const adminRole = user?.user?.role || user?.role;
   const adminId = user?.user?._id || user?._id || user?.id;
 
-  // Integrated Login States
+  // LOGIN STATES
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Dashboard States
-  const [withdrawals, setWithdrawals] = useState([]);
-  const [products, setProducts] = useState([]); 
+  // NAVIGATION & UI
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, inventory, orders, payouts, marketing, reviews, add-product
+  const [loading, setLoading] = useState(true);
+
+  // DATA STATES
+  const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [stats, setStats] = useState(null); 
-  const [pendingReviews, setPendingReviews] = useState([]); 
-  const [chartData, setChartData] = useState([]);
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  // HOMEPAGE BANNER STATES
+  const [withdrawals, setWithdrawals] = useState([]);
   const [allBanners, setAllBanners] = useState([]);
-  const [bannerTitle, setBannerTitle] = useState('');
-  const [bannerSubtitle, setBannerSubtitle] = useState('');
-  const [bannerLink, setBannerLink] = useState('/');
-  const [bannerImage, setBannerImage] = useState(null);
-  const [isBannerUploading, setIsBannerUploading] = useState(false);
+  const [stats, setStats] = useState(null);
+  const [pendingReviews, setPendingReviews] = useState([]);
+  const [chartData, setChartData] = useState([]);
 
-  // Add Product States
+  // ==========================================
+  // FORM STATES: ADD PRODUCT
+  // ==========================================
   const [name, setName] = useState('');
   const [brand, setBrand] = useState(''); 
   const [price, setPrice] = useState('');
@@ -1470,166 +2968,139 @@ export default function AdminDashboard() {
   const [description, setDescription] = useState('');
   const [isBestSeller, setIsBestSeller] = useState(false); 
   const [images, setImages] = useState([]);
-  const [banners, setBanners] = useState([]);
+  const [productBanners, setProductBanners] = useState([]); // A+ Content
   const [features, setFeatures] = useState(['']); 
   const [specs, setSpecs] = useState([{ name: '', value: '' }]); 
   const [variants, setVariants] = useState([{ name: '', options: '' }]); 
-  const [returnPolicy, setReturnPolicy] = useState('7 Days Replacement');
-  const [warrantyPolicy, setWarrantyPolicy] = useState('1 Year Warranty');
   const [seoTitle, setSeoTitle] = useState('');
   const [seoDescription, setSeoDescription] = useState('');
   const [seoKeywords, setSeoKeywords] = useState('');
-
-  // 🚀 Cancellation States
+  const [returnPolicy, setReturnPolicy] = useState('7 Days Replacement');
+  const [warrantyPolicy, setWarrantyPolicy] = useState('1 Year Warranty');
   const [isCancellable, setIsCancellable] = useState(true);
   const [cancellationWindowHours, setCancellationWindowHours] = useState(24);
 
+  // FORM STATES: EDIT PRODUCT
   const [editingProduct, setEditingProduct] = useState(null);
   const [editForm, setEditForm] = useState(null);
 
-  const getImageUrl = (imagePath) => {
-    if (!imagePath) return 'https://placehold.co/400x400?text=No+Image';
-    if (imagePath.startsWith('http')) {
-        return imagePath.replace('http://localhost:5000', process.env.NEXT_PUBLIC_API_URL.replace('/api', ''));
-    }
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
-    return `${baseUrl}/${imagePath}`;
-  };
+  // FORM STATES: HOMEPAGE BANNERS
+  const [bannerTitle, setBannerTitle] = useState('');
+  const [bannerSubtitle, setBannerSubtitle] = useState('');
+  const [bannerLink, setBannerLink] = useState('/');
+  const [bannerImage, setBannerImage] = useState(null);
+  const [isBannerUploading, setIsBannerUploading] = useState(false);
 
+  // ==========================================
+  // INIT & DATA FETCHING
+  // ==========================================
   useEffect(() => { setIsHydrated(true); }, []);
 
   useEffect(() => {
-    if (isHydrated && user && adminRole === 'admin') { 
-      fetchWithdrawals(); 
-      fetchProducts(); 
-      fetchAllOrders(); 
-      fetchStats(); 
-      fetchPendingReviews(); 
-      fetchBanners(); 
+    if (isHydrated && user && adminRole === 'admin') {
+      fetchDashboardData();
     }
-  }, [user, adminRole, isHydrated]);
+  }, [isHydrated, user, adminRole]);
 
-  useEffect(() => {
-    if (orders.length > 0) {
-      const groupedData = orders.reduce((acc, order) => {
-        const date = new Date(order.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
-        if (!acc[date]) acc[date] = { date, revenue: 0, orders: 0 };
-        acc[date].revenue += order.totalPrice || 0;
-        acc[date].orders += 1;
-        return acc;
-      }, {});
-      const formattedData = Object.values(groupedData).reverse();
-      setChartData(formattedData.slice(-14));
-    }
-  }, [orders]);
-
-  const fetchBanners = async () => {
-    try {
-      const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/banners`);
-      setAllBanners(data);
-    } catch (err) {
-      console.error("Error fetching banners:", err);
-    }
-  };
-
-  // 🚀 FIXED: Added reset for the file input after successful upload
-  const handleUploadInvoice = async (orderId, e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('invoice', file);
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const config = { params: { adminId } };
 
     try {
-      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${orderId}/invoice?adminId=${adminId}`, formData);
-      alert("✅ Invoice uploaded successfully! The customer will be notified.");
-      e.target.value = null; // Reset input field
-      fetchAllOrders(); // Refresh the list
-    } catch (err) {
-      console.error(err);
-      alert("Failed to upload invoice.");
-    }
+      // Using allSettled to prevent one 404 from crashing everything
+      const results = await Promise.allSettled([
+        axios.get(`${apiUrl}/products`),
+        axios.get(`${apiUrl}/orders/admin/all`, config),
+        axios.get(`${apiUrl}/withdrawals/admin/all`, config),
+        axios.get(`${apiUrl}/banners`),
+        axios.get(`${apiUrl}/products/admin/pending-reviews`, config),
+        axios.get(`${apiUrl}/admin/stats`, config)
+      ]);
+
+      const fetchedProducts = results[0].status === 'fulfilled' ? results[0].value.data : [];
+      const fetchedOrders = results[1].status === 'fulfilled' ? results[1].value.data.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)) : [];
+      const fetchedWithdrawals = results[2].status === 'fulfilled' ? results[2].value.data : [];
+
+      setProducts(fetchedProducts);
+      setOrders(fetchedOrders);
+      setWithdrawals(fetchedWithdrawals);
+      if (results[3].status === 'fulfilled') setAllBanners(results[3].value.data);
+      if (results[4].status === 'fulfilled') setPendingReviews(results[4].value.data);
+
+      // Stats Logic (Fallback to manual calc if endpoint fails)
+      if (results[5].status === 'fulfilled') {
+        setStats(results[5].value.data);
+      } else {
+        setStats({
+          revenue: fetchedOrders.reduce((acc, o) => acc + (o.totalPrice || 0), 0),
+          orderCount: fetchedOrders.length,
+          productCount: fetchedProducts.length,
+          userCount: [...new Set(fetchedOrders.map(o => o.user?._id))].length
+        });
+      }
+
+      // Chart Logic
+      if (fetchedOrders.length > 0) {
+        const grouped = fetchedOrders.reduce((acc, o) => {
+          const d = new Date(o.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+          acc[d] = (acc[d] || 0) + o.totalPrice; return acc;
+        }, {});
+        setChartData(Object.keys(grouped).map(k => ({ date: k, revenue: grouped[k] })).reverse().slice(-14));
+      }
+    } catch (err) { console.error(err); }
+    setLoading(false);
   };
 
-
-  const handleUploadBanner = async (e) => {
-    e.preventDefault();
-    if (!bannerImage) return alert("Please select an image");
-    
-    setIsBannerUploading(true);
-    const formData = new FormData();
-    formData.append('image', bannerImage);
-    formData.append('title', bannerTitle);
-    formData.append('subtitle', bannerSubtitle);
-    formData.append('link', bannerLink);
-    formData.append('adminId', adminId);
-
-    try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/banners`, formData);
-      alert("✅ Homepage Slide Published!");
-      setBannerTitle(''); setBannerSubtitle(''); setBannerLink('/'); setBannerImage(null);
-      fetchBanners();
-    } catch (err) {
-      alert("Upload failed. Check backend console.");
-    } finally {
-      setIsBannerUploading(false);
-    }
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return 'https://placehold.co/400x400?text=No+Image';
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+    return imagePath.startsWith('http') ? imagePath : `${baseUrl}/${imagePath}`;
   };
 
-  const handleDeleteBanner = async (id) => {
-    if (window.confirm("Remove this slide from homepage?")) {
-      try {
-        await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/banners/${id}?adminId=${adminId}`);
-        fetchBanners();
-      } catch (err) { alert("Delete failed"); }
-    }
-  };
-  
-  // API FETCHERS
-  const fetchStats = async () => { try { const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/admin/stats?adminId=${adminId}`); setStats(data); } catch (err) {} };
-  const fetchWithdrawals = async () => { const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/withdrawals/admin/all?adminId=${adminId}`); setWithdrawals(data); };
-  const fetchProducts = async () => { const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products`); setProducts(data); };
-  const fetchAllOrders = async () => { 
-    try {
-      const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/all?adminId=${adminId}`); 
-      setOrders(data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))); 
-    } catch (err) {}
-  };
-  const fetchPendingReviews = async () => {
-    try {
-      const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products/admin/pending-reviews?adminId=${adminId}`);
-      setPendingReviews(data);
-    } catch (err) {}
-  };
-
-  // INTEGRATED LOGIN HANDLER
+  // ==========================================
+  // ACTION HANDLERS
+  // ==========================================
   const handleAdminLoginSubmit = async (e) => {
     e.preventDefault();
     setIsLoggingIn(true);
     setLoginError('');
     const result = await login(adminEmail, adminPassword);
-    if (result.success) setIsLoggingIn(false);
-    else { setLoginError(result.message); setIsLoggingIn(false); }
+    if (!result.success) setLoginError(result.message);
+    setIsLoggingIn(false);
   };
 
-  // ACTION HANDLERS
-  const handleUpdateOrderStatus = async (orderId, newStatus) => {
-    await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${orderId}/status?adminId=${adminId}`, { status: newStatus });
-    alert(`Status updated`); 
-    fetchAllOrders(); fetchStats();
+  const handleUpdateOrderStatus = async (id, status) => {
+    await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${id}/status?adminId=${adminId}`, { status });
+    alert(`Order Updated to ${status}`);
+    fetchDashboardData();
   };
 
-  const handleStatusUpdate = async (id, status) => {
+  const handleUploadInvoice = async (orderId, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('invoice', file);
     try {
-      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/withdrawals/admin/${id}?adminId=${adminId}`, { status, adminComment: "Processed successfully" });
-      alert(`Withdrawal ${status}`); fetchWithdrawals();
-    } catch (error) { alert("Error updating withdrawal status"); }
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${orderId}/invoice?adminId=${adminId}`, formData);
+      alert("✅ Invoice uploaded!");
+      e.target.value = null;
+      fetchDashboardData();
+    } catch (err) { alert("Failed to upload invoice."); }
+  };
+
+  const handlePayoutAction = async (id, status) => {
+    try {
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/withdrawals/admin/${id}?adminId=${adminId}`, { status, adminComment: "Processed" });
+      alert(`Withdrawal ${status}`); 
+      fetchDashboardData();
+    } catch (error) { alert("Error updating payout status"); }
   };
 
   const handleDeleteProduct = async (id) => {
-    if (window.confirm("Are you sure?")) {
+    if (window.confirm("Delete this product permanently?")) {
       await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/products/${id}?adminId=${adminId}`); 
-      fetchProducts();
+      fetchDashboardData();
     }
   };
 
@@ -1637,32 +3108,36 @@ export default function AdminDashboard() {
     try {
       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/products/admin/reviews/status?adminId=${adminId}`, { productId, reviewId, status });
       alert(`Review ${status}!`);
-      fetchPendingReviews(); fetchProducts();
+      fetchDashboardData();
     } catch (error) { alert("Error processing review"); }
   };
 
-  const formatVariantsForEdit = (dbVariants) => {
-    if (!dbVariants || dbVariants.length === 0) return [{ name: '', options: '' }];
-    return dbVariants.map(v => ({ name: v.name, options: v.options.map(o => o.priceModifier ? `${o.name}(+${o.priceModifier})` : o.name).join(', ') }));
+  const handleUploadBanner = async (e) => {
+    e.preventDefault();
+    if (!bannerImage) return alert("Select image");
+    setIsBannerUploading(true);
+    const formData = new FormData();
+    formData.append('image', bannerImage); formData.append('title', bannerTitle); formData.append('subtitle', bannerSubtitle); formData.append('link', bannerLink); formData.append('adminId', adminId);
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/banners`, formData);
+      alert("✅ Slide Published!"); 
+      setBannerTitle(''); setBannerSubtitle(''); setBannerLink('/'); setBannerImage(null);
+      fetchDashboardData();
+    } catch (err) { alert("Upload failed."); } finally { setIsBannerUploading(false); }
   };
 
-  const handleEditClick = (product) => {
-    setEditingProduct(product);
-    setEditForm({ 
-      ...product, 
-      existingImages: product.images || [], newImagesFiles: [], 
-      existingBanners: product.banners || [], newBannersFiles: [],
-      variants: formatVariantsForEdit(product.variants), 
-      features: product.features && product.features.length > 0 ? product.features : [''],
-      specs: product.specs && product.specs.length > 0 ? product.specs : [{ name: '', value: '' }],
-      returnPolicy: product.returnPolicy || '7 Days Replacement',
-      warrantyPolicy: product.warrantyPolicy || '1 Year Warranty', 
-      seoTitle: product.seoTitle || '', seoDescription: product.seoDescription || '', seoKeywords: product.seoKeywords || '',
-      isCancellable: product.isCancellable !== undefined ? product.isCancellable : true,
-      cancellationWindowHours: product.cancellationWindowHours !== undefined ? product.cancellationWindowHours : 24,
-    });
+  const handleDeleteBanner = async (id) => {
+    if (window.confirm("Remove this slide?")) {
+      try {
+        await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/banners/${id}?adminId=${adminId}`);
+        fetchDashboardData();
+      } catch (err) { alert("Delete failed"); }
+    }
   };
 
+  // ==========================================
+  // PRODUCT MANAGEMENT LOGIC
+  // ==========================================
   const parseVariantsForDB = (variantArray) => {
     return variantArray.map(v => {
       const parsedOptions = typeof v.options === 'string' ? v.options.split(',').map(opt => {
@@ -1674,40 +3149,9 @@ export default function AdminDashboard() {
     }).filter(v => v.name.trim() !== '' && v.options.length > 0);
   };
 
-  const handleUpdateProduct = async (e) => {
-    e.preventDefault();
-    try {
-      const formData = new FormData();
-      
-      Object.keys(editForm).forEach(key => {
-        const excludedFields = [
-          'existingImages', 'newImagesFiles', 'existingBanners', 'newBannersFiles', 
-          'features', 'specs', 'variants', 'reviews', 'ratings', 'numOfReviews'
-        ];
-        if (!excludedFields.includes(key)) formData.append(key, editForm[key]);
-      });
-
-      formData.append('existingImages', JSON.stringify(editForm.existingImages)); 
-      formData.append('features', JSON.stringify(editForm.features.filter(f => f.trim() !== '')));
-      formData.append('specs', JSON.stringify(editForm.specs.filter(s => s.name.trim() !== ''))); 
-      formData.append('variants', JSON.stringify(parseVariantsForDB(editForm.variants))); 
-
-      if (editForm.newImagesFiles) {
-        for (let i = 0; i < editForm.newImagesFiles.length; i++) formData.append('images', editForm.newImagesFiles[i]);
-      }
-      if (editForm.newBannersFiles) {
-        for (let i = 0; i < editForm.newBannersFiles.length; i++) formData.append('banners', editForm.newBannersFiles[i]);
-      }
-
-      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/products/${editingProduct._id}?adminId=${adminId}`, formData);
-      
-      alert("✅ Product Updated Successfully!");
-      setEditingProduct(null); 
-      fetchProducts(); 
-    } catch (err) {
-      console.error("Update Error:", err.response?.data);
-      alert("Update failed. Check console.");
-    }
+  const formatVariantsForEdit = (dbVariants) => {
+    if (!dbVariants || dbVariants.length === 0) return [{ name: '', options: '' }];
+    return dbVariants.map(v => ({ name: v.name, options: v.options.map(o => o.priceModifier ? `${o.name}(+${o.priceModifier})` : o.name).join(', ') }));
   };
 
   const handleAddProduct = async (e) => {
@@ -1717,55 +3161,89 @@ export default function AdminDashboard() {
     formData.append('category', category); formData.append('stock', stock); formData.append('description', description); formData.append('isBestSeller', isBestSeller);
     formData.append('returnPolicy', returnPolicy); formData.append('warrantyPolicy', warrantyPolicy);
     formData.append('seoTitle', seoTitle); formData.append('seoDescription', seoDescription); formData.append('seoKeywords', seoKeywords);
+    formData.append('isCancellable', isCancellable); formData.append('cancellationWindowHours', cancellationWindowHours);
     
-    formData.append('isCancellable', isCancellable);
-    formData.append('cancellationWindowHours', cancellationWindowHours);
-
     formData.append('features', JSON.stringify(features.filter(f => f.trim() !== ''))); 
     formData.append('specs', JSON.stringify(specs.filter(s => s.name.trim() !== '')));
     formData.append('variants', JSON.stringify(parseVariantsForDB(variants))); 
+    
     for (let i = 0; i < images.length; i++) formData.append('images', images[i]);
-    for (let i = 0; i < banners.length; i++) formData.append('banners', banners[i]);
+    for (let i = 0; i < productBanners.length; i++) formData.append('banners', productBanners[i]);
     
-    await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/products?adminId=${adminId}`, formData);
-    alert("✅ Published!"); 
-    
-    setName(''); setBrand(''); setPrice(''); setDiscountPrice(''); setStock(''); setDescription('');
-    setImages([]); setBanners([]); setFeatures(['']); setSpecs([{ name: '', value: '' }]); setVariants([{ name: '', options: '' }]);
-    setSeoTitle(''); setSeoDescription(''); setSeoKeywords('');
-    setIsCancellable(true); setCancellationWindowHours(24);
-    fetchProducts(); 
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/products?adminId=${adminId}`, formData);
+      alert("✅ Product Published!"); 
+      setName(''); setBrand(''); setPrice(''); setDiscountPrice(''); setStock(''); setDescription('');
+      setImages([]); setProductBanners([]); setFeatures(['']); setSpecs([{ name: '', value: '' }]); setVariants([{ name: '', options: '' }]);
+      setSeoTitle(''); setSeoDescription(''); setSeoKeywords(''); setIsCancellable(true); setCancellationWindowHours(24);
+      setActiveTab('inventory'); fetchDashboardData(); 
+    } catch(err) { alert("Publish failed"); }
   };
 
-  const inputStyles = "w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-gray-900 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all shadow-sm";
-  const labelStyles = "block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1";
-  const sectionCardStyles = "bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100 mb-6";
-  const sectionTitleStyles = "text-lg font-black text-slate-900 mb-6 flex items-center gap-2 border-b border-slate-100 pb-4";
+  const handleEditClick = (product) => {
+    setEditingProduct(product);
+    setEditForm({ 
+      ...product, 
+      existingImages: product.images || [], newImagesFiles: [], 
+      existingBanners: product.banners || [], newBannersFiles: [],
+      variants: formatVariantsForEdit(product.variants), 
+      features: product.features && product.features.length > 0 ? product.features : [''],
+      specs: product.specs && product.specs.length > 0 ? product.specs : [{ name: '', value: '' }],
+      returnPolicy: product.returnPolicy || '7 Days Replacement', warrantyPolicy: product.warrantyPolicy || '1 Year Warranty', 
+      seoTitle: product.seoTitle || '', seoDescription: product.seoDescription || '', seoKeywords: product.seoKeywords || '',
+      isCancellable: product.isCancellable !== undefined ? product.isCancellable : true,
+      cancellationWindowHours: product.cancellationWindowHours !== undefined ? product.cancellationWindowHours : 24,
+    });
+  };
 
+  const handleUpdateProduct = async (e) => {
+    e.preventDefault();
+    try {
+      const formData = new FormData();
+      Object.keys(editForm).forEach(key => {
+        const excludedFields = ['existingImages', 'newImagesFiles', 'existingBanners', 'newBannersFiles', 'features', 'specs', 'variants', 'reviews', 'ratings', 'numOfReviews'];
+        if (!excludedFields.includes(key)) formData.append(key, editForm[key]);
+      });
+      formData.append('existingImages', JSON.stringify(editForm.existingImages)); 
+      formData.append('existingBanners', JSON.stringify(editForm.existingBanners)); 
+      formData.append('features', JSON.stringify(editForm.features.filter(f => f.trim() !== '')));
+      formData.append('specs', JSON.stringify(editForm.specs.filter(s => s.name.trim() !== ''))); 
+      formData.append('variants', JSON.stringify(parseVariantsForDB(editForm.variants))); 
+
+      if (editForm.newImagesFiles) for (let i = 0; i < editForm.newImagesFiles.length; i++) formData.append('images', editForm.newImagesFiles[i]);
+      if (editForm.newBannersFiles) for (let i = 0; i < editForm.newBannersFiles.length; i++) formData.append('banners', editForm.newBannersFiles[i]);
+      
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/products/${editingProduct._id}?adminId=${adminId}`, formData);
+      alert("✅ Product Updated Successfully!");
+      setEditingProduct(null); fetchDashboardData(); 
+    } catch (err) { alert("Update failed."); }
+  };
+
+  // ==========================================
+  // UI STYLES
+  // ==========================================
+  const amzYellowBtn = "bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-1.5 px-6 rounded-[8px] text-[13px] font-medium shadow-sm transition-all";
+  const amzWhiteBtn = "bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-1.5 px-4 rounded-[8px] text-[13px] shadow-sm";
+  const amzInput = "w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none";
+  const amzLabel = "block text-[13px] font-bold text-[#111] mb-1";
+  const amzSection = "bg-white border border-[#DDD] rounded-[4px] p-6 mb-6 shadow-sm";
+
+  // ==========================================
+  // RENDER BLOCKS
+  // ==========================================
   if (isHydrated && (!user || adminRole !== 'admin')) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-blue-500/10 z-0"></div>
-        <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-10 w-full max-w-md shadow-2xl relative z-10 border border-white/20">
+      <div className="min-h-screen bg-[#131921] flex items-center justify-center p-4">
+        <div className="bg-white rounded-[8px] p-10 w-full max-w-md shadow-2xl">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-black text-orange-500 tracking-widest mb-1">SECURE<span className="text-slate-900">ADMIN</span></h1>
-            <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mt-2">Authorized Personnel Only</p>
+            <h1 className="text-2xl font-normal tracking-tighter">amazon<span className="font-bold text-[#febd69]">seller central</span></h1>
+            <p className="text-[12px] font-bold mt-1 uppercase text-[#565959]">Secure Login</p>
           </div>
-          
-          {loginError && <div className="bg-red-50 border border-red-100 text-red-600 p-3 rounded-xl text-sm font-bold text-center mb-6 shadow-sm">{loginError}</div>}
-          
-          <form onSubmit={handleAdminLoginSubmit} className="space-y-6">
-            <div>
-              <label className={labelStyles}>Admin Email</label>
-              <input type="email" required className={inputStyles} value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} />
-            </div>
-            <div>
-              <label className={labelStyles}>Master Password</label>
-              <input type="password" required className={inputStyles} value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} />
-            </div>
-            <button type="submit" disabled={isLoggingIn} className={`w-full font-black py-4 rounded-xl text-white tracking-widest shadow-lg transition-all mt-6 ${isLoggingIn ? 'bg-slate-400' : 'bg-slate-900 hover:bg-orange-500 hover:shadow-orange-500/30 hover:-translate-y-1'}`}>
-              {isLoggingIn ? 'AUTHENTICATING...' : 'ACCESS DASHBOARD'}
-            </button>
+          {loginError && <div className="bg-red-50 text-red-600 p-3 rounded text-[13px] mb-6 border border-red-100">{loginError}</div>}
+          <form onSubmit={handleAdminLoginSubmit} className="space-y-4">
+            <div><label className={amzLabel}>Admin Email</label><input type="email" required className={amzInput} value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} /></div>
+            <div><label className={amzLabel}>Password</label><input type="password" required className={amzInput} value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} /></div>
+            <button type="submit" disabled={isLoggingIn} className={amzYellowBtn + " w-full py-3 mt-4"}>{isLoggingIn ? 'Authenticating...' : 'Sign In'}</button>
           </form>
         </div>
       </div>
@@ -1775,1146 +3253,646 @@ export default function AdminDashboard() {
   if (!isHydrated) return null;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8 font-sans pb-20 text-gray-900 selection:bg-orange-200">
+    <div className="min-h-screen bg-[#EAEDED] flex flex-col font-sans text-[#0F1111] selection:bg-[#FEF8F2]">
       
-      {/* DASHBOARD HEADER */}
-      <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Control Panel</h1>
-          <p className="text-slate-500 font-medium mt-1">Manage inventory, orders, and store analytics.</p>
-        </div>
-        <div className="flex gap-4">
-          <button onClick={() => router.push('/')} className="bg-white text-slate-700 font-bold px-6 py-2.5 rounded-full border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors">View Store</button>
-          <button onClick={logout} className="bg-slate-900 text-white font-bold px-6 py-2.5 rounded-full shadow-md hover:bg-orange-500 transition-colors">Logout</button>
-        </div>
-      </div>
-
-      <div className="max-w-[1600px] mx-auto">
-        {/* STATS ROW */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group">
-              <div className="absolute right-0 top-0 w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-bl-full opacity-10 group-hover:scale-110 transition-transform"></div>
-              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Total Revenue</p>
-              <h3 className="text-3xl font-black text-slate-900">₹{stats.revenue.toLocaleString('en-IN')}</h3>
-            </div>
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group">
-              <div className="absolute right-0 top-0 w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-bl-full opacity-10 group-hover:scale-110 transition-transform"></div>
-              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Total Orders</p>
-              <h3 className="text-3xl font-black text-slate-900">{stats.orderCount}</h3>
-            </div>
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group">
-              <div className="absolute right-0 top-0 w-16 h-16 bg-gradient-to-br from-orange-400 to-red-600 rounded-bl-full opacity-10 group-hover:scale-110 transition-transform"></div>
-              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Customers</p>
-              <h3 className="text-3xl font-black text-slate-900">{stats.userCount}</h3>
-            </div>
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group">
-              <div className="absolute right-0 top-0 w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-600 rounded-bl-full opacity-10 group-hover:scale-110 transition-transform"></div>
-              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Inventory</p>
-              <h3 className="text-3xl font-black text-slate-900">{stats.productCount} <span className="text-lg font-bold text-slate-400">Items</span></h3>
-            </div>
+      {/* 🔝 TOP HEADER */}
+      <header className="bg-[#131921] text-white px-6 py-2.5 flex justify-between items-center sticky top-0 z-[100]">
+        <div className="flex items-center gap-8">
+          <Link href="/">
+            <h1 className="text-xl font-normal tracking-tighter">amazon<span className="text-[#febd69] font-bold">seller central</span></h1>
+          </Link>
+          <div className="hidden lg:flex gap-6 text-[13px] font-bold">
+            <button onClick={() => setActiveTab('dashboard')} className={activeTab === 'dashboard' ? 'text-[#febd69]' : 'hover:text-[#febd69]'}>Home</button>
+            <button onClick={() => setActiveTab('inventory')} className={activeTab === 'inventory' ? 'text-[#febd69]' : 'hover:text-[#febd69]'}>Inventory</button>
+            <button onClick={() => setActiveTab('orders')} className={activeTab === 'orders' ? 'text-[#febd69]' : 'hover:text-[#febd69]'}>Orders</button>
           </div>
-        )}
+        </div>
+        <div className="flex items-center gap-4 text-[12px]">
+          <span className="opacity-70">Store: Amazon Smarts</span>
+          <button onClick={logout} className="hover:underline text-[#febd69] font-bold">Sign Out</button>
+        </div>
+      </header>
 
-        {/* BANNER MANAGEMENT SECTION UI */}
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 md:p-10 mb-10">
-          <h2 className="text-2xl font-black text-slate-900 mb-8 border-b border-slate-100 pb-4">🖼️ Homepage Slides</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-            <form onSubmit={handleUploadBanner} className="lg:col-span-1 space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
-              <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest mb-4">Add New Slide</h3>
-              <div><label className={labelStyles}>Main Heading (Optional)</label><input type="text" className={inputStyles} value={bannerTitle} onChange={e => setBannerTitle(e.target.value)} /></div>
-              <div><label className={labelStyles}>Sub-heading (Optional)</label><input type="text" className={inputStyles} value={bannerSubtitle} onChange={e => setBannerSubtitle(e.target.value)} /></div>
-              <div><label className={labelStyles}>Redirect Link (Optional)</label><input type="text" className={inputStyles} placeholder="e.g. /product/123" value={bannerLink} onChange={e => setBannerLink(e.target.value)} /></div>
-              <div>
-                <label className={labelStyles}>Slide Image (1920x800 recommended)</label>
-                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl hover:border-orange-400 transition-colors bg-white cursor-pointer relative">
-                    <div className="space-y-1 text-center">
-                    <div className="text-3xl mb-2">📸</div>
-                    <div className="flex text-sm text-gray-600">
-                        <label className="relative cursor-pointer rounded-md font-black text-orange-500 hover:text-orange-600 focus-within:outline-none">
-                        <span>Click to select image</span>
-                        <input type="file" className="sr-only" accept="image/*" onChange={e => setBannerImage(e.target.files[0])} required />
-                        </label>
-                    </div>
-                    <p className="text-xs text-gray-500">PNG, JPG up to 5MB</p>
-                    {bannerImage && <p className="mt-2 text-xs font-bold text-emerald-600 truncate max-w-[150px]">✅ {bannerImage.name}</p>}
-                    </div>
+      <div className="flex flex-1 overflow-hidden">
+        
+        {/* ⬅️ SIDEBAR */}
+        <aside className="w-[240px] bg-white border-r border-[#DDD] hidden lg:flex flex-col shrink-0 pt-6 z-10">
+          <nav className="px-4 space-y-1 flex-1">
+            <SidebarItem icon="📊" label="Dashboard Overview" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
+            <SidebarItem icon="📦" label="Manage Inventory" active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} />
+            <SidebarItem icon="📝" label="Manage Orders" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
+            <SidebarItem icon="💳" label="Affiliate Payouts" active={activeTab === 'payouts'} onClick={() => setActiveTab('payouts')} />
+            <SidebarItem icon="🖼️" label="Banners & Ads" active={activeTab === 'marketing'} onClick={() => setActiveTab('marketing')} />
+            <SidebarItem icon="⭐" label="Customer Reviews" active={activeTab === 'reviews'} onClick={() => setActiveTab('reviews')} />
+            <div className="mt-8 border-t border-[#EEE] pt-4">
+               <SidebarItem icon="➕" label="Add a Product" active={activeTab === 'add-product'} onClick={() => setActiveTab('add-product')} />
+            </div>
+          </nav>
+        </aside>
+
+        {/* 📋 MAIN CONTENT */}
+        <main className="flex-1 p-6 overflow-y-auto">
+          
+          {/* ==================== DASHBOARD TAB ==================== */}
+          {activeTab === 'dashboard' && (
+            <div className="max-w-[1600px] mx-auto space-y-8">
+              {stats && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <StatCard label="Total Revenue" val={`₹${stats.revenue.toLocaleString('en-IN')}`} sub="Life-to-date" color="text-[#B12704]" />
+                  <StatCard label="Total Orders" val={stats.orderCount} sub="Units Sold" />
+                  <StatCard label="Customers" val={stats.userCount} sub="Unique Users" />
+                  <StatCard label="Inventory" val={stats.productCount} sub="Active Listings" />
                 </div>
-              </div>
-              <button type="submit" disabled={isBannerUploading} className="w-full bg-slate-900 text-white font-black py-3 rounded-xl hover:bg-orange-500 transition-all uppercase text-xs tracking-widest shadow-md">
-                {isBannerUploading ? 'Uploading...' : 'Publish Slide'}
-              </button>
-            </form>
+              )}
+              {chartData.length > 0 && (
+                <div className="bg-white border border-[#DDD] rounded-[4px] p-6 shadow-sm">
+                  <h2 className="text-[14px] font-bold text-[#111] mb-6 uppercase tracking-wider">📈 Revenue Performance</h2>
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EEE" />
+                        <XAxis dataKey="date" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
+                        <Tooltip contentStyle={{borderRadius: '4px', border: '1px solid #DDD', fontSize: '12px'}} />
+                        <Bar dataKey="revenue" fill="#febd69" radius={[2, 2, 0, 0]} maxBarSize={30} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
-            <div className="lg:col-span-2 space-y-4">
-               <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest mb-4">Active Slides ({allBanners.length})</h3>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {allBanners.map((banner) => (
-                    <div key={banner._id} className="relative group bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                      <img src={getImageUrl(banner.image)} className="w-full h-32 object-cover" alt="slide" />
-                      <div className="p-4 flex justify-between items-center bg-white">
-                        <div className="truncate pr-4">
-                          <p className="font-bold text-slate-900 text-sm truncate">{banner.title}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase">{banner.subtitle}</p>
-                        </div>
-                        <button onClick={() => handleDeleteBanner(banner._id)} className="bg-red-50 text-red-500 p-2 rounded-lg hover:bg-red-500 hover:text-white transition-colors">
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+          {/* ==================== INVENTORY TAB ==================== */}
+          {activeTab === 'inventory' && (
+            <div className="max-w-[1600px] mx-auto">
+               <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-[22px] font-bold">Inventory Management</h2>
+                  <button onClick={() => setActiveTab('add-product')} className={amzYellowBtn}>+ Add New</button>
                </div>
-               {allBanners.length === 0 && <p className="text-center py-10 text-slate-400 font-bold italic">No slides uploaded. Using default banners.</p>}
+               <div className="bg-white border border-[#DDD] rounded-[4px] overflow-hidden shadow-sm">
+                  <table className="w-full text-left text-[13px]">
+                    <thead className="bg-[#F0F2F2] border-b border-[#DDD] font-bold text-[#565959]">
+                      <tr><th className="p-3 border-r border-[#DDD]">Status</th><th className="p-3 border-r border-[#DDD]">Image</th><th className="p-3 border-r border-[#DDD]">Product Name</th><th className="p-3 border-r border-[#DDD]">Price</th><th className="p-3 border-r border-[#DDD]">Stock</th><th className="p-3 text-right">Action</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#EEE]">
+                      {products.map(p => (
+                        <tr key={p._id} className="hover:bg-[#F9F9F9]">
+                          <td className="p-3 border-r border-[#DDD]"><span className="text-green-700 font-bold uppercase text-[10px]">Active</span></td>
+                          <td className="p-3 border-r border-[#DDD] w-16"><img src={getImageUrl(p.images[0])} className="w-12 h-12 object-contain mix-blend-multiply" alt="thumb" /></td>
+                          <td className="p-3 border-r border-[#DDD]">
+                            <p className="font-bold text-[#007185] hover:underline cursor-pointer">{p.name}</p>
+                            <p className="text-[11px] text-[#565959]">{p.brand} | {p.category}</p>
+                            {p.isBestSeller && <span className="bg-[#e77600] text-white text-[9px] px-1 font-bold rounded">BEST SELLER</span>}
+                          </td>
+                          <td className="p-3 border-r border-[#DDD] font-bold text-[#B12704]">₹{p.discountPrice || p.price}</td>
+                          <td className="p-3 border-r border-[#DDD]"><span className={p.stock < 10 ? 'text-[#B12704] font-bold' : ''}>{p.stock} Units</span></td>
+                          <td className="p-3 text-right space-x-3">
+                             <button className="text-[#007185] hover:underline font-bold" onClick={() => handleEditClick(p)}>Edit</button>
+                             <button className="text-[#B12704] hover:underline" onClick={() => handleDeleteProduct(p._id)}>Delete</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+               </div>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* ANALYTICS CHART */}
-        {chartData.length > 0 && (
-          <div className={sectionCardStyles}>
-            <h2 className={sectionTitleStyles}>📈 Sales & Revenue Trends</h2>
-            <div className="h-[350px] w-full pt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} dy={10} />
-                  <YAxis yAxisId="left" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val}`} dx={-10} />
-                  <YAxis yAxisId="right" orientation="right" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} dx={10} />
-                  <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} formatter={(value, name) => [name === 'Revenue' ? `₹${value.toLocaleString()}` : value, name]} />
-                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                  <Bar yAxisId="left" dataKey="revenue" name="Revenue" fill="#f97316" radius={[6, 6, 0, 0]} maxBarSize={40} />
-                  <Bar yAxisId="right" dataKey="orders" name="Orders" fill="#334155" radius={[6, 6, 0, 0]} maxBarSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
+          {/* ==================== ORDERS TAB ==================== */}
+          {activeTab === 'orders' && (
+            <div className="max-w-[1600px] mx-auto">
+               <h2 className="text-[22px] font-bold mb-6">Order Fulfillment</h2>
+               <div className="bg-white border border-[#DDD] rounded-[4px] overflow-hidden shadow-sm">
+                  <table className="w-full text-left text-[13px]">
+                    <thead className="bg-[#F0F2F2] border-b border-[#DDD] font-bold text-[#565959]">
+                      <tr><th className="p-3 border-r border-[#DDD]">Order ID / Date</th><th className="p-3 border-r border-[#DDD]">Customer & Shipping</th><th className="p-3 border-r border-[#DDD]">Items</th><th className="p-3 border-r border-[#DDD]">Total</th><th className="p-3">Fulfillment Status</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#EEE]">
+                      {orders.map(o => (
+                        <tr key={o._id} className="hover:bg-[#F9F9F9] align-top">
+                          <td className="p-3 border-r border-[#DDD]"><p className="font-mono font-bold text-[#111]">#{o._id.slice(-6).toUpperCase()}</p><p className="text-[11px] text-[#565959] mt-1">{new Date(o.createdAt).toLocaleDateString()}</p></td>
+                          <td className="p-3 border-r border-[#DDD]">
+                             <p className="font-bold text-[#007185]">{o.shippingAddress?.fullName}</p>
+                             {o.shippingAddress && (
+                               <div className="text-[11px] text-[#565959] mt-1">
+                                 <p className="font-bold text-[#111]">📍 {o.shippingAddress.city}</p>
+                                 <p className="line-clamp-1">{o.shippingAddress.address}</p>
+                                 <p className="font-bold text-blue-700 mt-1">📞 {o.shippingAddress.phone}</p>
+                               </div>
+                             )}
+                          </td>
+                          <td className="p-4 border-r border-[#DDD]">
+  <div className="space-y-3">
+    {/* Notice we are using 'o' here instead of 'order' */}
+    {o.orderItems?.map((i, idx) => (
+      <div key={idx} className="text-[11px] flex gap-2 items-start">
+        
+        {/* Quantity Badge */}
+        <span className="font-bold text-[#111] bg-[#F0F2F2] border border-[#DDD] px-1.5 py-0.5 rounded mt-0.5 shrink-0">
+          {i.quantity || i.qty}x
+        </span>
+        
+        {/* Product Name & Variants */}
+        <div className="flex flex-col">
+          <span className="font-bold text-[#007185] line-clamp-2">{i.name}</span>
+          
+          {/* Restored: Selected Options (Variants) */}
+          {i.selectedOptions && Object.keys(i.selectedOptions).length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {Object.entries(i.selectedOptions).map(([key, val]) => (
+                <span key={key} className="bg-[#F7FAFA] border border-[#D5D9D9] text-[#565959] px-1.5 py-0.5 rounded-[3px] text-[10px]">
+                  {key}: <span className="font-bold text-[#111]">{val}</span>
+                </span>
+              ))}
             </div>
-          </div>
-        )}
-
-        {/* INVENTORY TABLE */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-10 border border-slate-100">
-          <div className="p-6 md:p-8 bg-white border-b border-slate-100 flex justify-between items-center">
-            <h2 className="text-xl font-black text-slate-900">🛒 Manage Inventory</h2>
-            <span className="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-full">{products.length} Products</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left whitespace-nowrap">
-              <thead className="bg-slate-50 border-b border-slate-100">
-                <tr>
-                  <th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">Product</th>
-                  <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Price</th>
-                  <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Stock</th>
-                  <th className="p-4 md:px-8 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {products.map((p) => (
-                  <tr key={p._id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-4 md:px-8 flex items-center gap-4">
-                      <img src={getImageUrl(p.images[0])} className="w-14 h-14 object-contain rounded-xl border border-slate-200 bg-white p-1 shadow-sm" alt="thumbnail" />
-                      <div>
-                        <span className="font-bold text-slate-900 block">{p.name}</span>
-                        <span className="text-xs font-bold text-slate-400 uppercase">{p.brand || 'Generic'}</span>
-                      </div>
-                    </td>
-                    <td className="p-4 font-black text-slate-900">₹{p.discountPrice || p.price}</td>
-                    <td className="p-4"><span className={`px-3 py-1 rounded-full text-[10px] uppercase font-black tracking-wider ${p.stock > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{p.stock} In Stock</span></td>
-                    <td className="p-4 md:px-8 text-right space-x-3">
-                      <button onClick={() => handleEditClick(p)} className="text-slate-500 hover:text-blue-600 font-bold text-sm bg-slate-100 hover:bg-blue-50 px-4 py-2 rounded-lg transition-colors">Edit</button>
-                      <button onClick={() => handleDeleteProduct(p._id)} className="text-red-500 hover:text-red-700 font-bold text-sm bg-red-50 hover:bg-red-100 px-4 py-2 rounded-lg transition-colors">Delete</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* CUSTOMER ORDERS TABLE */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-10 border border-slate-100">
-          <div className="p-6 md:p-8 bg-white border-b border-slate-100"><h2 className="text-xl font-black text-slate-900">📦 Logistics & Orders</h2></div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left whitespace-nowrap">
-              <thead className="bg-slate-50 border-b border-slate-100">
-                <tr>
-                  <th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">Order Info</th>
-                  <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Customer</th>
-                  <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Items</th>
-                  <th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Total</th>
-                  <th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {orders.map((order) => (
-                  <tr key={order._id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-4 md:px-8 align-top pt-6">
-                      <p className="font-mono font-black text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded inline-block uppercase tracking-wider mb-2">#{order._id.slice(-6)}</p>
-                      <p className="text-xs font-bold text-slate-500">{new Date(order.createdAt).toLocaleDateString('en-IN')}</p>
-                    </td>
-                    <td className="p-4 align-top pt-6">
-                      <div className="mb-3">
-                        <p className="font-bold text-slate-900">{order.user?.name || 'Guest User'}</p>
-                        <p className="text-xs text-slate-500">{order.user?.email}</p>
-                      </div>
-                      {order.shippingAddress ? (
-                        <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl shadow-sm text-xs text-slate-700 max-w-[280px] whitespace-normal">
-                          <p className="font-black text-slate-900 mb-2 border-b border-slate-200 pb-2">📍 Ship To:</p>
-                          <p className="font-bold text-slate-800">{order.shippingAddress.fullName || order.shippingAddress.name || order.user?.name}</p>
-                          <p className="leading-relaxed mt-1 text-slate-600">{order.shippingAddress.address}</p>
-                          <p className="font-bold mt-1">{order.shippingAddress.city} - {order.shippingAddress.postalCode || order.shippingAddress.pincode}</p>
-                          <p className="mt-3 pt-3 border-t border-slate-200 font-bold text-blue-600">📞 {order.shippingAddress.phone}</p>
-                        </div>
-                      ) : (
-                        <span className="text-red-500 text-[10px] uppercase tracking-wider font-black bg-red-50 px-2 py-1 rounded">No shipping info</span>
-                      )}
-                    </td>
-                    <td className="p-4 align-top pt-6">
-                      <div className="text-xs text-slate-700 space-y-3 whitespace-normal min-w-[200px]">
-                        {order.orderItems?.map((i, idx) => (
-                          <div key={idx} className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                            <span className="font-black text-slate-900 bg-white px-1.5 py-0.5 rounded shadow-sm mr-2">{i.quantity || i.qty}x</span> 
-                            <span className="font-semibold">{i.name}</span>
-                            {i.selectedOptions && Object.keys(i.selectedOptions).length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                {Object.entries(i.selectedOptions).map(([key, val]) => (<span key={key} className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">{key}: {val}</span>))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="p-4 align-top pt-6 font-black text-slate-900 text-lg">₹{order.totalPrice?.toLocaleString('en-IN')}</td>
-                    <td className="p-4 md:px-8 align-top pt-6">
-                      <select value={order.status} onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)} className={`w-full p-2 mb-3 rounded-xl text-xs font-black uppercase tracking-wider outline-none cursor-pointer border-2 transition-colors ${order.status === 'Delivered' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : order.status === 'Shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' : order.status === 'Cancelled' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-orange-50 border-orange-200 text-orange-700'}`}>
-                        <option value="Processing">Processing</option><option value="Shipped">Shipped</option><option value="Delivered">Delivered</option><option value="Cancelled">Cancelled</option>
-                      </select>
-
-                      {/* 🚀 INVOICE UPLOAD UI */}
-                      <div className="mt-3 pt-3 border-t border-slate-200">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Upload Invoice (PDF)</label>
-                        <input 
-                          type="file" 
-                          accept=".pdf, image/*" 
-                          onChange={(e) => handleUploadInvoice(order._id, e)} 
-                          className="w-full text-[10px] file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-200 file:text-slate-700 cursor-pointer" 
-                        />
-                        {order.invoiceUrl && (
-                          <a href={getImageUrl(order.invoiceUrl)} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-600 hover:underline font-bold block mt-1">
-                            📄 View Current Invoice
-                          </a>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* 🚀 UPGRADED: AFFILIATE PAYOUT APPROVALS */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-10 border border-slate-100">
-          <div className="p-6 md:p-8 bg-white border-b border-slate-100"><h2 className="text-xl font-black text-slate-900">💳 Affiliate Payouts</h2></div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left whitespace-nowrap">
-              <thead className="bg-slate-50 border-b border-slate-100"><tr><th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">User</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Amount</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Payout Details</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Status</th><th className="p-4 md:px-8 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th></tr></thead>
-              <tbody className="divide-y divide-slate-100">
-                {withdrawals.map((req) => (
-                  <tr key={req._id} className="hover:bg-slate-50/50">
-                    <td className="p-4 md:px-8 font-bold text-slate-900">{req.userId?.name}</td>
-                    <td className="p-4 font-black text-emerald-600">₹{req.amount?.toLocaleString()}</td>
-                    
-                    {/* 🚀 UPGRADED: Dynamic Payout Details Display */}
-                    <td className="p-4 align-top">
-                      {req.details?.upiId ? (
-                        <div className="bg-slate-50 p-2 rounded border border-slate-200 mt-2 inline-block">
-                          <p className="text-[10px] font-black text-slate-400 uppercase">UPI ID</p>
-                          <p className="font-mono text-xs font-bold text-slate-700">{req.details.upiId}</p>
-                        </div>
-                      ) : req.details?.accountNumber ? (
-                        <div className="bg-slate-50 p-2 rounded border border-slate-200 text-xs mt-2 inline-block">
-                          <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Bank Transfer</p>
-                          <p><span className="font-bold text-slate-500">Name:</span> {req.details.accountName}</p>
-                          <p><span className="font-bold text-slate-500">A/C:</span> <span className="font-mono font-bold text-slate-700">{req.details.accountNumber}</span></p>
-                          <p><span className="font-bold text-slate-500">IFSC:</span> <span className="font-mono text-slate-700">{req.details.ifsc}</span></p>
-                          <p><span className="font-bold text-slate-500">Bank:</span> {req.details.bankName}</p>
-                        </div>
-                      ) : (
-                        <span className="text-red-500 text-xs font-bold">No details provided</span>
-                      )}
-                    </td>
-
-                    <td className="p-4"><span className={`px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-black ${req.status === 'pending' ? 'bg-orange-100 text-orange-700' : req.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{req.status}</span></td>
-                    <td className="p-4 md:px-8 text-right space-x-2">
-                      {req.status === 'pending' && (<><button onClick={() => handleStatusUpdate(req._id, 'approved')} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm">Approve</button><button onClick={() => handleStatusUpdate(req._id, 'rejected')} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm">Reject</button></>)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* PENDING REVIEWS APPROVAL TABLE */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-10 border border-slate-100">
-          <div className="p-6 md:p-8 bg-white border-b border-slate-100"><h2 className="text-xl font-black text-slate-900">⭐ Pending Reviews</h2></div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-slate-50 border-b border-slate-100"><tr><th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">Product & Customer</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest w-1/2">Review</th><th className="p-4 md:px-8 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th></tr></thead>
-              <tbody className="divide-y divide-slate-100">
-                {pendingReviews.map((item) => (
-                  <tr key={item.review._id} className="hover:bg-slate-50/50">
-                    <td className="p-4 md:px-8 align-top pt-6">
-                      <p className="font-black text-slate-900 text-sm mb-1">{item.productName}</p>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">By: {item.review.name}</p>
-                    </td>
-                    <td className="p-4 align-top pt-6">
-                      <div className="text-yellow-400 text-sm mb-2 drop-shadow-sm">{'★'.repeat(item.review.rating)}{'☆'.repeat(5 - item.review.rating)}</div>
-                      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative">
-                        <span className="absolute -top-3 left-4 text-2xl text-slate-200">"</span>
-                        <p className="text-sm text-slate-700 italic relative z-10">{item.review.comment}</p>
-                      </div>
-                    </td>
-                    <td className="p-4 md:px-8 align-top pt-6 text-right space-x-2 whitespace-nowrap">
-                      <button onClick={() => handleReviewAction(item.productId, item.review._id, 'approved')} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm">Approve</button>
-                      <button onClick={() => handleReviewAction(item.productId, item.review._id, 'rejected')} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm">Reject</button>
-                    </td>
-                  </tr>
-                ))}
-                {pendingReviews.length === 0 && (<tr><td colSpan="3" className="p-12 text-center text-slate-400 font-bold uppercase tracking-widest text-sm bg-slate-50/50">No pending reviews.</td></tr>)}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* ADD NEW PRODUCT FORM
-        <div className="bg-white rounded-3xl shadow-sm p-6 md:p-10 border border-slate-100">
-          <h2 className="text-2xl md:text-3xl font-black mb-8 border-b border-slate-100 pb-6 text-slate-900">📦 Publish New Gadget</h2>
-          <form onSubmit={handleAddProduct} className="space-y-6">
-            
-            SECTION 1: BASIC INFO
-            <div className={sectionCardStyles}>
-              <h3 className={sectionTitleStyles}>Basic Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div><label className={labelStyles}>Product Name</label><input type="text" className={inputStyles} value={name} onChange={e => setName(e.target.value)} required /></div>
-                <div><label className={labelStyles}>Brand</label><input type="text" className={inputStyles} value={brand} onChange={e => setBrand(e.target.value)} required /></div>
-                <div className="md:col-span-2"><label className={labelStyles}>Description</label><textarea className={`${inputStyles} h-32 resize-none`} value={description} onChange={e => setDescription(e.target.value)} required /></div>
-                <div><label className={labelStyles}>Category</label><select className={inputStyles} value={category} onChange={e => setCategory(e.target.value)}><option value="Smartphones">Smartphones</option><option value="Laptops">Laptops</option><option value="Audio">Audio</option><option value="Wearables">Wearables</option></select></div>
-                <div className="flex items-center mt-6">
-                  <label className="flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" checked={isBestSeller} onChange={e => setIsBestSeller(e.target.checked)} />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 relative"></div>
-                    <span className="ml-3 text-sm font-bold text-slate-700 uppercase tracking-wider">Highlight as Best Seller</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            SECTION 2: PRICING & INVENTORY
-            <div className={sectionCardStyles}>
-              <h3 className={sectionTitleStyles}>Pricing & Inventory</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div><label className={labelStyles}>Base MRP (₹)</label><input type="number" className={inputStyles} value={price} onChange={e => setPrice(e.target.value)} required /></div>
-                <div><label className={labelStyles}>Discount Price (₹)</label><input type="number" className={inputStyles} value={discountPrice} onChange={e => setDiscountPrice(e.target.value)} /></div>
-                <div><label className={labelStyles}>Total Stock</label><input type="number" className={inputStyles} value={stock} onChange={e => setStock(e.target.value)} required /></div>
-              </div>
-            </div> */}
-
-{/* ADD NEW PRODUCT FORM CONTAINER */}
-<div className="max-w-[1000px] mx-auto pb-20">
-  <div className="flex items-center justify-between mb-6 border-b border-[#DDD] pb-4">
-    <div>
-      <h2 className="text-[22px] font-bold text-[#111]">Add a Product</h2>
-      <p className="text-[13px] text-[#565959]">Vital Info {'>'} Offer {'>'} Images {'>'} Description</p>
-    </div>
-    <div className="flex gap-2">
-      <button onClick={() => setActiveTab('inventory')} className="bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-1.5 px-4 rounded-[8px] text-[13px] shadow-sm">Cancel</button>
-      <button type="submit" form="addProductForm" className="bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-1.5 px-6 rounded-[8px] text-[13px] font-medium shadow-sm">Save and finish</button>
-    </div>
-  </div>
-
-  <form id="addProductForm" onSubmit={handleAddProduct} className="space-y-6">
-    
-    {/* SECTION 1: PRODUCT IDENTITY (BASIC INFO) */}
-    <div className="bg-white border border-[#DDD] rounded-[4px] shadow-sm overflow-hidden">
-      <div className="bg-[#F0F2F2] px-6 py-3 border-b border-[#DDD]">
-        <h3 className="text-[14px] font-bold text-[#111]">Product Identity</h3>
-      </div>
-      
-      <div className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="md:col-span-2">
-            <label className="block text-[13px] font-bold text-[#111] mb-1">Product Name (Title)</label>
-            <input 
-              type="text" 
-              className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
-              placeholder="e.g. Apple iPhone 15 Pro (128 GB) - Natural Titanium"
-              value={name} 
-              onChange={e => setName(e.target.value)} 
-              required 
-            />
-            <p className="text-[10px] text-[#565959] mt-1">Recommended length: 60-150 characters for better visibility.</p>
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-bold text-[#111] mb-1">Brand Name</label>
-            <input 
-              type="text" 
-              className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
-              value={brand} 
-              onChange={e => setBrand(e.target.value)} 
-              required 
-            />
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-bold text-[#111] mb-1">Category</label>
-            <select 
-              className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] outline-none bg-white cursor-pointer" 
-              value={category} 
-              onChange={e => setCategory(e.target.value)}
-            >
-              <option value="Smartphones">Smartphones</option>
-              <option value="Laptops">Laptops</option>
-              <option value="Audio">Audio</option>
-              <option value="Wearables">Wearables</option>
-              <option value="Accessories">Accessories</option>
-            </select>
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-[13px] font-bold text-[#111] mb-1">Product Description</label>
-            <textarea 
-              className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] h-32 focus:border-[#e77600] outline-none resize-none" 
-              placeholder="Provide a detailed overview of the product..."
-              value={description} 
-              onChange={e => setDescription(e.target.value)} 
-              required 
-            />
-          </div>
-
-          <div className="bg-[#F7FAFA] border border-[#D5D9D9] p-4 rounded-[4px] md:col-span-2">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input 
-                type="checkbox" 
-                className="w-4 h-4 accent-[#e77600]" 
-                checked={isBestSeller} 
-                onChange={e => setIsBestSeller(e.target.checked)} 
-              />
-              <div>
-                <span className="text-[13px] font-bold text-[#111]">Apply "Best Seller" Badge</span>
-                <p className="text-[11px] text-[#565959]">This adds an orange ribbon to the product on the storefront.</p>
-              </div>
-            </label>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {/* SECTION 2: OFFER (PRICING & INVENTORY) */}
-    <div className="bg-white border border-[#DDD] rounded-[4px] shadow-sm overflow-hidden">
-      <div className="bg-[#F0F2F2] px-6 py-3 border-b border-[#DDD]">
-        <h3 className="text-[14px] font-bold text-[#111]">Pricing & Inventory</h3>
-      </div>
-      
-      <div className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <label className="block text-[13px] font-bold text-[#111] mb-1">List Price (MRP)</label>
-            <div className="relative">
-              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[13px]">₹</span>
-              <input 
-                type="number" 
-                className="w-full border border-[#888C8C] rounded-[3px] p-2 pl-6 text-[13px] focus:border-[#e77600] outline-none" 
-                value={price} 
-                onChange={e => setPrice(e.target.value)} 
-                required 
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-bold text-[#111] mb-1">Your Price (Discounted)</label>
-            <div className="relative">
-              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[13px]">₹</span>
-              <input 
-                type="number" 
-                className="w-full border border-[#888C8C] rounded-[3px] p-2 pl-6 text-[13px] focus:border-[#e77600] outline-none" 
-                value={discountPrice} 
-                onChange={e => setDiscountPrice(e.target.value)} 
-              />
-            </div>
-            <p className="text-[10px] text-[#B12704] mt-1 font-bold">Leave blank if no discount.</p>
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-bold text-[#111] mb-1">Quantity in Stock</label>
-            <input 
-              type="number" 
-              className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] outline-none" 
-              value={stock} 
-              onChange={e => setStock(e.target.value)} 
-              required 
-            />
-            <p className="text-[10px] text-[#565959] mt-1">Status: {stock > 0 ? 'In Stock' : 'Out of Stock'}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-            {/* SECTION 3: FEATURES & SPECS */}
-            {/* <div className={sectionCardStyles}>
-              <h3 className={sectionTitleStyles}>Technical Details</h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                <div>
-                  <div className="flex justify-between items-center mb-4"><label className={labelStyles}>Tech Specs (Table)</label><button type="button" onClick={() => setSpecs([...specs, { name: '', value: '' }])} className="text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Row</button></div>
-                  <div className="space-y-3">
-                    {specs.map((spec, index) => (
-                      <div key={index} className="flex gap-3 relative group">
-                        <input type="text" placeholder="e.g. RAM" className={`${inputStyles} w-1/3`} value={spec.name} onChange={e => {const newSpecs=[...specs]; newSpecs[index].name=e.target.value; setSpecs(newSpecs)}} />
-                        <input type="text" placeholder="e.g. 12GB Unified" className={`${inputStyles} flex-1`} value={spec.value} onChange={e => {const newSpecs=[...specs]; newSpecs[index].value=e.target.value; setSpecs(newSpecs)}} />
-                        {specs.length > 1 && <button type="button" onClick={() => setSpecs(specs.filter((_, i) => i !== index))} className="absolute -right-3 top-1/2 -translate-y-1/2 bg-red-100 text-red-600 w-6 h-6 rounded-full flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity">×</button>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between items-center mb-4"><label className={labelStyles}>Key Features (Bullets)</label><button type="button" onClick={() => setFeatures([...features, ''])} className="text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Feature</button></div>
-                  <div className="space-y-3">
-                    {features.map((f, index) => (
-                      <div key={index} className="flex gap-3 relative group">
-                        <input type="text" placeholder="e.g. Aerospace-grade titanium design" className={inputStyles} value={f} onChange={e => {const newFeatures=[...features]; newFeatures[index]=e.target.value; setFeatures(newFeatures)}} />
-                        {features.length > 1 && <button type="button" onClick={() => setFeatures(features.filter((_, i) => i !== index))} className="absolute -right-3 top-1/2 -translate-y-1/2 bg-red-100 text-red-600 w-6 h-6 rounded-full flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity">×</button>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div> */}
-{/* SECTION 3: FEATURES & SPECS */}
-<div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-6 shadow-sm">
-  <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6">
-    <span className="text-xl">🛠️</span>
-    <h3 className="text-[18px] font-bold text-[#111]">Technical Details & Product Highlights</h3>
-  </div>
-
-  <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-    
-    {/* LEFT COLUMN: TECH SPECS */}
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <label className="block text-[13px] font-bold text-[#111]">Technical Specifications</label>
-          <p className="text-[11px] text-[#565959]">Appear in the "Details" table on product page</p>
-        </div>
-        <button 
-          type="button" 
-          onClick={() => setSpecs([...specs, { name: '', value: '' }])} 
-          className="bg-[#F7FAFA] border border-[#D5D9D9] hover:bg-[#F0F2F2] text-[#0F1111] px-3 py-1 rounded-[8px] text-[12px] font-medium shadow-sm transition-all flex items-center gap-1"
-        >
-          <span className="text-lg font-light">+</span> Add Attribute
-        </button>
-      </div>
-
-      <div className="bg-[#F9F9F9] border border-[#EEE] rounded-[4px] p-4 space-y-3">
-        {specs.map((spec, index) => (
-          <div key={index} className="flex gap-2 relative group items-start animate-in fade-in slide-in-from-left-2 duration-200">
-            <div className="w-1/3">
-              <input 
-                type="text" 
-                placeholder="Attribute (e.g. RAM)" 
-                className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none bg-white" 
-                value={spec.name} 
-                onChange={e => {const newSpecs=[...specs]; newSpecs[index].name=e.target.value; setSpecs(newSpecs)}} 
-              />
-            </div>
-            <div className="flex-1">
-              <input 
-                type="text" 
-                placeholder="Value (e.g. 16GB)" 
-                className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none bg-white" 
-                value={spec.value} 
-                onChange={e => {const newSpecs=[...specs]; newSpecs[index].value=e.target.value; setSpecs(newSpecs)}} 
-              />
-            </div>
-            {specs.length > 1 && (
-              <button 
-                type="button" 
-                onClick={() => setSpecs(specs.filter((_, i) => i !== index))} 
-                className="p-2 text-[#565959] hover:text-[#B12704] hover:bg-red-50 rounded-md transition-colors"
-                title="Remove Row"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* RIGHT COLUMN: BULLET FEATURES */}
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <label className="block text-[13px] font-bold text-[#111]">Key Features</label>
-          <p className="text-[11px] text-[#565959]">Appear as bullet points near the product image</p>
-        </div>
-        <button 
-          type="button" 
-          onClick={() => setFeatures([...features, ''])} 
-          className="bg-[#F7FAFA] border border-[#D5D9D9] hover:bg-[#F0F2F2] text-[#0F1111] px-3 py-1 rounded-[8px] text-[12px] font-medium shadow-sm transition-all flex items-center gap-1"
-        >
-          <span className="text-lg font-light">+</span> Add Bullet
-        </button>
-      </div>
-
-      <div className="space-y-3">
-        {features.map((f, index) => (
-          <div key={index} className="flex gap-2 group items-center animate-in fade-in slide-in-from-right-2 duration-200">
-            <div className="h-2 w-2 rounded-full bg-[#e77600] shrink-0"></div>
-            <input 
-              type="text" 
-              placeholder="Enter a key selling point..." 
-              className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
-              value={f} 
-              onChange={e => {const newFeatures=[...features]; newFeatures[index]=e.target.value; setFeatures(newFeatures)}} 
-            />
-            {features.length > 1 && (
-              <button 
-                type="button" 
-                onClick={() => setFeatures(features.filter((_, i) => i !== index))} 
-                className="p-2 text-[#565959] hover:text-[#B12704] hover:bg-red-50 rounded-md opacity-0 group-hover:opacity-100 transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-
-  </div>
-</div>
-            {/* SECTION 4: VARIANTS
-            <div className={sectionCardStyles}>
-              <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-4">
-                <div><h3 className="text-lg font-black text-slate-900">Variants & Pricing Modifiers</h3><p className="text-xs font-bold text-slate-400 mt-1">Format: <span className="text-orange-500 bg-orange-50 px-2 py-0.5 rounded border border-orange-100 font-mono">128GB, 256GB(+5000)</span></p></div>
-                <button type="button" onClick={() => setVariants([...variants, { name: '', options: '' }])} className="text-[10px] bg-slate-900 text-white px-4 py-2 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Variant Group</button>
-              </div>
-              <div className="space-y-4">
-                {variants.map((variant, index) => (
-                  <div key={index} className="flex flex-col md:flex-row gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 relative group">
-                    <div className="w-full md:w-1/4"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Variant Name</label><input type="text" placeholder="e.g. Storage" className={inputStyles} value={variant.name} onChange={e => { const newVars = [...variants]; newVars[index].name = e.target.value; setVariants(newVars); }} /></div>
-                    <div className="w-full md:flex-1"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Options (Comma separated)</label><input type="text" placeholder="128GB, 256GB(+5000)" className={inputStyles} value={variant.options} onChange={e => { const newVars = [...variants]; newVars[index].options = e.target.value; setVariants(newVars); }} /></div>
-                    {variants.length > 1 && <button type="button" onClick={() => setVariants(variants.filter((_, i) => i !== index))} className="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center font-bold shadow-md hover:scale-110 transition-transform">×</button>}
-                  </div>
-                ))}
-              </div>
-            </div> */}
-{/* SECTION 4: VARIANTS & PRICING */}
-<div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-6 shadow-sm">
-  <div className="flex items-center justify-between border-b border-[#EEE] pb-4 mb-6">
-    <div className="flex items-center gap-2">
-      <span className="text-xl">🎭</span>
-      <h3 className="text-[18px] font-bold text-[#111]">Variants & Pricing Modifiers</h3>
-    </div>
-    <button 
-      type="button" 
-      onClick={() => setVariants([...variants, { name: '', options: '' }])} 
-      className="bg-[#F7FAFA] border border-[#D5D9D9] hover:bg-[#F0F2F2] text-[#0F1111] px-4 py-1.5 rounded-[8px] text-[12px] font-medium shadow-sm transition-all flex items-center gap-1"
-    >
-      <span className="text-lg font-light">+</span> Add Variant Group
-    </button>
-  </div>
-
-  {/* Helpful Instruction Banner */}
-  <div className="bg-[#F0F7FF] border border-[#007185] rounded-[4px] p-3 mb-6 flex gap-3">
-    <span className="text-[#007185] font-bold mt-0.5">ℹ️</span>
-    <div>
-      <p className="text-[12px] text-[#007185] font-bold uppercase tracking-tight">How to set dynamic pricing:</p>
-      <p className="text-[12px] text-[#111]">
-        List options separated by commas. Use <code className="bg-white px-1 border rounded text-[#e77600] font-bold">(+Value)</code> to increase price for that option.
-        <br />
-        <span className="text-[#565959] italic">Example: Black, Titanium(+5000), Gold(+2500)</span>
-      </p>
-    </div>
-  </div>
-
-  <div className="space-y-4">
-    {variants.map((variant, index) => (
-      <div 
-        key={index} 
-        className="flex flex-col md:flex-row gap-4 bg-[#F9F9F9] p-5 rounded-[4px] border border-[#EEE] relative group animate-in fade-in slide-in-from-bottom-2 duration-300"
-      >
-        {/* Delete Button - Floating top right */}
-        {variants.length > 1 && (
-          <button 
-            type="button" 
-            onClick={() => setVariants(variants.filter((_, i) => i !== index))} 
-            className="absolute -top-2 -right-2 bg-white border border-[#DDD] text-[#565959] hover:text-[#B12704] hover:border-[#B12704] w-7 h-7 rounded-full flex items-center justify-center shadow-sm transition-all z-10 opacity-0 group-hover:opacity-100"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        )}
-
-        <div className="w-full md:w-1/4">
-          <label className="block text-[11px] font-bold text-[#565959] uppercase mb-1.5 ml-1">Attribute Name</label>
-          <input 
-            type="text" 
-            placeholder="e.g. Storage" 
-            className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none bg-white font-bold" 
-            value={variant.name} 
-            onChange={e => { const newVars = [...variants]; newVars[index].name = e.target.value; setVariants(newVars); }} 
-          />
-        </div>
-
-        <div className="w-full md:flex-1">
-          <label className="block text-[11px] font-bold text-[#565959] uppercase mb-1.5 ml-1">Options & Price Adjustments</label>
-          <input 
-            type="text" 
-            placeholder="e.g. 128GB, 256GB(+5000), 512GB(+12000)" 
-            className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none bg-white font-mono" 
-            value={variant.options} 
-            onChange={e => { const newVars = [...variants]; newVars[index].options = e.target.value; setVariants(newVars); }} 
-          />
-        </div>
-      </div>
-    ))}
-  </div>
-</div>
-            {/* SECTION 5: SEO & META
-            <div className={sectionCardStyles}>
-              <h3 className={sectionTitleStyles}>Search Engine Optimization (SEO)</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div><label className={labelStyles}>SEO Title (Meta Title)</label><input type="text" placeholder="e.g. Buy iPhone 17 Pro Max Online | AMAZON SMARTS" className={inputStyles} value={seoTitle} onChange={e => setSeoTitle(e.target.value)} /></div>
-                <div><label className={labelStyles}>SEO Keywords (Comma separated)</label><input type="text" placeholder="iphone 17, apple smartphone, buy iphone online" className={inputStyles} value={seoKeywords} onChange={e => setSeoKeywords(e.target.value)} /></div>
-                <div className="md:col-span-2"><label className={labelStyles}>SEO Description (Max 160 characters)</label><textarea placeholder="Get the best deals on the new iPhone 17. Free shipping and 7-day returns..." className={`${inputStyles} h-20 resize-none`} value={seoDescription} onChange={e => setSeoDescription(e.target.value)} /></div>
-              </div>
-            </div> */}
-{/* SECTION 5: SEO & META */}
-<div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-6 shadow-sm">
-  <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6">
-    <span className="text-xl">🔍</span>
-    <h3 className="text-[18px] font-bold text-[#111]">Search Engine Optimization (SEO)</h3>
-  </div>
-
-  <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-    
-    {/* LEFT: INPUT FIELDS */}
-    <div className="space-y-5">
-      <div>
-        <label className="block text-[13px] font-bold text-[#111] mb-1">Meta Title</label>
-        <input 
-          type="text" 
-          placeholder="e.g. Buy iPhone 17 Pro Max Online | AMAZON SMARTS" 
-          className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
-          value={seoTitle} 
-          onChange={e => setSeoTitle(e.target.value)} 
-        />
-        <div className="flex justify-between mt-1">
-          <p className="text-[10px] text-[#565959]">Appears as the clickable link in search results.</p>
-          <p className={`text-[10px] font-bold ${seoTitle.length > 60 ? 'text-[#B12704]' : 'text-green-700'}`}>
-            {seoTitle.length}/60
-          </p>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-[13px] font-bold text-[#111] mb-1">Focus Keywords</label>
-        <input 
-          type="text" 
-          placeholder="iphone 17 pro, apple smartphone, best flagship" 
-          className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
-          value={seoKeywords} 
-          onChange={e => setSeoKeywords(e.target.value)} 
-        />
-        <p className="text-[10px] text-[#565959] mt-1">Separate keywords with commas.</p>
-      </div>
-
-      <div>
-        <label className="block text-[13px] font-bold text-[#111] mb-1">Meta Description</label>
-        <textarea 
-          placeholder="Get the best deals on the new iPhone 17. Free shipping and 7-day returns..." 
-          className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] h-24 resize-none focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
-          value={seoDescription} 
-          onChange={e => setSeoDescription(e.target.value)} 
-        />
-        <div className="flex justify-between mt-1">
-          <p className="text-[10px] text-[#565959]">Brief summary for search engine snippets.</p>
-          <p className={`text-[10px] font-bold ${seoDescription.length > 160 ? 'text-[#B12704]' : 'text-green-700'}`}>
-            {seoDescription.length}/160
-          </p>
-        </div>
-      </div>
-    </div>
-
-    {/* RIGHT: SEARCH PREVIEW CARD */}
-    <div className="bg-[#F9F9F9] border border-[#EEE] rounded-[4px] p-6 flex flex-col justify-center">
-      <p className="text-[12px] font-bold text-[#565959] uppercase tracking-wider mb-4 flex items-center gap-2">
-        <span>🌐</span> Google Search Preview
-      </p>
-      
-      <div className="bg-white p-5 border border-[#DDD] rounded shadow-sm max-w-[500px]">
-        {/* Mock URL */}
-        <p className="text-[12px] text-[#202124] mb-1 truncate">
-          https://amazonsmarts.com › products › <span className="text-[#5f6368]">{name ? name.toLowerCase().replace(/ /g, '-') : 'product-url'}</span>
-        </p>
-        {/* Mock Title */}
-        <h4 className="text-[18px] text-[#1a0dab] hover:underline cursor-pointer font-medium leading-tight mb-1 truncate">
-          {seoTitle || (name ? `${name} | AMAZON SMARTS` : 'Page Title Notification Goes Here')}
-        </h4>
-        {/* Mock Description */}
-        <p className="text-[13px] text-[#4d5156] line-clamp-2 leading-relaxed">
-          {seoDescription || 'Provide a meta description to see how your product will appear in search engine results. This summary helps customers find your store.'}
-        </p>
-      </div>
-
-      <div className="mt-6 space-y-2">
-        <p className="text-[11px] text-[#565959] flex items-center gap-2">
-          <span className={seoTitle.length > 30 && seoTitle.length < 60 ? 'text-green-600' : 'text-gray-300'}>●</span> 
-          Title length is optimal for mobile and desktop.
-        </p>
-        <p className="text-[11px] text-[#565959] flex items-center gap-2">
-          <span className={seoDescription.length > 70 && seoDescription.length < 160 ? 'text-green-600' : 'text-gray-300'}>●</span> 
-          Description is within the recommended character limit.
-        </p>
-      </div>
-    </div>
-
-  </div>
-</div>
-            {/* SECTION 6: POLICIES & CANCELLATIONS
-            <div className={sectionCardStyles}>
-              <h3 className={sectionTitleStyles}>Trust, Policies & Cancellations</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div><label className={labelStyles}>Return Policy</label><input type="text" placeholder="e.g. 7 Days Replacement" className={inputStyles} value={returnPolicy} onChange={e => setReturnPolicy(e.target.value)} required /></div>
-                <div><label className={labelStyles}>Warranty Policy</label><input type="text" placeholder="e.g. 1 Year Brand Warranty" className={inputStyles} value={warrantyPolicy} onChange={e => setWarrantyPolicy(e.target.value)} required /></div>
-                
-                🚀 CANCELLATION CONTROLS
-                <div className="flex flex-col justify-center mt-2">
-                  <label className="flex items-center cursor-pointer mb-2">
-                    <input type="checkbox" className="sr-only peer" checked={isCancellable} onChange={e => setIsCancellable(e.target.checked)} />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 relative"></div>
-                    <span className="ml-3 text-sm font-bold text-slate-700 uppercase tracking-wider">Allow Customer Cancellations</span>
-                  </label>
-                </div>
-                <div>
-                  <label className={labelStyles}>Cancellation Window (Hours)</label>
-                  <input type="number" min="0" placeholder="e.g. 24" className={inputStyles} value={cancellationWindowHours} onChange={e => setCancellationWindowHours(e.target.value)} disabled={!isCancellable} required={isCancellable} />
-                </div>
-              </div>
-            </div>
-
-            SECTION 7: MEDIA
-            <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 rounded-2xl shadow-lg border border-slate-700">
-              <h3 className="text-lg font-black text-white mb-6 flex items-center gap-2 border-b border-slate-700 pb-4">📸 Upload Media Assets</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-slate-900/50 p-6 rounded-xl border border-white/10 border-dashed">
-                  <label className="block text-sm font-black text-orange-400 uppercase tracking-widest mb-3 text-center">Gallery Images</label>
-                  <input type="file" multiple accept="image/*" className="w-full text-slate-300 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:tracking-wider file:bg-orange-500 file:text-white hover:file:bg-orange-600 transition-colors cursor-pointer" onChange={e => setImages(e.target.files)} required />
-                </div>
-                <div className="bg-slate-900/50 p-6 rounded-xl border border-white/10 border-dashed">
-                  <label className="block text-sm font-black text-blue-400 uppercase tracking-widest mb-3 text-center">Promo Banners (A+ Content)</label>
-                  <input type="file" multiple accept="image/*" className="w-full text-slate-300 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:tracking-wider file:bg-blue-500 file:text-white hover:file:bg-blue-600 transition-colors cursor-pointer" onChange={e => setBanners(e.target.files)} />
-                </div>
-              </div>
-            </div>
-
-            <button type="submit" className="w-full bg-orange-500 text-white font-black py-5 rounded-2xl text-xl hover:bg-orange-600 hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(249,115,22,0.5)] transition-all uppercase tracking-widest">
-              🚀 Publish to Live Store
-            </button>
-          </form>
-        </div>
-      </div> */}
-
-{/* SECTION 6: TRUST, POLICIES & CANCELLATIONS */}
-<div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-6 shadow-sm">
-  <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6">
-    <span className="text-xl">🛡️</span>
-    <h3 className="text-[18px] font-bold text-[#111]">Compliance & Customer Policies</h3>
-  </div>
-
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-    <div className="space-y-4">
-      <div>
-        <label className="block text-[13px] font-bold text-[#111] mb-1">Return Policy</label>
-        <input 
-          type="text" 
-          placeholder="e.g. 7 Days Replacement" 
-          className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
-          value={returnPolicy} 
-          onChange={e => setReturnPolicy(e.target.value)} 
-          required 
-        />
-      </div>
-      <div>
-        <label className="block text-[13px] font-bold text-[#111] mb-1">Warranty Details</label>
-        <input 
-          type="text" 
-          placeholder="e.g. 1 Year Brand Warranty" 
-          className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
-          value={warrantyPolicy} 
-          onChange={e => setWarrantyPolicy(e.target.value)} 
-          required 
-        />
-      </div>
-    </div>
-
-    <div className="bg-[#F7FAFA] border border-[#D5D9D9] p-5 rounded-[4px]">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h4 className="text-[13px] font-bold text-[#111]">Cancellation Control</h4>
-          <p className="text-[11px] text-[#565959]">Allow users to cancel before shipping</p>
-        </div>
-        <label className="relative inline-flex items-center cursor-pointer">
-          <input 
-            type="checkbox" 
-            className="sr-only peer" 
-            checked={isCancellable} 
-            onChange={e => setIsCancellable(e.target.checked)} 
-          />
-          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00a8e1]"></div>
-        </label>
-      </div>
-
-      <div className={`transition-all duration-300 ${isCancellable ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-        <label className="block text-[12px] font-bold text-[#111] mb-1">Cancellation Window (Hours)</label>
-        <div className="flex items-center gap-3">
-          <input 
-            type="number" 
-            className="w-24 border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] outline-none bg-white" 
-            value={cancellationWindowHours} 
-            onChange={e => setCancellationWindowHours(e.target.value)} 
-          />
-          <span className="text-[12px] text-[#565959]">hours after placing order</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-{/* SECTION 7: MEDIA ASSETS (Fixed Variable Name) */}
-<div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-12 shadow-sm">
-  <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6">
-    <span className="text-xl">📸</span>
-    <h3 className="text-[18px] font-bold text-[#111]">Product Media & A+ Content</h3>
-  </div>
-
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-    {/* Main Gallery */}
-    <div className="space-y-2">
-      <label className="block text-[13px] font-bold text-[#111]">Gallery Images (Main Display)</label>
-      <div className="border-2 border-dashed border-[#D5D9D9] rounded-[4px] p-8 text-center hover:bg-[#F7FAFA] transition-colors relative cursor-pointer group">
-        <input 
-          type="file" 
-          multiple 
-          accept="image/*" 
-          className="absolute inset-0 opacity-0 cursor-pointer" 
-          onChange={e => setImages(e.target.files)} 
-          required 
-        />
-        <div className="text-[#565959] group-hover:text-[#111]">
-          <p className="text-2xl mb-1">📤</p>
-          <p className="text-[13px] font-medium">Click to upload product photos</p>
-          <p className="text-[11px] mt-1">{images.length > 0 ? `✅ ${images.length} files selected` : 'Minimum 1 image required'}</p>
-        </div>
-      </div>
-    </div>
-
-    {/* A+ Content / Banners */}
-    <div className="space-y-2">
-      <label className="block text-[13px] font-bold text-[#111]">Promo Banners (Description Area)</label>
-      <div className="border-2 border-dashed border-[#D5D9D9] rounded-[4px] p-8 text-center hover:bg-[#F7FAFA] transition-colors relative cursor-pointer group">
-        <input 
-          type="file" 
-          multiple 
-          accept="image/*" 
-          className="absolute inset-0 opacity-0 cursor-pointer" 
-          onChange={e => setBanners(e.target.files)} // Uses 'setBanners'
-        />
-        <div className="text-[#565959] group-hover:text-[#111]">
-          <p className="text-2xl mb-1">🖼️</p>
-          <p className="text-[13px] font-medium">Add manufacturer info banners</p>
-          <p className="text-[11px] mt-1">{banners.length > 0 ? `✅ ${banners.length} banners selected` : 'A+ Content is optional'}</p> 
+          )}
         </div>
         
       </div>
-    </div>
+    ))}
   </div>
-</div>
-<div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#DDD] p-4 z-50 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] lg:left-[220px]">
-  <div className="max-w-[1000px] mx-auto flex justify-end gap-4 items-center">
-    <div className="hidden md:block text-right pr-4 border-r border-[#EEE]">
-      <p className="text-[11px] text-[#565959] uppercase font-bold">Current Status</p>
-      <p className="text-[13px] text-green-700 font-bold">Ready to Publish</p>
-    </div>
-    <button 
-      type="button" 
-      onClick={() => setActiveTab('inventory')}
-      className="bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-2 px-8 rounded-[8px] text-[14px] font-medium transition-all"
-    >
-      Discard
-    </button>
-    <button 
-      type="submit" 
-      className="bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-2 px-12 rounded-[8px] text-[14px] font-bold shadow-sm active:scale-95 transition-all"
-    >
-      Publish Product Listing
-    </button>
-  </div>
-</div>
-</form>
-</div>
-</div>
+</td>
+                          <td className="p-3 border-r border-[#DDD] font-bold text-[#B12704]">₹{o.totalPrice?.toLocaleString('en-IN')}</td>
+                          <td className="p-3">
+                             <select value={o.status} onChange={(e) => handleUpdateOrderStatus(o._id, e.target.value)} className={`w-full p-1.5 rounded-[4px] text-[11px] font-bold uppercase tracking-tight border-2 outline-none mb-3 cursor-pointer ${o.status === 'Delivered' ? 'bg-[#F7FCF7] border-[#007600] text-[#007600]' : 'bg-[#FFF8F2] border-[#e77600] text-[#e77600]'}`}>
+                                <option value="Processing">Processing</option><option value="Shipped">Shipped</option><option value="Delivered">Delivered</option><option value="Cancelled">Cancelled</option>
+                             </select>
+                             <div className="mt-2 border-t border-[#EEE] pt-2">
+                               <p className="text-[10px] font-bold text-[#565959] mb-1">TAX INVOICE (PDF)</p>
+                               <input type="file" accept=".pdf" onChange={(e) => handleUploadInvoice(o._id, e)} className="text-[10px] w-full file:bg-white file:border file:border-[#DDD] file:rounded file:px-2 cursor-pointer" />
+                               {o.invoiceUrl && <a href={getImageUrl(o.invoiceUrl)} target="_blank" className="text-[10px] text-[#007185] font-bold block mt-1 hover:underline">📄 DOWNLOAD</a>}
+                             </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+               </div>
+            </div>
+          )}
 
+          {/* ==================== PAYOUTS TAB ==================== */}
+          {activeTab === 'payouts' && (
+            <div className="max-w-[1200px] mx-auto">
+               <h2 className="text-[22px] font-bold mb-6">Affiliate Payouts</h2>
+               <div className="bg-white border border-[#DDD] rounded-[4px] shadow-sm overflow-hidden">
+                  <table className="w-full text-left text-[13px]">
+                    <thead className="bg-[#F0F2F2] border-b border-[#DDD] font-bold text-[#565959]">
+                      <tr><th className="p-4 border-r border-[#DDD]">Influencer</th><th className="p-4 border-r border-[#DDD]">Amount</th><th className="p-4 border-r border-[#DDD]">Settlement Details</th><th className="p-4 text-right">Actions</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#EEE]">
+                      {withdrawals.map((req) => (
+                        <tr key={req._id} className="hover:bg-[#F9F9F9]">
+                          <td className="p-4 border-r border-[#DDD] font-bold text-[#111]">{req.userId?.name}</td>
+                          <td className="p-4 border-r border-[#DDD] font-bold text-[#007600]">₹{req.amount?.toLocaleString()}</td>
+                          <td className="p-4 border-r border-[#DDD]">
+                            {req.details?.upiId ? (
+                              <div className="text-[11px] font-mono bg-gray-50 p-2 border border-[#DDD] rounded inline-block">UPI: {req.details.upiId}</div>
+                            ) : (
+                              <div className="text-[11px] space-y-0.5"><p className="font-bold">Bank: {req.details?.bankName}</p><p className="text-gray-500">A/C: {req.details?.accountNumber}</p><p className="text-gray-500">IFSC: {req.details?.ifsc}</p></div>
+                            )}
+                          </td>
+                          <td className="p-4 text-right space-x-2">
+                            {req.status === 'pending' ? (
+                              <>
+                                <button onClick={() => handlePayoutAction(req._id, 'approved')} className="bg-[#007600] text-white px-3 py-1 rounded-[4px] text-[11px] font-bold">APPROVE</button>
+                                <button onClick={() => handlePayoutAction(req._id, 'rejected')} className="bg-[#B12704] text-white px-3 py-1 rounded-[4px] text-[11px] font-bold">REJECT</button>
+                              </>
+                            ) : (
+                              <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${req.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{req.status}</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+               </div>
+            </div>
+          )}
 
+          {/* ==================== MARKETING TAB ==================== */}
+          {activeTab === 'marketing' && (
+            <div className="max-w-[1200px] mx-auto">
+               <h2 className="text-[22px] font-bold mb-6">Storefront Content</h2>
+               <div className="bg-white border border-[#DDD] rounded-[4px] shadow-sm overflow-hidden">
+                  <div className="bg-[#F0F2F2] px-6 py-3 border-b border-[#DDD] flex justify-between items-center"><h2 className="text-[14px] font-bold text-[#111]">Homepage Marketing Banners</h2></div>
+                  <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                     <form onSubmit={handleUploadBanner} className="lg:col-span-1 space-y-4 bg-[#F7FAFA] border border-[#D5D9D9] p-5 rounded-[4px]">
+                        <h3 className="text-[13px] font-bold border-b border-[#D5D9D9] pb-2 mb-4 uppercase">Create New Slide</h3>
+                        <div><label className={amzLabel}>Main Heading</label><input type="text" className={amzInput} value={bannerTitle} onChange={e => setBannerTitle(e.target.value)} /></div>
+                        <div><label className={amzLabel}>Sub-heading</label><input type="text" className={amzInput} value={bannerSubtitle} onChange={e => setBannerSubtitle(e.target.value)} /></div>
+                        <div><label className={amzLabel}>Redirect Link</label><input type="text" className={amzInput} placeholder="/product/ID" value={bannerLink} onChange={e => setBannerLink(e.target.value)} /></div>
+                        <div>
+                          <label className={amzLabel}>Slide Image (1920x800)</label>
+                          <div className="border-2 border-dashed border-[#D5D9D9] rounded-[4px] p-4 text-center bg-white cursor-pointer relative hover:bg-gray-50">
+                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={e => setBannerImage(e.target.files[0])} required />
+                            <p className="text-xl mb-1">📸</p>
+                            <p className="text-[11px] text-[#565959]">{bannerImage ? bannerImage.name : 'Select JPG/PNG'}</p>
+                          </div>
+                        </div>
+                        <button type="submit" disabled={isBannerUploading} className={amzYellowBtn + " w-full"}>{isBannerUploading ? 'Uploading...' : 'Publish Slide'}</button>
+                     </form>
+                     <div className="lg:col-span-2">
+                        <h3 className="text-[13px] font-bold mb-4 uppercase text-[#565959]">Active Slides ({allBanners.length})</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {allBanners.map((banner) => (
+                            <div key={banner._id} className="border border-[#DDD] rounded-[4px] overflow-hidden group relative">
+                              <img src={getImageUrl(banner.image)} className="w-full h-32 object-cover" alt="slide" />
+                              <div className="p-3 bg-white flex justify-between items-center border-t border-[#DDD]">
+                                <div className="truncate"><p className="font-bold text-[12px] truncate">{banner.title || 'No Title'}</p></div>
+                                <button onClick={() => handleDeleteBanner(banner._id)} className="text-[#B12704] hover:bg-red-50 p-1.5 rounded text-xs font-bold transition-colors">REMOVE</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+          )}
 
-      {/* THE ULTIMATE EDIT MODAL */}
+          {/* ==================== REVIEWS TAB ==================== */}
+          {activeTab === 'reviews' && (
+            <div className="max-w-[1200px] mx-auto">
+               <h2 className="text-[22px] font-bold mb-6">Customer Feedback Moderation</h2>
+               <div className="bg-white border border-[#DDD] rounded-[4px] shadow-sm overflow-hidden">
+                  <table className="w-full text-left text-[13px]">
+                    <thead className="bg-[#F0F2F2] border-b border-[#DDD] font-bold text-[#565959]">
+                      <tr><th className="p-4 border-r border-[#DDD]">Product & Customer</th><th className="p-4 border-r border-[#DDD] w-1/2">Review Detail</th><th className="p-4 text-right">Moderation</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#EEE]">
+                      {pendingReviews.map((item) => (
+                        <tr key={item.review._id} className="hover:bg-[#F9F9F9] align-top">
+                          <td className="p-4 border-r border-[#DDD] font-bold text-[#111]">{item.productName}<p className="text-[11px] text-[#007185] mt-1 hover:underline cursor-pointer">by {item.review.name}</p></td>
+                          <td className="p-4 border-r border-[#DDD] italic"><div className="text-[#e77600] text-sm mb-1">{'★'.repeat(item.review.rating)}{'☆'.repeat(5 - item.review.rating)}</div>"{item.review.comment}"</td>
+                          <td className="p-4 text-right space-x-3">
+                             <button onClick={() => handleReviewAction(item.productId, item.review._id, 'approved')} className="text-green-700 font-bold text-[11px] hover:underline">APPROVE</button>
+                             <button onClick={() => handleReviewAction(item.productId, item.review._id, 'rejected')} className="text-[#B12704] font-bold text-[11px] hover:underline">BLOCK</button>
+                          </td>
+                        </tr>
+                      ))}
+                      {pendingReviews.length === 0 && <tr><td colSpan="3" className="p-10 text-center text-[#565959]">No pending reviews.</td></tr>}
+                    </tbody>
+                  </table>
+               </div>
+            </div>
+          )}
+
+          {/* ==================== ADD PRODUCT TAB ==================== */}
+          {activeTab === 'add-product' && (
+            <div className="max-w-[1000px] mx-auto pb-20">
+               <div className="flex items-center justify-between mb-6 border-b border-[#DDD] pb-4">
+                 <div>
+                   <h2 className="text-[22px] font-bold text-[#111]">Add a Product</h2>
+                   <p className="text-[13px] text-[#565959]">Vital Info &gt; Offer &gt; Images &gt; Description</p>
+                 </div>
+                 <div className="flex gap-2">
+                   <button onClick={() => setActiveTab('inventory')} className={amzWhiteBtn}>Cancel</button>
+                   <button type="submit" form="addProductForm" className={amzYellowBtn}>Save and finish</button>
+                 </div>
+               </div>
+
+               <form id="addProductForm" onSubmit={handleAddProduct} className="space-y-6">
+                  {/* Basic Info */}
+                  <div className={amzSection}>
+                    <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">ℹ️</span><h3 className="text-[18px] font-bold text-[#111]">Product Identity</h3></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="md:col-span-2">
+                        <label className={amzLabel}>Product Name (Title)</label>
+                        <input type="text" className={amzInput} value={name} onChange={e => setName(e.target.value)} required />
+                        <p className="text-[10px] text-[#565959] mt-1">Recommended length: 60-150 characters.</p>
+                      </div>
+                      <div><label className={amzLabel}>Brand Name</label><input type="text" className={amzInput} value={brand} onChange={e => setBrand(e.target.value)} required /></div>
+                      <div>
+                        <label className={amzLabel}>Category</label>
+                        <select className={amzInput} value={category} onChange={e => setCategory(e.target.value)}>
+                          <option value="Smartphones">Smartphones</option><option value="Laptops">Laptops</option><option value="Audio">Audio</option><option value="Wearables">Wearables</option><option value="Accessories">Accessories</option>
+                        </select>
+                      </div>
+                      <div className="md:col-span-2"><label className={amzLabel}>Product Description</label><textarea className={amzInput + " h-32 resize-none"} value={description} onChange={e => setDescription(e.target.value)} required /></div>
+                      <div className="bg-[#F7FAFA] border border-[#D5D9D9] p-4 rounded-[4px] md:col-span-2">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input type="checkbox" className="w-4 h-4 accent-[#e77600]" checked={isBestSeller} onChange={e => setIsBestSeller(e.target.checked)} />
+                          <div><span className="text-[13px] font-bold text-[#111]">Apply "Best Seller" Badge</span><p className="text-[11px] text-[#565959]">This adds an orange ribbon to the product on the storefront.</p></div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pricing */}
+                  <div className={amzSection}>
+                    <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">💰</span><h3 className="text-[18px] font-bold text-[#111]">Pricing & Inventory</h3></div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div>
+                        <label className={amzLabel}>List Price (MRP)</label>
+                        <div className="relative"><span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[13px]">₹</span><input type="number" className={amzInput + " pl-6"} value={price} onChange={e => setPrice(e.target.value)} required /></div>
+                      </div>
+                      <div>
+                        <label className={amzLabel}>Your Price (Discounted)</label>
+                        <div className="relative"><span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[13px]">₹</span><input type="number" className={amzInput + " pl-6"} value={discountPrice} onChange={e => setDiscountPrice(e.target.value)} /></div>
+                        <p className="text-[10px] text-[#B12704] mt-1 font-bold">Leave blank if no discount.</p>
+                      </div>
+                      <div>
+                        <label className={amzLabel}>Quantity in Stock</label>
+                        <input type="number" className={amzInput} value={stock} onChange={e => setStock(e.target.value)} required />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Specs & Features */}
+                  <div className={amzSection}>
+                    <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">🛠️</span><h3 className="text-[18px] font-bold text-[#111]">Technical Details & Highlights</h3></div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <div><label className={amzLabel}>Technical Specifications</label><p className="text-[11px] text-[#565959] -mt-1">Appear in the "Details" table</p></div>
+                          <button type="button" onClick={() => setSpecs([...specs, { name: '', value: '' }])} className={amzWhiteBtn + " !py-1 flex items-center gap-1"}><span className="text-lg">+</span> Add</button>
+                        </div>
+                        <div className="bg-[#F9F9F9] border border-[#EEE] rounded-[4px] p-4 space-y-3">
+                          {specs.map((spec, index) => (
+                            <div key={index} className="flex gap-2 relative group items-start">
+                              <input type="text" placeholder="Attribute (e.g. RAM)" className={amzInput + " w-1/3 bg-white"} value={spec.name} onChange={e => {const newSpecs=[...specs]; newSpecs[index].name=e.target.value; setSpecs(newSpecs)}} />
+                              <input type="text" placeholder="Value (e.g. 16GB)" className={amzInput + " flex-1 bg-white"} value={spec.value} onChange={e => {const newSpecs=[...specs]; newSpecs[index].value=e.target.value; setSpecs(newSpecs)}} />
+                              {specs.length > 1 && <button type="button" onClick={() => setSpecs(specs.filter((_, i) => i !== index))} className="p-2 text-[#565959] hover:text-[#B12704] transition-colors">✕</button>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <div><label className={amzLabel}>Key Features</label><p className="text-[11px] text-[#565959] -mt-1">Appear as bullet points</p></div>
+                          <button type="button" onClick={() => setFeatures([...features, ''])} className={amzWhiteBtn + " !py-1 flex items-center gap-1"}><span className="text-lg">+</span> Add</button>
+                        </div>
+                        <div className="space-y-3">
+                          {features.map((f, index) => (
+                            <div key={index} className="flex gap-2 group items-center">
+                              <div className="h-2 w-2 rounded-full bg-[#e77600] shrink-0"></div>
+                              <input type="text" placeholder="Enter a key selling point..." className={amzInput} value={f} onChange={e => {const newFeatures=[...features]; newFeatures[index]=e.target.value; setFeatures(newFeatures)}} />
+                              {features.length > 1 && <button type="button" onClick={() => setFeatures(features.filter((_, i) => i !== index))} className="p-2 text-[#565959] hover:text-[#B12704] opacity-0 group-hover:opacity-100 transition-all">✕</button>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Variants */}
+                  <div className={amzSection}>
+                    <div className="flex items-center justify-between border-b border-[#EEE] pb-4 mb-6">
+                      <div className="flex items-center gap-2"><span className="text-xl">🎭</span><h3 className="text-[18px] font-bold text-[#111]">Variants & Pricing Modifiers</h3></div>
+                      <button type="button" onClick={() => setVariants([...variants, { name: '', options: '' }])} className={amzWhiteBtn + " flex items-center gap-1"}><span className="text-lg">+</span> Add Group</button>
+                    </div>
+                    <div className="bg-[#F0F7FF] border border-[#007185] rounded-[4px] p-3 mb-6 flex gap-3">
+                      <span className="text-[#007185] font-bold mt-0.5">ℹ️</span>
+                      <div>
+                        <p className="text-[12px] text-[#007185] font-bold uppercase tracking-tight">How to set dynamic pricing:</p>
+                        <p className="text-[12px] text-[#111]">List options separated by commas. Use <code className="bg-white px-1 border rounded text-[#e77600] font-bold">(+Value)</code> to increase price.<br /><span className="text-[#565959] italic">Example: Black, Titanium(+5000), Gold(+2500)</span></p>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      {variants.map((variant, index) => (
+                        <div key={index} className="flex flex-col md:flex-row gap-4 bg-[#F9F9F9] p-5 rounded-[4px] border border-[#EEE] relative group">
+                          {variants.length > 1 && <button type="button" onClick={() => setVariants(variants.filter((_, i) => i !== index))} className="absolute -top-2 -right-2 bg-white border border-[#DDD] text-[#565959] hover:text-[#B12704] hover:border-[#B12704] w-7 h-7 rounded-full flex items-center justify-center shadow-sm z-10 opacity-0 group-hover:opacity-100 transition-all">✕</button>}
+                          <div className="w-full md:w-1/4">
+                            <label className="block text-[11px] font-bold text-[#565959] uppercase mb-1.5 ml-1">Attribute Name</label>
+                            <input type="text" placeholder="e.g. Storage" className={amzInput + " bg-white font-bold"} value={variant.name} onChange={e => { const newVars = [...variants]; newVars[index].name = e.target.value; setVariants(newVars); }} />
+                          </div>
+                          <div className="w-full md:flex-1">
+                            <label className="block text-[11px] font-bold text-[#565959] uppercase mb-1.5 ml-1">Options & Price Adjustments</label>
+                            <input type="text" placeholder="e.g. 128GB, 256GB(+5000)" className={amzInput + " bg-white font-mono"} value={variant.options} onChange={e => { const newVars = [...variants]; newVars[index].options = e.target.value; setVariants(newVars); }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* SEO */}
+                  <div className={amzSection}>
+                    <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">🔍</span><h3 className="text-[18px] font-bold text-[#111]">Search Engine Optimization (SEO)</h3></div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                      <div className="space-y-5">
+                        <div>
+                          <label className={amzLabel}>Meta Title</label>
+                          <input type="text" className={amzInput} value={seoTitle} onChange={e => setSeoTitle(e.target.value)} />
+                          <div className="flex justify-between mt-1"><p className="text-[10px] text-[#565959]">Appears as clickable link.</p><p className={`text-[10px] font-bold ${seoTitle.length > 60 ? 'text-[#B12704]' : 'text-green-700'}`}>{seoTitle.length}/60</p></div>
+                        </div>
+                        <div><label className={amzLabel}>Focus Keywords</label><input type="text" className={amzInput} value={seoKeywords} onChange={e => setSeoKeywords(e.target.value)} /></div>
+                        <div>
+                          <label className={amzLabel}>Meta Description</label>
+                          <textarea className={amzInput + " h-24 resize-none"} value={seoDescription} onChange={e => setSeoDescription(e.target.value)} />
+                          <div className="flex justify-between mt-1"><p className="text-[10px] text-[#565959]">Brief summary.</p><p className={`text-[10px] font-bold ${seoDescription.length > 160 ? 'text-[#B12704]' : 'text-green-700'}`}>{seoDescription.length}/160</p></div>
+                        </div>
+                      </div>
+                      <div className="bg-[#F9F9F9] border border-[#EEE] rounded-[4px] p-6 flex flex-col justify-center">
+                        <p className="text-[12px] font-bold text-[#565959] uppercase tracking-wider mb-4 flex items-center gap-2"><span>🌐</span> Google Search Preview</p>
+                        <div className="bg-white p-5 border border-[#DDD] rounded shadow-sm max-w-[500px]">
+                          <p className="text-[12px] text-[#202124] mb-1 truncate">https://amazonsmarts.com › products › <span className="text-[#5f6368]">{name ? name.toLowerCase().replace(/ /g, '-') : 'url'}</span></p>
+                          <h4 className="text-[18px] text-[#1a0dab] hover:underline cursor-pointer font-medium leading-tight mb-1 truncate">{seoTitle || (name ? `${name} | AMAZON SMARTS` : 'Page Title Goes Here')}</h4>
+                          <p className="text-[13px] text-[#4d5156] line-clamp-2 leading-relaxed">{seoDescription || 'Provide a meta description to see how your product will appear in search engine results.'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Compliance & Cancellation */}
+                  <div className={amzSection}>
+                    <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">🛡️</span><h3 className="text-[18px] font-bold text-[#111]">Compliance & Policies</h3></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-4">
+                        <div><label className={amzLabel}>Return Policy</label><input type="text" className={amzInput} value={returnPolicy} onChange={e => setReturnPolicy(e.target.value)} required /></div>
+                        <div><label className={amzLabel}>Warranty Details</label><input type="text" className={amzInput} value={warrantyPolicy} onChange={e => setWarrantyPolicy(e.target.value)} required /></div>
+                      </div>
+                      <div className="bg-[#F7FAFA] border border-[#D5D9D9] p-5 rounded-[4px]">
+                        <div className="flex items-center justify-between mb-4">
+                          <div><h4 className="text-[13px] font-bold text-[#111]">Cancellation Control</h4><p className="text-[11px] text-[#565959]">Allow users to cancel</p></div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" className="sr-only peer" checked={isCancellable} onChange={e => setIsCancellable(e.target.checked)} />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00a8e1]"></div>
+                          </label>
+                        </div>
+                        <div className={`transition-all duration-300 ${isCancellable ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                          <label className={amzLabel}>Cancellation Window (Hours)</label>
+                          <div className="flex items-center gap-3"><input type="number" className={amzInput + " w-24 bg-white"} value={cancellationWindowHours} onChange={e => setCancellationWindowHours(e.target.value)} /><span className="text-[12px] text-[#565959]">hours after order</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Media */}
+                  <div className={amzSection}>
+                    <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">📸</span><h3 className="text-[18px] font-bold text-[#111]">Product Media & A+ Content</h3></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-2">
+                        <label className={amzLabel}>Gallery Images (Main Display)</label>
+                        <div className="border-2 border-dashed border-[#D5D9D9] rounded-[4px] p-8 text-center hover:bg-[#F7FAFA] transition-colors relative cursor-pointer group">
+                          <input type="file" multiple accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => setImages(e.target.files)} required />
+                          <div className="text-[#565959] group-hover:text-[#111]">
+                            <p className="text-2xl mb-1">📤</p><p className="text-[13px] font-medium">Click to upload photos</p><p className="text-[11px] mt-1">{images.length > 0 ? `✅ ${images.length} files selected` : 'Minimum 1 image required'}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className={amzLabel}>Promo Banners (Description Area)</label>
+                        <div className="border-2 border-dashed border-[#D5D9D9] rounded-[4px] p-8 text-center hover:bg-[#F7FAFA] transition-colors relative cursor-pointer group">
+                          <input type="file" multiple accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => setProductBanners(e.target.files)} />
+                          <div className="text-[#565959] group-hover:text-[#111]">
+                            <p className="text-2xl mb-1">🖼️</p><p className="text-[13px] font-medium">Add manufacturer info banners</p><p className="text-[11px] mt-1">{productBanners.length > 0 ? `✅ ${productBanners.length} banners selected` : 'A+ Content is optional'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fixed Bottom Action Bar */}
+                  <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#DDD] p-4 z-50 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] lg:left-[240px]">
+                    <div className="max-w-[1000px] mx-auto flex justify-end gap-4 items-center">
+                      <div className="hidden md:block text-right pr-4 border-r border-[#EEE]"><p className="text-[11px] text-[#565959] uppercase font-bold">Current Status</p><p className="text-[13px] text-green-700 font-bold">Ready to Publish</p></div>
+                      <button type="button" onClick={() => setActiveTab('inventory')} className={amzWhiteBtn}>Discard</button>
+                      <button type="submit" className={amzYellowBtn + " px-12"}>Publish Product Listing</button>
+                    </div>
+                  </div>
+               </form>
+            </div>
+          )}
+
+        </main>
+      </div>
+
+      {/* ========================================== */}
+      {/* 🚀 THE EDIT MODAL (Amazon Form Style) */}
+      {/* ========================================== */}
       {editingProduct && editForm && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 z-50 overflow-y-auto">
-          <div className="bg-slate-50 rounded-3xl w-full max-w-6xl shadow-2xl relative my-auto border border-white/20">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+          <div className="bg-[#EAEDED] rounded-[4px] w-full max-w-5xl shadow-2xl flex flex-col h-[90vh]">
             
-            {/* Modal Header (Sticky) */}
-            <div className="sticky top-0 bg-white/90 backdrop-blur-md px-8 py-6 border-b border-slate-200 flex justify-between items-center rounded-t-3xl z-20">
+            {/* Modal Header */}
+            <div className="bg-[#131921] text-white px-6 py-4 flex justify-between items-center rounded-t-[4px]">
               <div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Edit <span className="text-orange-500">{editingProduct.name}</span></h2>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Make changes below and save.</p>
+                <h2 className="text-[18px] font-bold">Edit Listing</h2>
+                <p className="text-[12px] text-gray-400 mt-1">Editing: {editingProduct.name}</p>
               </div>
-              <button onClick={() => setEditingProduct(null)} className="w-10 h-10 bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600 rounded-full flex items-center justify-center font-black transition-colors text-xl pb-1">×</button>
+              <button onClick={() => setEditingProduct(null)} className="text-2xl hover:text-[#febd69] transition-colors">✕</button>
             </div>
             
-            <div className="p-8 max-h-[75vh] overflow-y-auto overflow-x-hidden custom-scrollbar">
-              <form id="editForm" onSubmit={handleUpdateProduct} className="space-y-6">
+            {/* Modal Body (Scrollable Form) */}
+            <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+              <form id="editForm" onSubmit={handleUpdateProduct} className="space-y-6 max-w-[800px] mx-auto">
                 
-                {/* Edit: Basic Info */}
-                <div className={sectionCardStyles}>
-                  <h3 className={sectionTitleStyles}>Basic Information</h3>
+                {/* Basic */}
+                <div className={amzSection}>
+                  <h3 className="font-bold text-[14px] border-b border-[#EEE] pb-2 mb-4">Basic Information</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div><label className={labelStyles}>Product Name</label><input type="text" className={inputStyles} value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} required /></div>
-                    <div><label className={labelStyles}>Brand</label><input type="text" className={inputStyles} value={editForm.brand} onChange={e => setEditForm({...editForm, brand: e.target.value})} required /></div>
-                    <div className="md:col-span-2"><label className={labelStyles}>Description</label><textarea className={`${inputStyles} h-32 resize-none`} value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} required /></div>
-                    <div><label className={labelStyles}>Category</label><select className={inputStyles} value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})}><option value="Smartphones">Smartphones</option><option value="Laptops">Laptops</option><option value="Audio">Audio</option><option value="Wearables">Wearables</option></select></div>
-                    <div className="flex items-center mt-6">
-                      <label className="flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" checked={editForm.isBestSeller} onChange={e => setEditForm({...editForm, isBestSeller: e.target.checked})} />
-                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 relative"></div>
-                        <span className="ml-3 text-sm font-bold text-slate-700 uppercase tracking-wider">Highlight as Best Seller</span>
-                      </label>
-                    </div>
+                    <div className="md:col-span-2"><label className={amzLabel}>Product Name</label><input type="text" className={amzInput} value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} required /></div>
+                    <div><label className={amzLabel}>Brand</label><input type="text" className={amzInput} value={editForm.brand} onChange={e => setEditForm({...editForm, brand: e.target.value})} required /></div>
+                    <div><label className={amzLabel}>Category</label><select className={amzInput} value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})}><option value="Smartphones">Smartphones</option><option value="Laptops">Laptops</option><option value="Audio">Audio</option><option value="Wearables">Wearables</option><option value="Accessories">Accessories</option></select></div>
+                    <div className="md:col-span-2"><label className={amzLabel}>Description</label><textarea className={amzInput + " h-24 resize-none"} value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} required /></div>
+                    <div className="md:col-span-2 flex items-center gap-2"><input type="checkbox" checked={editForm.isBestSeller} onChange={e => setEditForm({...editForm, isBestSeller: e.target.checked})} /><span className="text-[13px] font-bold">Mark as Best Seller</span></div>
                   </div>
                 </div>
 
-                {/* Edit: Pricing & Inventory */}
-                <div className={sectionCardStyles}>
-                  <h3 className={sectionTitleStyles}>Pricing & Inventory</h3>
+                {/* Price */}
+                <div className={amzSection}>
+                  <h3 className="font-bold text-[14px] border-b border-[#EEE] pb-2 mb-4">Pricing & Inventory</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div><label className={labelStyles}>Base MRP (₹)</label><input type="number" className={inputStyles} value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} required /></div>
-                    <div><label className={labelStyles}>Discount Price (₹)</label><input type="number" className={inputStyles} value={editForm.discountPrice || ''} onChange={e => setEditForm({...editForm, discountPrice: e.target.value})} /></div>
-                    <div><label className={labelStyles}>Total Stock</label><input type="number" className={inputStyles} value={editForm.stock} onChange={e => setEditForm({...editForm, stock: e.target.value})} required /></div>
+                    <div><label className={amzLabel}>MRP</label><input type="number" className={amzInput} value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} required /></div>
+                    <div><label className={amzLabel}>Offer Price</label><input type="number" className={amzInput} value={editForm.discountPrice || ''} onChange={e => setEditForm({...editForm, discountPrice: e.target.value})} /></div>
+                    <div><label className={amzLabel}>Stock</label><input type="number" className={amzInput} value={editForm.stock} onChange={e => setEditForm({...editForm, stock: e.target.value})} required /></div>
                   </div>
                 </div>
 
-                {/* Edit: Features & Specs */}
-                <div className={sectionCardStyles}>
-                  <h3 className={sectionTitleStyles}>Technical Details</h3>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                {/* Specs/Features */}
+                <div className={amzSection}>
+                  <h3 className="font-bold text-[14px] border-b border-[#EEE] pb-2 mb-4">Specs & Features</h3>
+                  <div className="space-y-6">
                     <div>
-                      <div className="flex justify-between items-center mb-4"><label className={labelStyles}>Tech Specs</label><button type="button" onClick={() => setEditForm({...editForm, specs: [...editForm.specs, { name: '', value: '' }]})} className="text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Row</button></div>
-                      <div className="space-y-3">
-                        {editForm.specs.map((spec, index) => (
-                          <div key={index} className="flex gap-3 relative group">
-                            <input type="text" placeholder="Name" className={`${inputStyles} w-1/3`} value={spec.name} onChange={e => {const newSpecs=[...editForm.specs]; newSpecs[index].name=e.target.value; setEditForm({...editForm, specs: newSpecs})}} />
-                            <input type="text" placeholder="Value" className={`${inputStyles} flex-1`} value={spec.value} onChange={e => {const newSpecs=[...editForm.specs]; newSpecs[index].value=e.target.value; setEditForm({...editForm, specs: newSpecs})}} />
-                            {editForm.specs.length > 1 && <button type="button" onClick={() => {const newSpecs=editForm.specs.filter((_, i) => i !== index); setEditForm({...editForm, specs: newSpecs})}} className="absolute -right-3 top-1/2 -translate-y-1/2 bg-red-100 text-red-600 w-6 h-6 rounded-full flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity">×</button>}
-                          </div>
-                        ))}
-                      </div>
+                      <div className="flex justify-between items-center mb-2"><label className={amzLabel}>Tech Specs</label><button type="button" onClick={() => setEditForm({...editForm, specs: [...editForm.specs, { name: '', value: '' }]})} className="text-[#007185] text-[11px] font-bold">+ Add Row</button></div>
+                      {editForm.specs.map((spec, index) => (
+                        <div key={index} className="flex gap-2 mb-2">
+                          <input type="text" placeholder="Name" className={amzInput + " w-1/3"} value={spec.name} onChange={e => {const n=[...editForm.specs]; n[index].name=e.target.value; setEditForm({...editForm, specs: n})}} />
+                          <input type="text" placeholder="Value" className={amzInput + " flex-1"} value={spec.value} onChange={e => {const n=[...editForm.specs]; n[index].value=e.target.value; setEditForm({...editForm, specs: n})}} />
+                          {editForm.specs.length > 1 && <button type="button" onClick={() => {const n=editForm.specs.filter((_, i) => i !== index); setEditForm({...editForm, specs: n})}} className="text-red-500 font-bold px-2">✕</button>}
+                        </div>
+                      ))}
                     </div>
                     <div>
-                      <div className="flex justify-between items-center mb-4"><label className={labelStyles}>Key Features</label><button type="button" onClick={() => setEditForm({...editForm, features: [...editForm.features, '']})} className="text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Feature</button></div>
-                      <div className="space-y-3">
-                        {editForm.features.map((f, index) => (
-                          <div key={index} className="flex gap-3 relative group">
-                            <input type="text" placeholder="Feature" className={inputStyles} value={f} onChange={e => {const newFeatures=[...editForm.features]; newFeatures[index]=e.target.value; setEditForm({...editForm, features: newFeatures})}} />
-                            {editForm.features.length > 1 && <button type="button" onClick={() => {const newFeatures=editForm.features.filter((_, i) => i !== index); setEditForm({...editForm, features: newFeatures})}} className="absolute -right-3 top-1/2 -translate-y-1/2 bg-red-100 text-red-600 w-6 h-6 rounded-full flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity">×</button>}
-                          </div>
-                        ))}
-                      </div>
+                      <div className="flex justify-between items-center mb-2"><label className={amzLabel}>Key Features (Bullets)</label><button type="button" onClick={() => setEditForm({...editForm, features: [...editForm.features, '']})} className="text-[#007185] text-[11px] font-bold">+ Add Bullet</button></div>
+                      {editForm.features.map((f, index) => (
+                        <div key={index} className="flex gap-2 mb-2">
+                          <input type="text" className={amzInput} value={f} onChange={e => {const n=[...editForm.features]; n[index]=e.target.value; setEditForm({...editForm, features: n})}} />
+                          {editForm.features.length > 1 && <button type="button" onClick={() => {const n=editForm.features.filter((_, i) => i !== index); setEditForm({...editForm, features: n})}} className="text-red-500 font-bold px-2">✕</button>}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
 
-                {/* Edit: Variants */}
-                <div className={sectionCardStyles}>
-                  <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-4">
-                    <div><h3 className="text-lg font-black text-slate-900">Variants & Pricing Modifiers</h3></div>
-                    <button type="button" onClick={() => setEditForm({...editForm, variants: [...editForm.variants, { name: '', options: '' }]})} className="text-[10px] bg-slate-900 text-white px-4 py-2 rounded-full font-black uppercase tracking-wider hover:bg-orange-500 transition-colors">+ Add Variant</button>
-                  </div>
+                {/* Variants Edit */}
+                <div className={amzSection}>
+                  <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-[14px]">Variants & Modifiers</h3><button type="button" onClick={() => setEditForm({...editForm, variants: [...editForm.variants, { name: '', options: '' }]})} className="text-[#007185] text-[11px] font-bold">+ Add Variant</button></div>
                   <div className="space-y-4">
                     {editForm.variants.map((variant, index) => (
-                      <div key={index} className="flex flex-col md:flex-row gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 relative group">
-                        <div className="w-full md:w-1/4"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Variant Name</label><input type="text" className={inputStyles} value={variant.name} onChange={e => { const newVars = [...editForm.variants]; newVars[index].name = e.target.value; setEditForm({...editForm, variants: newVars}); }} /></div>
-                        <div className="w-full md:flex-1"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Options</label><input type="text" className={inputStyles} value={variant.options} onChange={e => { const newVars = [...editForm.variants]; newVars[index].options = e.target.value; setEditForm({...editForm, variants: newVars}); }} /></div>
-                        {editForm.variants.length > 1 && <button type="button" onClick={() => { const newVars = editForm.variants.filter((_, i) => i !== index); setEditForm({...editForm, variants: newVars}); }} className="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center font-bold shadow-md hover:scale-110 transition-transform">×</button>}
+                      <div key={index} className="flex gap-4 bg-[#F9F9F9] p-4 border rounded">
+                        <div className="w-1/3"><label className="text-[11px] font-bold text-gray-500">Name</label><input type="text" className={amzInput} value={variant.name} onChange={e => { const n = [...editForm.variants]; n[index].name = e.target.value; setEditForm({...editForm, variants: n}); }} /></div>
+                        <div className="flex-1"><label className="text-[11px] font-bold text-gray-500">Options (e.g. 128GB, 256GB(+5000))</label><input type="text" className={amzInput} value={variant.options} onChange={e => { const n = [...editForm.variants]; n[index].options = e.target.value; setEditForm({...editForm, variants: n}); }} /></div>
+                        {editForm.variants.length > 1 && <button type="button" onClick={() => { const n = editForm.variants.filter((_, i) => i !== index); setEditForm({...editForm, variants: n}); }} className="text-red-500 font-bold">✕</button>}
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Edit: SEO & Meta */}
-                <div className={sectionCardStyles}>
-                  <h3 className={sectionTitleStyles}>Search Engine Optimization (SEO)</h3>
+                {/* SEO & Policies Edit */}
+                <div className={amzSection}>
+                  <h3 className="font-bold text-[14px] border-b border-[#EEE] pb-2 mb-4">SEO & Policies</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div><label className={labelStyles}>SEO Title</label><input type="text" className={inputStyles} value={editForm.seoTitle || ''} onChange={e => setEditForm({...editForm, seoTitle: e.target.value})} /></div>
-                    <div><label className={labelStyles}>SEO Keywords</label><input type="text" className={inputStyles} value={editForm.seoKeywords || ''} onChange={e => setEditForm({...editForm, seoKeywords: e.target.value})} /></div>
-                    <div className="md:col-span-2"><label className={labelStyles}>SEO Description</label><textarea className={`${inputStyles} h-20 resize-none`} value={editForm.seoDescription || ''} onChange={e => setEditForm({...editForm, seoDescription: e.target.value})} /></div>
-                  </div>
-                </div>
-
-                {/* Edit: Policies & Cancellations */}
-                <div className={sectionCardStyles}>
-                  <h3 className={sectionTitleStyles}>Trust, Policies & Cancellations</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div><label className={labelStyles}>Return Policy</label><input type="text" className={inputStyles} value={editForm.returnPolicy} onChange={e => setEditForm({...editForm, returnPolicy: e.target.value})} required /></div>
-                    <div><label className={labelStyles}>Warranty Policy</label><input type="text" className={inputStyles} value={editForm.warrantyPolicy} onChange={e => setEditForm({...editForm, warrantyPolicy: e.target.value})} required /></div>
-                    
-                    {/* 🚀 EDIT CANCELLATION CONTROLS */}
-                    <div className="flex flex-col justify-center mt-2">
-                      <label className="flex items-center cursor-pointer mb-2">
-                        <input type="checkbox" className="sr-only peer" checked={editForm.isCancellable} onChange={e => setEditForm({...editForm, isCancellable: e.target.checked})} />
-                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 relative"></div>
-                        <span className="ml-3 text-sm font-bold text-slate-700 uppercase tracking-wider">Allow Customer Cancellations</span>
-                      </label>
-                    </div>
-                    <div>
-                      <label className={labelStyles}>Cancellation Window (Hours)</label>
-                      <input type="number" min="0" placeholder="e.g. 24" className={inputStyles} value={editForm.cancellationWindowHours} onChange={e => setEditForm({...editForm, cancellationWindowHours: e.target.value})} disabled={!editForm.isCancellable} required={editForm.isCancellable} />
+                    <div><label className={amzLabel}>SEO Title</label><input type="text" className={amzInput} value={editForm.seoTitle || ''} onChange={e => setEditForm({...editForm, seoTitle: e.target.value})} /></div>
+                    <div><label className={amzLabel}>SEO Keywords</label><input type="text" className={amzInput} value={editForm.seoKeywords || ''} onChange={e => setEditForm({...editForm, seoKeywords: e.target.value})} /></div>
+                    <div className="md:col-span-2"><label className={amzLabel}>SEO Description</label><textarea className={amzInput + " h-16 resize-none"} value={editForm.seoDescription || ''} onChange={e => setEditForm({...editForm, seoDescription: e.target.value})} /></div>
+                    <div><label className={amzLabel}>Return Policy</label><input type="text" className={amzInput} value={editForm.returnPolicy} onChange={e => setEditForm({...editForm, returnPolicy: e.target.value})} required /></div>
+                    <div><label className={amzLabel}>Warranty Policy</label><input type="text" className={amzInput} value={editForm.warrantyPolicy} onChange={e => setEditForm({...editForm, warrantyPolicy: e.target.value})} required /></div>
+                    <div className="md:col-span-2 bg-[#F0F7FF] p-4 border border-[#007185] rounded flex gap-6 items-center">
+                       <label className="flex items-center gap-2"><input type="checkbox" checked={editForm.isCancellable} onChange={e => setEditForm({...editForm, isCancellable: e.target.checked})} /><span className="text-[13px] font-bold">Allow Cancellations</span></label>
+                       {editForm.isCancellable && ( <div className="flex items-center gap-2"><input type="number" className={amzInput + " w-20"} value={editForm.cancellationWindowHours} onChange={e => setEditForm({...editForm, cancellationWindowHours: e.target.value})} /><span className="text-[12px]">hours</span></div> )}
                     </div>
                   </div>
                 </div>
 
-                {/* Edit: Upload Media */}
-                <div className={sectionCardStyles}>
-                  <h3 className={sectionTitleStyles}>Update Media Assets</h3>
-                  <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl mb-6">
-                    <p className="text-sm font-bold text-orange-800">Note: Uploading new files will ADD to existing media.</p>
-                  </div>
+                {/* Media Edit */}
+                <div className={amzSection}>
+                  <h3 className="font-bold text-[14px] border-b border-[#EEE] pb-2 mb-4">Add Media (Appends to existing)</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div><label className={labelStyles}>Add Gallery Images</label><input type="file" multiple accept="image/*" className="w-full text-slate-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer" onChange={e => setEditForm({...editForm, newImagesFiles: e.target.files})} /></div>
-                    <div><label className={labelStyles}>Upload New Promo Banners</label><input type="file" multiple accept="image/*" className="w-full text-slate-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer" onChange={e => setEditForm({...editForm, newBannersFiles: e.target.files})} /></div>
+                    <div><label className={amzLabel}>Add Gallery Images</label><input type="file" multiple accept="image/*" className={amzInput} onChange={e => setEditForm({...editForm, newImagesFiles: e.target.files})} /></div>
+                    <div><label className={amzLabel}>Add Promo Banners</label><input type="file" multiple accept="image/*" className={amzInput} onChange={e => setEditForm({...editForm, newBannersFiles: e.target.files})} /></div>
                   </div>
                 </div>
 
               </form>
             </div>
             
-            {/* Modal Footer (Sticky) */}
-            <div className="sticky bottom-0 bg-white/90 backdrop-blur-md px-8 py-5 border-t border-slate-200 flex gap-4 rounded-b-3xl z-20">
-              <button type="button" onClick={() => setEditingProduct(null)} className="flex-1 py-3.5 bg-slate-100 text-slate-700 font-black rounded-xl hover:bg-slate-200 uppercase tracking-widest text-sm transition-colors">Cancel Edit</button>
-              <button type="submit" form="editForm" className="flex-1 py-3.5 bg-orange-500 text-white font-black rounded-xl hover:bg-orange-600 hover:shadow-lg hover:-translate-y-0.5 uppercase tracking-widest text-sm transition-all shadow-md">💾 Save All Changes</button>
+            {/* Modal Footer */}
+            <div className="bg-white border-t border-[#DDD] p-4 flex justify-end gap-3 rounded-b-[4px]">
+              <button type="button" onClick={() => setEditingProduct(null)} className={amzWhiteBtn}>Cancel Edit</button>
+              <button type="submit" form="editForm" className={amzYellowBtn + " px-10"}>Save Changes</button>
             </div>
             
           </div>
         </div>
       )}
+
     </div>
   );
 }
+
+const SidebarItem = ({ icon, label, active, onClick }) => (
+  <button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-2.5 text-[13px] transition-all border-l-4 ${active ? 'bg-[#F0F2F2] border-[#e77600] font-bold' : 'border-transparent text-[#111] hover:bg-gray-50'}`}>
+    <span className="text-lg grayscale">{icon}</span> {label}
+  </button>
+);
+
+const StatCard = ({ label, val, sub, color = "text-[#111]" }) => (
+  <div className="bg-white border border-[#DDD] rounded-[4px] p-5 shadow-sm hover:shadow-md transition-shadow">
+    <p className="text-[11px] font-bold text-[#565959] uppercase tracking-wider">{label}</p>
+    <h3 className={`text-2xl font-medium mt-1 ${color}`}>{val}</h3>
+    <p className="text-[11px] text-[#007185] mt-2 font-bold">{sub}</p>
+  </div>
+);

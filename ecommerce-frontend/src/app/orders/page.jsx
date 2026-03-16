@@ -576,7 +576,6 @@
 //     </div>
 //   );
 // }
-
 // src/app/orders/page.jsx
 'use client';
 import { useState, useEffect } from 'react';
@@ -591,7 +590,6 @@ export default function MyOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // 🚀 NEW: Filter & Tracking States
   const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'buy_again', 'not_shipped', 'cancelled'
   const [trackingOrder, setTrackingOrder] = useState(null);
 
@@ -636,19 +634,19 @@ export default function MyOrdersPage() {
     }
   };
 
-  // 🚀 NEW: Filtering Logic
   const filteredOrders = orders.filter(order => {
     if (activeTab === 'not_shipped') return order.status === 'Processing';
     if (activeTab === 'cancelled') return order.status === 'Cancelled';
-    return true; // 'orders' tab shows all
+    return true; 
   });
 
-  // 🚀 NEW: Extract unique items for "Buy Again" tab
   const buyAgainItems = [];
   if (activeTab === 'buy_again') {
     orders.forEach(order => {
       order.orderItems.forEach(item => {
-        if (!buyAgainItems.some(existing => existing.product === item.product)) {
+        // Safely extract product ID
+        const prodId = item.product?._id || item.product;
+        if (!buyAgainItems.some(existing => (existing.product?._id || existing.product) === prodId)) {
           buyAgainItems.push(item);
         }
       });
@@ -675,7 +673,7 @@ export default function MyOrdersPage() {
       
       <div className="max-w-[1000px] mx-auto px-4 pt-4 pb-2">
         <div className="text-[12px] text-[#565959] mb-4 flex items-center gap-1">
-          <Link href="/" className={amzLink}>Your Account</Link> 
+          <Link href="/account" className={amzLink}>Your Account</Link> 
           <span>›</span> 
           <span className="text-[#c45500]">Your Orders</span>
         </div>
@@ -683,7 +681,6 @@ export default function MyOrdersPage() {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline mb-4 gap-4">
           <h1 className="text-[28px] font-normal leading-tight">Your Orders</h1>
           
-          {/* 🚀 DYNAMIC TABS */}
           <div className="flex flex-wrap gap-4 text-[14px] border-b sm:border-none border-[#ddd] pb-2 sm:pb-0 w-full sm:w-auto">
             <span onClick={() => setActiveTab('orders')} className={activeTab === 'orders' ? activeTabStyle : inactiveTabStyle}>Orders</span>
             <span onClick={() => setActiveTab('buy_again')} className={activeTab === 'buy_again' ? activeTabStyle : inactiveTabStyle}>Buy Again</span>
@@ -703,19 +700,22 @@ export default function MyOrdersPage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {buyAgainItems.map((item, idx) => (
-                <div key={idx} className="border border-[#ddd] rounded-[8px] p-4 flex flex-col items-center text-center">
-                  <div className="w-32 h-32 mb-4">
-                    <img src={getImageUrl(item.image)} alt={item.name} className="w-full h-full object-contain mix-blend-multiply" />
+              {buyAgainItems.map((item, idx) => {
+                const prodId = item.product?._id || item.product;
+                return (
+                  <div key={idx} className="border border-[#ddd] rounded-[8px] p-4 flex flex-col items-center text-center">
+                    <div className="w-32 h-32 mb-4">
+                      <img src={getImageUrl(item.image)} alt={item.name} className="w-full h-full object-contain mix-blend-multiply" />
+                    </div>
+                    <Link href={`/product/${prodId}`} className={`${amzLink} text-[13px] font-medium line-clamp-2 mb-2 h-10`}>
+                      {item.name}
+                    </Link>
+                    <Link href={`/product/${prodId}`} className="w-full mt-auto">
+                      <button className={amzButtonYellow}>View Item</button>
+                    </Link>
                   </div>
-                  <Link href={`/product/${item.product}`} className={`${amzLink} text-[13px] font-medium line-clamp-2 mb-2 h-10`}>
-                    {item.name}
-                  </Link>
-                  <Link href={`/product/${item.product}`} className="w-full mt-auto">
-                    <button className={amzButtonYellow}>View Item</button>
-                  </Link>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )
 
@@ -784,78 +784,96 @@ export default function MyOrdersPage() {
                   </div>
 
                   <div className="space-y-4">
-                    {order.orderItems.map((item, index) => (
-                      <div key={index} className="flex flex-col md:flex-row gap-4 items-start py-2">
-                        
-                        <div className="w-[90px] shrink-0">
-                          <Link href={`/product/${item.product}`}>
-                            <img src={getImageUrl(item.image)} alt={item.name} className={`w-full object-contain cursor-pointer mix-blend-multiply ${order.status === 'Cancelled' ? 'opacity-50 grayscale' : ''}`} />
-                          </Link>
-                        </div>
-                        
-                        <div className="flex-1">
-                          <Link href={`/product/${item.product}`}>
-                            <h4 className={`${amzLink} text-[14px] font-medium leading-tight mb-1 line-clamp-2 ${order.status === 'Cancelled' ? 'text-[#565959] line-through' : ''}`}>
-                              {item.name}
-                            </h4>
-                          </Link>
+                    {order.orderItems.map((item, index) => {
+                      
+                      // 🚀 NEW: Safely determine Cancellable Status and Product ID
+                      const productId = item.product?._id || item.product;
+                      const isItemCancellable = item.product?.isCancellable !== false; // False only if explicitly set to false
+                      const isOrderActive = order.status !== 'Shipped' && order.status !== 'Delivered' && order.status !== 'Cancelled';
+                      const showCancelBtn = isOrderActive && isItemCancellable;
+
+                      return (
+                        <div key={index} className="flex flex-col md:flex-row gap-4 items-start py-2">
                           
-                          {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
-                            <div className="text-[12px] text-[#565959] mb-1">
-                              {Object.entries(item.selectedOptions).map(([key, val]) => (
-                                <span key={key} className="mr-3">{key}: <span className="text-[#0F1111]">{val}</span></span>
-                              ))}
+                          <div className="w-[90px] shrink-0">
+                            <Link href={`/product/${productId}`}>
+                              <img src={getImageUrl(item.image)} alt={item.name} className={`w-full object-contain cursor-pointer mix-blend-multiply ${order.status === 'Cancelled' ? 'opacity-50 grayscale' : ''}`} />
+                            </Link>
+                          </div>
+                          
+                          <div className="flex-1">
+                            <Link href={`/product/${productId}`}>
+                              <h4 className={`${amzLink} text-[14px] font-medium leading-tight mb-1 line-clamp-2 ${order.status === 'Cancelled' ? 'text-[#565959] line-through' : ''}`}>
+                                {item.name}
+                              </h4>
+                            </Link>
+                            
+                            {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                              <div className="text-[12px] text-[#565959] mb-1">
+                                {Object.entries(item.selectedOptions).map(([key, val]) => (
+                                  <span key={key} className="mr-3">{key}: <span className="text-[#0F1111] font-bold">{val}</span></span>
+                                ))}
+                              </div>
+                            )}
+                            
+                            <div className="text-[12px] text-[#0F1111] mt-2">
+                              {order.status === 'Cancelled' ? (
+                                <span className="text-[#c40000] font-bold">Item Cancelled</span>
+                              ) : (
+                                <span className="text-[#565959]">Return window valid for 7 days after delivery</span>
+                              )}
                             </div>
-                          )}
+
+                            {/* MOBILE BUTTONS */}
+                            <div className="mt-4 flex flex-wrap gap-2 md:hidden">
+                              <Link href={`/product/${productId}`} className="flex-1">
+                                <button className={amzButtonYellow}>Buy it again</button>
+                              </Link>
+                              {showCancelBtn ? (
+                                <button onClick={() => handleCancelItem(order._id, item._id)} className={amzButtonWhite + " flex-1"}>Cancel item</button>
+                              ) : isOrderActive ? (
+                                <span className="text-[#B12704] text-[11px] font-bold py-1 w-full flex-1 mt-1">Non-cancellable item</span>
+                              ) : null}
+                            </div>
+                          </div>
                           
-                          <div className="text-[12px] text-[#0F1111] mt-2">
-                            {order.status === 'Cancelled' ? (
-                              <span className="text-[#c40000] font-bold">Item Cancelled</span>
+                          {/* DESKTOP BUTTONS */}
+                          <div className="hidden md:flex w-[200px] flex-col gap-2 shrink-0 border-l border-[#eee] pl-4">
+                            <Link href={`/product/${productId}`}>
+                              <button className={amzButtonYellow + " flex items-center justify-center gap-2"}>
+                                <span className="text-lg leading-none">↻</span> Buy it again
+                              </button>
+                            </Link>
+                            
+                            {showCancelBtn ? (
+                              <button onClick={() => handleCancelItem(order._id, item._id)} className={amzButtonWhite}>
+                                Cancel item
+                              </button>
                             ) : (
-                              <span className="text-[#565959]">Return window valid for 7 days after delivery</span>
+                              <>
+                                <Link href={`/product/${productId}`}>
+                                  <button className={amzButtonWhite}>View your item</button>
+                                </Link>
+                                {!isItemCancellable && isOrderActive && (
+                                  <span className="text-[#B12704] text-[10px] text-center font-bold px-2">Non-cancellable item</span>
+                                )}
+                              </>
                             )}
-                          </div>
 
-                          <div className="mt-4 flex flex-wrap gap-2 md:hidden">
-                            <Link href={`/product/${item.product}`} className="flex-1">
-                              <button className={amzButtonYellow}>Buy it again</button>
-                            </Link>
-                            {order.status !== 'Shipped' && order.status !== 'Delivered' && order.status !== 'Cancelled' && (
-                              <button onClick={() => handleCancelItem(order._id, item._id)} className={amzButtonWhite + " flex-1"}>Cancel item</button>
+                            {order.status === 'Delivered' && (
+                              <Link href={`/product/${productId}`}>
+                                <button className={amzButtonWhite}>Write a product review</button>
+                              </Link>
+                            )}
+                            
+                            {/* TRACKING BUTTON */}
+                            {order.status !== 'Cancelled' && (
+                              <button onClick={() => setTrackingOrder(order)} className={amzButtonWhite}>Track package</button>
                             )}
                           </div>
                         </div>
-                        
-                        <div className="hidden md:flex w-[200px] flex-col gap-2 shrink-0 border-l border-[#eee] pl-4">
-                          <Link href={`/product/${item.product}`}>
-                            <button className={amzButtonYellow + " flex items-center justify-center gap-2"}>
-                              <span className="text-lg leading-none">↻</span> Buy it again
-                            </button>
-                          </Link>
-                          
-                          {order.status !== 'Shipped' && order.status !== 'Delivered' && order.status !== 'Cancelled' ? (
-                            <button onClick={() => handleCancelItem(order._id, item._id)} className={amzButtonWhite}>
-                              Cancel item
-                            </button>
-                          ) : (
-                            <Link href={`/product/${item.product}`}>
-                              <button className={amzButtonWhite}>View your item</button>
-                            </Link>
-                          )}
-
-                          {order.status === 'Delivered' && (
-                            <Link href={`/product/${item.product}`}>
-                              <button className={amzButtonWhite}>Write a product review</button>
-                            </Link>
-                          )}
-                          
-                          {/* 🚀 TRACKING BUTTON */}
-                          {order.status !== 'Cancelled' && (
-                            <button onClick={() => setTrackingOrder(order)} className={amzButtonWhite}>Track package</button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
 
