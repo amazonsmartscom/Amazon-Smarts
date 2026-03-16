@@ -1422,7 +1422,6 @@
 // }
 
 
-
 // src/app/admin/page.jsx
 'use client';
 import { useState, useEffect } from 'react';
@@ -1453,7 +1452,7 @@ export default function AdminDashboard() {
   const [chartData, setChartData] = useState([]);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // 🚀 HOMEPAGE BANNER STATES
+  // HOMEPAGE BANNER STATES
   const [allBanners, setAllBanners] = useState([]);
   const [bannerTitle, setBannerTitle] = useState('');
   const [bannerSubtitle, setBannerSubtitle] = useState('');
@@ -1481,6 +1480,10 @@ export default function AdminDashboard() {
   const [seoDescription, setSeoDescription] = useState('');
   const [seoKeywords, setSeoKeywords] = useState('');
 
+  // 🚀 Cancellation States
+  const [isCancellable, setIsCancellable] = useState(true);
+  const [cancellationWindowHours, setCancellationWindowHours] = useState(24);
+
   const [editingProduct, setEditingProduct] = useState(null);
   const [editForm, setEditForm] = useState(null);
 
@@ -1502,7 +1505,7 @@ export default function AdminDashboard() {
       fetchAllOrders(); 
       fetchStats(); 
       fetchPendingReviews(); 
-      fetchBanners(); // 🚀 FIXED: Added this trigger to load banners on page load
+      fetchBanners(); 
     }
   }, [user, adminRole, isHydrated]);
 
@@ -1520,7 +1523,6 @@ export default function AdminDashboard() {
     }
   }, [orders]);
 
-  // 🚀 API FETCHERS (Updated)
   const fetchBanners = async () => {
     try {
       const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/banners`);
@@ -1529,6 +1531,26 @@ export default function AdminDashboard() {
       console.error("Error fetching banners:", err);
     }
   };
+
+  // 🚀 FIXED: Added reset for the file input after successful upload
+  const handleUploadInvoice = async (orderId, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('invoice', file);
+
+    try {
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${orderId}/invoice?adminId=${adminId}`, formData);
+      alert("✅ Invoice uploaded successfully! The customer will be notified.");
+      e.target.value = null; // Reset input field
+      fetchAllOrders(); // Refresh the list
+    } catch (err) {
+      console.error(err);
+      alert("Failed to upload invoice.");
+    }
+  };
+
 
   const handleUploadBanner = async (e) => {
     e.preventDefault();
@@ -1563,7 +1585,6 @@ export default function AdminDashboard() {
     }
   };
   
-
   // API FETCHERS
   const fetchStats = async () => { try { const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/admin/stats?adminId=${adminId}`); setStats(data); } catch (err) {} };
   const fetchWithdrawals = async () => { const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/withdrawals/admin/all?adminId=${adminId}`); setWithdrawals(data); };
@@ -1636,7 +1657,9 @@ export default function AdminDashboard() {
       specs: product.specs && product.specs.length > 0 ? product.specs : [{ name: '', value: '' }],
       returnPolicy: product.returnPolicy || '7 Days Replacement',
       warrantyPolicy: product.warrantyPolicy || '1 Year Warranty', 
-      seoTitle: product.seoTitle || '', seoDescription: product.seoDescription || '', seoKeywords: product.seoKeywords || ''
+      seoTitle: product.seoTitle || '', seoDescription: product.seoDescription || '', seoKeywords: product.seoKeywords || '',
+      isCancellable: product.isCancellable !== undefined ? product.isCancellable : true,
+      cancellationWindowHours: product.cancellationWindowHours !== undefined ? product.cancellationWindowHours : 24,
     });
   };
 
@@ -1694,6 +1717,10 @@ export default function AdminDashboard() {
     formData.append('category', category); formData.append('stock', stock); formData.append('description', description); formData.append('isBestSeller', isBestSeller);
     formData.append('returnPolicy', returnPolicy); formData.append('warrantyPolicy', warrantyPolicy);
     formData.append('seoTitle', seoTitle); formData.append('seoDescription', seoDescription); formData.append('seoKeywords', seoKeywords);
+    
+    formData.append('isCancellable', isCancellable);
+    formData.append('cancellationWindowHours', cancellationWindowHours);
+
     formData.append('features', JSON.stringify(features.filter(f => f.trim() !== ''))); 
     formData.append('specs', JSON.stringify(specs.filter(s => s.name.trim() !== '')));
     formData.append('variants', JSON.stringify(parseVariantsForDB(variants))); 
@@ -1706,6 +1733,7 @@ export default function AdminDashboard() {
     setName(''); setBrand(''); setPrice(''); setDiscountPrice(''); setStock(''); setDescription('');
     setImages([]); setBanners([]); setFeatures(['']); setSpecs([{ name: '', value: '' }]); setVariants([{ name: '', options: '' }]);
     setSeoTitle(''); setSeoDescription(''); setSeoKeywords('');
+    setIsCancellable(true); setCancellationWindowHours(24);
     fetchProducts(); 
   };
 
@@ -1788,41 +1816,12 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* 🚀 NEW: BANNER MANAGEMENT SECTION UI */}
+        {/* BANNER MANAGEMENT SECTION UI */}
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 md:p-10 mb-10">
           <h2 className="text-2xl font-black text-slate-900 mb-8 border-b border-slate-100 pb-4">🖼️ Homepage Slides</h2>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-            {/* Form Column */}
-            {/* <form onSubmit={handleUploadBanner} className="lg:col-span-1 space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
-              <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest mb-4">Add New Slide</h3>
-              <div><label className={labelStyles}>Main Heading</label><input type="text" className={inputStyles} value={bannerTitle} onChange={e => setBannerTitle(e.target.value)} required /></div>
-              <div><label className={labelStyles}>Sub-heading</label><input type="text" className={inputStyles} value={bannerSubtitle} onChange={e => setBannerSubtitle(e.target.value)} required /></div>
-              <div><label className={labelStyles}>Redirect Link</label><input type="text" className={inputStyles} value={bannerLink} onChange={e => setBannerLink(e.target.value)} /></div>
-              <div>
-                <label className={labelStyles}>Slide Image (1920x800 recommended)</label>
-                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl hover:border-orange-400 transition-colors bg-white cursor-pointer relative">
-                    <div className="space-y-1 text-center">
-                    <div className="text-3xl mb-2">📸</div>
-                    <div className="flex text-sm text-gray-600">
-                        <label className="relative cursor-pointer rounded-md font-black text-orange-500 hover:text-orange-600 focus-within:outline-none">
-                        <span>Click to select image</span>
-                        <input type="file" className="sr-only" accept="image/*" onChange={e => setBannerImage(e.target.files[0])} required />
-                        </label>
-                    </div>
-                    <p className="text-xs text-gray-500">PNG, JPG up to 5MB</p>
-                    {bannerImage && <p className="mt-2 text-xs font-bold text-emerald-600 truncate max-w-[150px]">✅ {bannerImage.name}</p>}
-                    </div>
-                </div>
-              </div>
-              <button type="submit" disabled={isBannerUploading} className="w-full bg-slate-900 text-white font-black py-3 rounded-xl hover:bg-orange-500 transition-all uppercase text-xs tracking-widest shadow-md">
-                {isBannerUploading ? 'Uploading...' : 'Publish Slide'}
-              </button>
-            </form> */}
-
-            {/* Form Column */}
             <form onSubmit={handleUploadBanner} className="lg:col-span-1 space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
               <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest mb-4">Add New Slide</h3>
-              {/* 🚀 FIXED: Removed 'required' from Title and Subtitle */}
               <div><label className={labelStyles}>Main Heading (Optional)</label><input type="text" className={inputStyles} value={bannerTitle} onChange={e => setBannerTitle(e.target.value)} /></div>
               <div><label className={labelStyles}>Sub-heading (Optional)</label><input type="text" className={inputStyles} value={bannerSubtitle} onChange={e => setBannerSubtitle(e.target.value)} /></div>
               <div><label className={labelStyles}>Redirect Link (Optional)</label><input type="text" className={inputStyles} placeholder="e.g. /product/123" value={bannerLink} onChange={e => setBannerLink(e.target.value)} /></div>
@@ -1847,7 +1846,6 @@ export default function AdminDashboard() {
               </button>
             </form>
 
-            {/* List Column */}
             <div className="lg:col-span-2 space-y-4">
                <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest mb-4">Active Slides ({allBanners.length})</h3>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1986,9 +1984,25 @@ export default function AdminDashboard() {
                     </td>
                     <td className="p-4 align-top pt-6 font-black text-slate-900 text-lg">₹{order.totalPrice?.toLocaleString('en-IN')}</td>
                     <td className="p-4 md:px-8 align-top pt-6">
-                      <select value={order.status} onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)} className={`p-2 rounded-xl text-xs font-black uppercase tracking-wider outline-none cursor-pointer border-2 transition-colors ${order.status === 'Delivered' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : order.status === 'Shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-orange-50 border-orange-200 text-orange-700'}`}>
-                        <option value="Processing">Processing</option><option value="Shipped">Shipped</option><option value="Delivered">Delivered</option>
+                      <select value={order.status} onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)} className={`w-full p-2 mb-3 rounded-xl text-xs font-black uppercase tracking-wider outline-none cursor-pointer border-2 transition-colors ${order.status === 'Delivered' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : order.status === 'Shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' : order.status === 'Cancelled' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-orange-50 border-orange-200 text-orange-700'}`}>
+                        <option value="Processing">Processing</option><option value="Shipped">Shipped</option><option value="Delivered">Delivered</option><option value="Cancelled">Cancelled</option>
                       </select>
+
+                      {/* 🚀 INVOICE UPLOAD UI */}
+                      <div className="mt-3 pt-3 border-t border-slate-200">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Upload Invoice (PDF)</label>
+                        <input 
+                          type="file" 
+                          accept=".pdf, image/*" 
+                          onChange={(e) => handleUploadInvoice(order._id, e)} 
+                          className="w-full text-[10px] file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-200 file:text-slate-700 cursor-pointer" 
+                        />
+                        {order.invoiceUrl && (
+                          <a href={getImageUrl(order.invoiceUrl)} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-600 hover:underline font-bold block mt-1">
+                            📄 View Current Invoice
+                          </a>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1997,18 +2011,38 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* AFFILIATE PAYOUT APPROVALS */}
+        {/* 🚀 UPGRADED: AFFILIATE PAYOUT APPROVALS */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-10 border border-slate-100">
           <div className="p-6 md:p-8 bg-white border-b border-slate-100"><h2 className="text-xl font-black text-slate-900">💳 Affiliate Payouts</h2></div>
           <div className="overflow-x-auto">
             <table className="w-full text-left whitespace-nowrap">
-              <thead className="bg-slate-50 border-b border-slate-100"><tr><th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">User</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Amount</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">UPI</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Status</th><th className="p-4 md:px-8 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th></tr></thead>
+              <thead className="bg-slate-50 border-b border-slate-100"><tr><th className="p-4 md:px-8 text-xs font-black text-slate-500 uppercase tracking-widest">User</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Amount</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Payout Details</th><th className="p-4 text-xs font-black text-slate-500 uppercase tracking-widest">Status</th><th className="p-4 md:px-8 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {withdrawals.map((req) => (
                   <tr key={req._id} className="hover:bg-slate-50/50">
                     <td className="p-4 md:px-8 font-bold text-slate-900">{req.userId?.name}</td>
                     <td className="p-4 font-black text-emerald-600">₹{req.amount?.toLocaleString()}</td>
-                    <td className="p-4 text-xs font-mono font-bold text-slate-600 bg-slate-50 px-2 py-1 rounded inline-block mt-3">{req.details?.upiId}</td>
+                    
+                    {/* 🚀 UPGRADED: Dynamic Payout Details Display */}
+                    <td className="p-4 align-top">
+                      {req.details?.upiId ? (
+                        <div className="bg-slate-50 p-2 rounded border border-slate-200 mt-2 inline-block">
+                          <p className="text-[10px] font-black text-slate-400 uppercase">UPI ID</p>
+                          <p className="font-mono text-xs font-bold text-slate-700">{req.details.upiId}</p>
+                        </div>
+                      ) : req.details?.accountNumber ? (
+                        <div className="bg-slate-50 p-2 rounded border border-slate-200 text-xs mt-2 inline-block">
+                          <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Bank Transfer</p>
+                          <p><span className="font-bold text-slate-500">Name:</span> {req.details.accountName}</p>
+                          <p><span className="font-bold text-slate-500">A/C:</span> <span className="font-mono font-bold text-slate-700">{req.details.accountNumber}</span></p>
+                          <p><span className="font-bold text-slate-500">IFSC:</span> <span className="font-mono text-slate-700">{req.details.ifsc}</span></p>
+                          <p><span className="font-bold text-slate-500">Bank:</span> {req.details.bankName}</p>
+                        </div>
+                      ) : (
+                        <span className="text-red-500 text-xs font-bold">No details provided</span>
+                      )}
+                    </td>
+
                     <td className="p-4"><span className={`px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-black ${req.status === 'pending' ? 'bg-orange-100 text-orange-700' : req.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{req.status}</span></td>
                     <td className="p-4 md:px-8 text-right space-x-2">
                       {req.status === 'pending' && (<><button onClick={() => handleStatusUpdate(req._id, 'approved')} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm">Approve</button><button onClick={() => handleStatusUpdate(req._id, 'rejected')} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm">Reject</button></>)}
@@ -2052,12 +2086,12 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* ADD NEW PRODUCT FORM */}
+        {/* ADD NEW PRODUCT FORM
         <div className="bg-white rounded-3xl shadow-sm p-6 md:p-10 border border-slate-100">
           <h2 className="text-2xl md:text-3xl font-black mb-8 border-b border-slate-100 pb-6 text-slate-900">📦 Publish New Gadget</h2>
           <form onSubmit={handleAddProduct} className="space-y-6">
             
-            {/* SECTION 1: BASIC INFO */}
+            SECTION 1: BASIC INFO
             <div className={sectionCardStyles}>
               <h3 className={sectionTitleStyles}>Basic Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2075,7 +2109,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* SECTION 2: PRICING & INVENTORY */}
+            SECTION 2: PRICING & INVENTORY
             <div className={sectionCardStyles}>
               <h3 className={sectionTitleStyles}>Pricing & Inventory</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -2083,10 +2117,152 @@ export default function AdminDashboard() {
                 <div><label className={labelStyles}>Discount Price (₹)</label><input type="number" className={inputStyles} value={discountPrice} onChange={e => setDiscountPrice(e.target.value)} /></div>
                 <div><label className={labelStyles}>Total Stock</label><input type="number" className={inputStyles} value={stock} onChange={e => setStock(e.target.value)} required /></div>
               </div>
+            </div> */}
+
+{/* ADD NEW PRODUCT FORM CONTAINER */}
+<div className="max-w-[1000px] mx-auto pb-20">
+  <div className="flex items-center justify-between mb-6 border-b border-[#DDD] pb-4">
+    <div>
+      <h2 className="text-[22px] font-bold text-[#111]">Add a Product</h2>
+      <p className="text-[13px] text-[#565959]">Vital Info {'>'} Offer {'>'} Images {'>'} Description</p>
+    </div>
+    <div className="flex gap-2">
+      <button onClick={() => setActiveTab('inventory')} className="bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-1.5 px-4 rounded-[8px] text-[13px] shadow-sm">Cancel</button>
+      <button type="submit" form="addProductForm" className="bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-1.5 px-6 rounded-[8px] text-[13px] font-medium shadow-sm">Save and finish</button>
+    </div>
+  </div>
+
+  <form id="addProductForm" onSubmit={handleAddProduct} className="space-y-6">
+    
+    {/* SECTION 1: PRODUCT IDENTITY (BASIC INFO) */}
+    <div className="bg-white border border-[#DDD] rounded-[4px] shadow-sm overflow-hidden">
+      <div className="bg-[#F0F2F2] px-6 py-3 border-b border-[#DDD]">
+        <h3 className="text-[14px] font-bold text-[#111]">Product Identity</h3>
+      </div>
+      
+      <div className="p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="md:col-span-2">
+            <label className="block text-[13px] font-bold text-[#111] mb-1">Product Name (Title)</label>
+            <input 
+              type="text" 
+              className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
+              placeholder="e.g. Apple iPhone 15 Pro (128 GB) - Natural Titanium"
+              value={name} 
+              onChange={e => setName(e.target.value)} 
+              required 
+            />
+            <p className="text-[10px] text-[#565959] mt-1">Recommended length: 60-150 characters for better visibility.</p>
+          </div>
+
+          <div>
+            <label className="block text-[13px] font-bold text-[#111] mb-1">Brand Name</label>
+            <input 
+              type="text" 
+              className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
+              value={brand} 
+              onChange={e => setBrand(e.target.value)} 
+              required 
+            />
+          </div>
+
+          <div>
+            <label className="block text-[13px] font-bold text-[#111] mb-1">Category</label>
+            <select 
+              className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] outline-none bg-white cursor-pointer" 
+              value={category} 
+              onChange={e => setCategory(e.target.value)}
+            >
+              <option value="Smartphones">Smartphones</option>
+              <option value="Laptops">Laptops</option>
+              <option value="Audio">Audio</option>
+              <option value="Wearables">Wearables</option>
+              <option value="Accessories">Accessories</option>
+            </select>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-[13px] font-bold text-[#111] mb-1">Product Description</label>
+            <textarea 
+              className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] h-32 focus:border-[#e77600] outline-none resize-none" 
+              placeholder="Provide a detailed overview of the product..."
+              value={description} 
+              onChange={e => setDescription(e.target.value)} 
+              required 
+            />
+          </div>
+
+          <div className="bg-[#F7FAFA] border border-[#D5D9D9] p-4 rounded-[4px] md:col-span-2">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="w-4 h-4 accent-[#e77600]" 
+                checked={isBestSeller} 
+                onChange={e => setIsBestSeller(e.target.checked)} 
+              />
+              <div>
+                <span className="text-[13px] font-bold text-[#111]">Apply "Best Seller" Badge</span>
+                <p className="text-[11px] text-[#565959]">This adds an orange ribbon to the product on the storefront.</p>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* SECTION 2: OFFER (PRICING & INVENTORY) */}
+    <div className="bg-white border border-[#DDD] rounded-[4px] shadow-sm overflow-hidden">
+      <div className="bg-[#F0F2F2] px-6 py-3 border-b border-[#DDD]">
+        <h3 className="text-[14px] font-bold text-[#111]">Pricing & Inventory</h3>
+      </div>
+      
+      <div className="p-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <label className="block text-[13px] font-bold text-[#111] mb-1">List Price (MRP)</label>
+            <div className="relative">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[13px]">₹</span>
+              <input 
+                type="number" 
+                className="w-full border border-[#888C8C] rounded-[3px] p-2 pl-6 text-[13px] focus:border-[#e77600] outline-none" 
+                value={price} 
+                onChange={e => setPrice(e.target.value)} 
+                required 
+              />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-[13px] font-bold text-[#111] mb-1">Your Price (Discounted)</label>
+            <div className="relative">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[13px]">₹</span>
+              <input 
+                type="number" 
+                className="w-full border border-[#888C8C] rounded-[3px] p-2 pl-6 text-[13px] focus:border-[#e77600] outline-none" 
+                value={discountPrice} 
+                onChange={e => setDiscountPrice(e.target.value)} 
+              />
+            </div>
+            <p className="text-[10px] text-[#B12704] mt-1 font-bold">Leave blank if no discount.</p>
+          </div>
+
+          <div>
+            <label className="block text-[13px] font-bold text-[#111] mb-1">Quantity in Stock</label>
+            <input 
+              type="number" 
+              className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] outline-none" 
+              value={stock} 
+              onChange={e => setStock(e.target.value)} 
+              required 
+            />
+            <p className="text-[10px] text-[#565959] mt-1">Status: {stock > 0 ? 'In Stock' : 'Out of Stock'}</p>
+          </div>
+        </div>
+      </div>
+    </div>
 
             {/* SECTION 3: FEATURES & SPECS */}
-            <div className={sectionCardStyles}>
+            {/* <div className={sectionCardStyles}>
               <h3 className={sectionTitleStyles}>Technical Details</h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                 <div>
@@ -2113,9 +2289,112 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
+{/* SECTION 3: FEATURES & SPECS */}
+<div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-6 shadow-sm">
+  <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6">
+    <span className="text-xl">🛠️</span>
+    <h3 className="text-[18px] font-bold text-[#111]">Technical Details & Product Highlights</h3>
+  </div>
 
-            {/* SECTION 4: VARIANTS */}
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+    
+    {/* LEFT COLUMN: TECH SPECS */}
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div>
+          <label className="block text-[13px] font-bold text-[#111]">Technical Specifications</label>
+          <p className="text-[11px] text-[#565959]">Appear in the "Details" table on product page</p>
+        </div>
+        <button 
+          type="button" 
+          onClick={() => setSpecs([...specs, { name: '', value: '' }])} 
+          className="bg-[#F7FAFA] border border-[#D5D9D9] hover:bg-[#F0F2F2] text-[#0F1111] px-3 py-1 rounded-[8px] text-[12px] font-medium shadow-sm transition-all flex items-center gap-1"
+        >
+          <span className="text-lg font-light">+</span> Add Attribute
+        </button>
+      </div>
+
+      <div className="bg-[#F9F9F9] border border-[#EEE] rounded-[4px] p-4 space-y-3">
+        {specs.map((spec, index) => (
+          <div key={index} className="flex gap-2 relative group items-start animate-in fade-in slide-in-from-left-2 duration-200">
+            <div className="w-1/3">
+              <input 
+                type="text" 
+                placeholder="Attribute (e.g. RAM)" 
+                className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none bg-white" 
+                value={spec.name} 
+                onChange={e => {const newSpecs=[...specs]; newSpecs[index].name=e.target.value; setSpecs(newSpecs)}} 
+              />
+            </div>
+            <div className="flex-1">
+              <input 
+                type="text" 
+                placeholder="Value (e.g. 16GB)" 
+                className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none bg-white" 
+                value={spec.value} 
+                onChange={e => {const newSpecs=[...specs]; newSpecs[index].value=e.target.value; setSpecs(newSpecs)}} 
+              />
+            </div>
+            {specs.length > 1 && (
+              <button 
+                type="button" 
+                onClick={() => setSpecs(specs.filter((_, i) => i !== index))} 
+                className="p-2 text-[#565959] hover:text-[#B12704] hover:bg-red-50 rounded-md transition-colors"
+                title="Remove Row"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* RIGHT COLUMN: BULLET FEATURES */}
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div>
+          <label className="block text-[13px] font-bold text-[#111]">Key Features</label>
+          <p className="text-[11px] text-[#565959]">Appear as bullet points near the product image</p>
+        </div>
+        <button 
+          type="button" 
+          onClick={() => setFeatures([...features, ''])} 
+          className="bg-[#F7FAFA] border border-[#D5D9D9] hover:bg-[#F0F2F2] text-[#0F1111] px-3 py-1 rounded-[8px] text-[12px] font-medium shadow-sm transition-all flex items-center gap-1"
+        >
+          <span className="text-lg font-light">+</span> Add Bullet
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {features.map((f, index) => (
+          <div key={index} className="flex gap-2 group items-center animate-in fade-in slide-in-from-right-2 duration-200">
+            <div className="h-2 w-2 rounded-full bg-[#e77600] shrink-0"></div>
+            <input 
+              type="text" 
+              placeholder="Enter a key selling point..." 
+              className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
+              value={f} 
+              onChange={e => {const newFeatures=[...features]; newFeatures[index]=e.target.value; setFeatures(newFeatures)}} 
+            />
+            {features.length > 1 && (
+              <button 
+                type="button" 
+                onClick={() => setFeatures(features.filter((_, i) => i !== index))} 
+                className="p-2 text-[#565959] hover:text-[#B12704] hover:bg-red-50 rounded-md opacity-0 group-hover:opacity-100 transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+
+  </div>
+</div>
+            {/* SECTION 4: VARIANTS
             <div className={sectionCardStyles}>
               <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-4">
                 <div><h3 className="text-lg font-black text-slate-900">Variants & Pricing Modifiers</h3><p className="text-xs font-bold text-slate-400 mt-1">Format: <span className="text-orange-500 bg-orange-50 px-2 py-0.5 rounded border border-orange-100 font-mono">128GB, 256GB(+5000)</span></p></div>
@@ -2130,9 +2409,79 @@ export default function AdminDashboard() {
                   </div>
                 ))}
               </div>
-            </div>
+            </div> */}
+{/* SECTION 4: VARIANTS & PRICING */}
+<div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-6 shadow-sm">
+  <div className="flex items-center justify-between border-b border-[#EEE] pb-4 mb-6">
+    <div className="flex items-center gap-2">
+      <span className="text-xl">🎭</span>
+      <h3 className="text-[18px] font-bold text-[#111]">Variants & Pricing Modifiers</h3>
+    </div>
+    <button 
+      type="button" 
+      onClick={() => setVariants([...variants, { name: '', options: '' }])} 
+      className="bg-[#F7FAFA] border border-[#D5D9D9] hover:bg-[#F0F2F2] text-[#0F1111] px-4 py-1.5 rounded-[8px] text-[12px] font-medium shadow-sm transition-all flex items-center gap-1"
+    >
+      <span className="text-lg font-light">+</span> Add Variant Group
+    </button>
+  </div>
 
-            {/* SECTION 5: SEO & META */}
+  {/* Helpful Instruction Banner */}
+  <div className="bg-[#F0F7FF] border border-[#007185] rounded-[4px] p-3 mb-6 flex gap-3">
+    <span className="text-[#007185] font-bold mt-0.5">ℹ️</span>
+    <div>
+      <p className="text-[12px] text-[#007185] font-bold uppercase tracking-tight">How to set dynamic pricing:</p>
+      <p className="text-[12px] text-[#111]">
+        List options separated by commas. Use <code className="bg-white px-1 border rounded text-[#e77600] font-bold">(+Value)</code> to increase price for that option.
+        <br />
+        <span className="text-[#565959] italic">Example: Black, Titanium(+5000), Gold(+2500)</span>
+      </p>
+    </div>
+  </div>
+
+  <div className="space-y-4">
+    {variants.map((variant, index) => (
+      <div 
+        key={index} 
+        className="flex flex-col md:flex-row gap-4 bg-[#F9F9F9] p-5 rounded-[4px] border border-[#EEE] relative group animate-in fade-in slide-in-from-bottom-2 duration-300"
+      >
+        {/* Delete Button - Floating top right */}
+        {variants.length > 1 && (
+          <button 
+            type="button" 
+            onClick={() => setVariants(variants.filter((_, i) => i !== index))} 
+            className="absolute -top-2 -right-2 bg-white border border-[#DDD] text-[#565959] hover:text-[#B12704] hover:border-[#B12704] w-7 h-7 rounded-full flex items-center justify-center shadow-sm transition-all z-10 opacity-0 group-hover:opacity-100"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        )}
+
+        <div className="w-full md:w-1/4">
+          <label className="block text-[11px] font-bold text-[#565959] uppercase mb-1.5 ml-1">Attribute Name</label>
+          <input 
+            type="text" 
+            placeholder="e.g. Storage" 
+            className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none bg-white font-bold" 
+            value={variant.name} 
+            onChange={e => { const newVars = [...variants]; newVars[index].name = e.target.value; setVariants(newVars); }} 
+          />
+        </div>
+
+        <div className="w-full md:flex-1">
+          <label className="block text-[11px] font-bold text-[#565959] uppercase mb-1.5 ml-1">Options & Price Adjustments</label>
+          <input 
+            type="text" 
+            placeholder="e.g. 128GB, 256GB(+5000), 512GB(+12000)" 
+            className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none bg-white font-mono" 
+            value={variant.options} 
+            onChange={e => { const newVars = [...variants]; newVars[index].options = e.target.value; setVariants(newVars); }} 
+          />
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
+            {/* SECTION 5: SEO & META
             <div className={sectionCardStyles}>
               <h3 className={sectionTitleStyles}>Search Engine Optimization (SEO)</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2140,18 +2489,122 @@ export default function AdminDashboard() {
                 <div><label className={labelStyles}>SEO Keywords (Comma separated)</label><input type="text" placeholder="iphone 17, apple smartphone, buy iphone online" className={inputStyles} value={seoKeywords} onChange={e => setSeoKeywords(e.target.value)} /></div>
                 <div className="md:col-span-2"><label className={labelStyles}>SEO Description (Max 160 characters)</label><textarea placeholder="Get the best deals on the new iPhone 17. Free shipping and 7-day returns..." className={`${inputStyles} h-20 resize-none`} value={seoDescription} onChange={e => setSeoDescription(e.target.value)} /></div>
               </div>
-            </div>
+            </div> */}
+{/* SECTION 5: SEO & META */}
+<div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-6 shadow-sm">
+  <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6">
+    <span className="text-xl">🔍</span>
+    <h3 className="text-[18px] font-bold text-[#111]">Search Engine Optimization (SEO)</h3>
+  </div>
 
-            {/* SECTION 6: POLICIES */}
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+    
+    {/* LEFT: INPUT FIELDS */}
+    <div className="space-y-5">
+      <div>
+        <label className="block text-[13px] font-bold text-[#111] mb-1">Meta Title</label>
+        <input 
+          type="text" 
+          placeholder="e.g. Buy iPhone 17 Pro Max Online | AMAZON SMARTS" 
+          className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
+          value={seoTitle} 
+          onChange={e => setSeoTitle(e.target.value)} 
+        />
+        <div className="flex justify-between mt-1">
+          <p className="text-[10px] text-[#565959]">Appears as the clickable link in search results.</p>
+          <p className={`text-[10px] font-bold ${seoTitle.length > 60 ? 'text-[#B12704]' : 'text-green-700'}`}>
+            {seoTitle.length}/60
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-[13px] font-bold text-[#111] mb-1">Focus Keywords</label>
+        <input 
+          type="text" 
+          placeholder="iphone 17 pro, apple smartphone, best flagship" 
+          className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
+          value={seoKeywords} 
+          onChange={e => setSeoKeywords(e.target.value)} 
+        />
+        <p className="text-[10px] text-[#565959] mt-1">Separate keywords with commas.</p>
+      </div>
+
+      <div>
+        <label className="block text-[13px] font-bold text-[#111] mb-1">Meta Description</label>
+        <textarea 
+          placeholder="Get the best deals on the new iPhone 17. Free shipping and 7-day returns..." 
+          className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] h-24 resize-none focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
+          value={seoDescription} 
+          onChange={e => setSeoDescription(e.target.value)} 
+        />
+        <div className="flex justify-between mt-1">
+          <p className="text-[10px] text-[#565959]">Brief summary for search engine snippets.</p>
+          <p className={`text-[10px] font-bold ${seoDescription.length > 160 ? 'text-[#B12704]' : 'text-green-700'}`}>
+            {seoDescription.length}/160
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {/* RIGHT: SEARCH PREVIEW CARD */}
+    <div className="bg-[#F9F9F9] border border-[#EEE] rounded-[4px] p-6 flex flex-col justify-center">
+      <p className="text-[12px] font-bold text-[#565959] uppercase tracking-wider mb-4 flex items-center gap-2">
+        <span>🌐</span> Google Search Preview
+      </p>
+      
+      <div className="bg-white p-5 border border-[#DDD] rounded shadow-sm max-w-[500px]">
+        {/* Mock URL */}
+        <p className="text-[12px] text-[#202124] mb-1 truncate">
+          https://amazonsmarts.com › products › <span className="text-[#5f6368]">{name ? name.toLowerCase().replace(/ /g, '-') : 'product-url'}</span>
+        </p>
+        {/* Mock Title */}
+        <h4 className="text-[18px] text-[#1a0dab] hover:underline cursor-pointer font-medium leading-tight mb-1 truncate">
+          {seoTitle || (name ? `${name} | AMAZON SMARTS` : 'Page Title Notification Goes Here')}
+        </h4>
+        {/* Mock Description */}
+        <p className="text-[13px] text-[#4d5156] line-clamp-2 leading-relaxed">
+          {seoDescription || 'Provide a meta description to see how your product will appear in search engine results. This summary helps customers find your store.'}
+        </p>
+      </div>
+
+      <div className="mt-6 space-y-2">
+        <p className="text-[11px] text-[#565959] flex items-center gap-2">
+          <span className={seoTitle.length > 30 && seoTitle.length < 60 ? 'text-green-600' : 'text-gray-300'}>●</span> 
+          Title length is optimal for mobile and desktop.
+        </p>
+        <p className="text-[11px] text-[#565959] flex items-center gap-2">
+          <span className={seoDescription.length > 70 && seoDescription.length < 160 ? 'text-green-600' : 'text-gray-300'}>●</span> 
+          Description is within the recommended character limit.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+            {/* SECTION 6: POLICIES & CANCELLATIONS
             <div className={sectionCardStyles}>
-              <h3 className={sectionTitleStyles}>Trust & Policies</h3>
+              <h3 className={sectionTitleStyles}>Trust, Policies & Cancellations</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div><label className={labelStyles}>Return Policy</label><input type="text" placeholder="e.g. 7 Days Replacement" className={inputStyles} value={returnPolicy} onChange={e => setReturnPolicy(e.target.value)} required /></div>
                 <div><label className={labelStyles}>Warranty Policy</label><input type="text" placeholder="e.g. 1 Year Brand Warranty" className={inputStyles} value={warrantyPolicy} onChange={e => setWarrantyPolicy(e.target.value)} required /></div>
+                
+                🚀 CANCELLATION CONTROLS
+                <div className="flex flex-col justify-center mt-2">
+                  <label className="flex items-center cursor-pointer mb-2">
+                    <input type="checkbox" className="sr-only peer" checked={isCancellable} onChange={e => setIsCancellable(e.target.checked)} />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 relative"></div>
+                    <span className="ml-3 text-sm font-bold text-slate-700 uppercase tracking-wider">Allow Customer Cancellations</span>
+                  </label>
+                </div>
+                <div>
+                  <label className={labelStyles}>Cancellation Window (Hours)</label>
+                  <input type="number" min="0" placeholder="e.g. 24" className={inputStyles} value={cancellationWindowHours} onChange={e => setCancellationWindowHours(e.target.value)} disabled={!isCancellable} required={isCancellable} />
+                </div>
               </div>
             </div>
 
-            {/* SECTION 7: MEDIA */}
+            SECTION 7: MEDIA
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 rounded-2xl shadow-lg border border-slate-700">
               <h3 className="text-lg font-black text-white mb-6 flex items-center gap-2 border-b border-slate-700 pb-4">📸 Upload Media Assets</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -2171,9 +2624,150 @@ export default function AdminDashboard() {
             </button>
           </form>
         </div>
+      </div> */}
+
+{/* SECTION 6: TRUST, POLICIES & CANCELLATIONS */}
+<div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-6 shadow-sm">
+  <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6">
+    <span className="text-xl">🛡️</span>
+    <h3 className="text-[18px] font-bold text-[#111]">Compliance & Customer Policies</h3>
+  </div>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="space-y-4">
+      <div>
+        <label className="block text-[13px] font-bold text-[#111] mb-1">Return Policy</label>
+        <input 
+          type="text" 
+          placeholder="e.g. 7 Days Replacement" 
+          className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
+          value={returnPolicy} 
+          onChange={e => setReturnPolicy(e.target.value)} 
+          required 
+        />
+      </div>
+      <div>
+        <label className="block text-[13px] font-bold text-[#111] mb-1">Warranty Details</label>
+        <input 
+          type="text" 
+          placeholder="e.g. 1 Year Brand Warranty" 
+          className="w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none" 
+          value={warrantyPolicy} 
+          onChange={e => setWarrantyPolicy(e.target.value)} 
+          required 
+        />
+      </div>
+    </div>
+
+    <div className="bg-[#F7FAFA] border border-[#D5D9D9] p-5 rounded-[4px]">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h4 className="text-[13px] font-bold text-[#111]">Cancellation Control</h4>
+          <p className="text-[11px] text-[#565959]">Allow users to cancel before shipping</p>
+        </div>
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input 
+            type="checkbox" 
+            className="sr-only peer" 
+            checked={isCancellable} 
+            onChange={e => setIsCancellable(e.target.checked)} 
+          />
+          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00a8e1]"></div>
+        </label>
       </div>
 
-      {/* 🚀 THE ULTIMATE EDIT MODAL */}
+      <div className={`transition-all duration-300 ${isCancellable ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+        <label className="block text-[12px] font-bold text-[#111] mb-1">Cancellation Window (Hours)</label>
+        <div className="flex items-center gap-3">
+          <input 
+            type="number" 
+            className="w-24 border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] outline-none bg-white" 
+            value={cancellationWindowHours} 
+            onChange={e => setCancellationWindowHours(e.target.value)} 
+          />
+          <span className="text-[12px] text-[#565959]">hours after placing order</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{/* SECTION 7: MEDIA ASSETS (Fixed Variable Name) */}
+<div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-12 shadow-sm">
+  <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6">
+    <span className="text-xl">📸</span>
+    <h3 className="text-[18px] font-bold text-[#111]">Product Media & A+ Content</h3>
+  </div>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    {/* Main Gallery */}
+    <div className="space-y-2">
+      <label className="block text-[13px] font-bold text-[#111]">Gallery Images (Main Display)</label>
+      <div className="border-2 border-dashed border-[#D5D9D9] rounded-[4px] p-8 text-center hover:bg-[#F7FAFA] transition-colors relative cursor-pointer group">
+        <input 
+          type="file" 
+          multiple 
+          accept="image/*" 
+          className="absolute inset-0 opacity-0 cursor-pointer" 
+          onChange={e => setImages(e.target.files)} 
+          required 
+        />
+        <div className="text-[#565959] group-hover:text-[#111]">
+          <p className="text-2xl mb-1">📤</p>
+          <p className="text-[13px] font-medium">Click to upload product photos</p>
+          <p className="text-[11px] mt-1">{images.length > 0 ? `✅ ${images.length} files selected` : 'Minimum 1 image required'}</p>
+        </div>
+      </div>
+    </div>
+
+    {/* A+ Content / Banners */}
+    <div className="space-y-2">
+      <label className="block text-[13px] font-bold text-[#111]">Promo Banners (Description Area)</label>
+      <div className="border-2 border-dashed border-[#D5D9D9] rounded-[4px] p-8 text-center hover:bg-[#F7FAFA] transition-colors relative cursor-pointer group">
+        <input 
+          type="file" 
+          multiple 
+          accept="image/*" 
+          className="absolute inset-0 opacity-0 cursor-pointer" 
+          onChange={e => setBanners(e.target.files)} // Uses 'setBanners'
+        />
+        <div className="text-[#565959] group-hover:text-[#111]">
+          <p className="text-2xl mb-1">🖼️</p>
+          <p className="text-[13px] font-medium">Add manufacturer info banners</p>
+          <p className="text-[11px] mt-1">{banners.length > 0 ? `✅ ${banners.length} banners selected` : 'A+ Content is optional'}</p> 
+        </div>
+        
+      </div>
+    </div>
+  </div>
+</div>
+<div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#DDD] p-4 z-50 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] lg:left-[220px]">
+  <div className="max-w-[1000px] mx-auto flex justify-end gap-4 items-center">
+    <div className="hidden md:block text-right pr-4 border-r border-[#EEE]">
+      <p className="text-[11px] text-[#565959] uppercase font-bold">Current Status</p>
+      <p className="text-[13px] text-green-700 font-bold">Ready to Publish</p>
+    </div>
+    <button 
+      type="button" 
+      onClick={() => setActiveTab('inventory')}
+      className="bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-2 px-8 rounded-[8px] text-[14px] font-medium transition-all"
+    >
+      Discard
+    </button>
+    <button 
+      type="submit" 
+      className="bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-2 px-12 rounded-[8px] text-[14px] font-bold shadow-sm active:scale-95 transition-all"
+    >
+      Publish Product Listing
+    </button>
+  </div>
+</div>
+</form>
+</div>
+</div>
+
+
+
+      {/* THE ULTIMATE EDIT MODAL */}
       {editingProduct && editForm && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 z-50 overflow-y-auto">
           <div className="bg-slate-50 rounded-3xl w-full max-w-6xl shadow-2xl relative my-auto border border-white/20">
@@ -2275,12 +2869,25 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Edit: Policies */}
+                {/* Edit: Policies & Cancellations */}
                 <div className={sectionCardStyles}>
-                  <h3 className={sectionTitleStyles}>Trust & Policies</h3>
+                  <h3 className={sectionTitleStyles}>Trust, Policies & Cancellations</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div><label className={labelStyles}>Return Policy</label><input type="text" className={inputStyles} value={editForm.returnPolicy} onChange={e => setEditForm({...editForm, returnPolicy: e.target.value})} required /></div>
                     <div><label className={labelStyles}>Warranty Policy</label><input type="text" className={inputStyles} value={editForm.warrantyPolicy} onChange={e => setEditForm({...editForm, warrantyPolicy: e.target.value})} required /></div>
+                    
+                    {/* 🚀 EDIT CANCELLATION CONTROLS */}
+                    <div className="flex flex-col justify-center mt-2">
+                      <label className="flex items-center cursor-pointer mb-2">
+                        <input type="checkbox" className="sr-only peer" checked={editForm.isCancellable} onChange={e => setEditForm({...editForm, isCancellable: e.target.checked})} />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 relative"></div>
+                        <span className="ml-3 text-sm font-bold text-slate-700 uppercase tracking-wider">Allow Customer Cancellations</span>
+                      </label>
+                    </div>
+                    <div>
+                      <label className={labelStyles}>Cancellation Window (Hours)</label>
+                      <input type="number" min="0" placeholder="e.g. 24" className={inputStyles} value={editForm.cancellationWindowHours} onChange={e => setEditForm({...editForm, cancellationWindowHours: e.target.value})} disabled={!editForm.isCancellable} required={editForm.isCancellable} />
+                    </div>
                   </div>
                 </div>
 

@@ -65,6 +65,61 @@
 // module.exports = mongoose.model('User', userSchema);
 
 // models/User.js
+// const mongoose = require('mongoose');
+// const bcrypt = require('bcryptjs');
+
+// const userSchema = new mongoose.Schema({
+//   name: { type: String, required: true },
+//   email: { type: String, required: true, unique: true },
+//   password: { type: String, required: true },
+//   role: { type: String, enum: ['user', 'admin'], default: 'user' },
+  
+//   // Referral & Wallet
+//   myReferralCode: { type: String, unique: true },
+//   referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+//   wallet: {
+//     availableBalance: { type: Number, default: 0 },
+//     pendingBalance: { type: Number, default: 0 },
+//     totalEarnings: { type: Number, default: 0 },
+//   },
+
+//   // OTP & VERIFICATION FIELDS
+//   isVerified: { type: Boolean, default: false },
+//   otp: { type: String },
+//   otpExpiry: { type: Date }
+// }, { 
+//   timestamps: true,
+//   strict: true,
+//   autoIndex: true 
+// });
+
+// // 🚀 FIXED PASSWORD HASHING HOOK: Removed 'next' entirely for modern async/await
+// userSchema.pre('save', async function () {
+//   // If password is not modified, just return and let Mongoose continue
+//   if (!this.isModified('password')) {
+//     return; 
+//   }
+//   try {
+//     const salt = await bcrypt.genSalt(10);
+//     this.password = await bcrypt.hash(this.password, salt);
+//   } catch (error) {
+//     throw error; // Correct way to pass errors in modern async mongoose hooks
+//   }
+// });
+
+// // Compare entered password with hashed password
+// userSchema.methods.matchPassword = async function (enteredPassword) {
+//   return await bcrypt.compare(enteredPassword, this.password);
+// };
+
+// // This tells Mongoose to ignore any old 'mobileNumber' index in the collection
+// const User = mongoose.model('User', userSchema);
+// User.syncIndexes(); 
+
+// module.exports = User;
+
+
+// models/User.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
@@ -74,6 +129,23 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   
+  // 🚀 FIXED: Profile & Contact Details
+  phone: { type: String },
+  addresses: [{ // <--- 🚀 THIS IS NOW AN ARRAY
+    street: { type: String },
+    city: { type: String },
+    pincode: { type: String }
+  }],
+  
+  // 🚀 FIXED: Affiliate Payout Details
+  bankDetails: {
+    upiId: { type: String },
+    accountName: { type: String },
+    accountNumber: { type: String },
+    bankName: { type: String },
+    ifsc: { type: String }
+  },
+
   // Referral & Wallet
   myReferralCode: { type: String, unique: true },
   referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
@@ -89,13 +161,11 @@ const userSchema = new mongoose.Schema({
   otpExpiry: { type: Date }
 }, { 
   timestamps: true,
-  strict: true,
+  strict: true, // This is why it was rejecting unregistered data!
   autoIndex: true 
 });
 
-// 🚀 FIXED PASSWORD HASHING HOOK: Removed 'next' entirely for modern async/await
 userSchema.pre('save', async function () {
-  // If password is not modified, just return and let Mongoose continue
   if (!this.isModified('password')) {
     return; 
   }
@@ -103,16 +173,14 @@ userSchema.pre('save', async function () {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
   } catch (error) {
-    throw error; // Correct way to pass errors in modern async mongoose hooks
+    throw error;
   }
 });
 
-// Compare entered password with hashed password
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// This tells Mongoose to ignore any old 'mobileNumber' index in the collection
 const User = mongoose.model('User', userSchema);
 User.syncIndexes(); 
 

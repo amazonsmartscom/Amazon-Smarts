@@ -2,63 +2,95 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Terms & Conditions',
+  title: 'Conditions of Use - Amazon Smarts',
   description: 'Legal terms and conditions for using AMAZON SMARTS.',
 };
 
 export default function TermsPage() {
+  const amzLink = "text-[#007185] hover:text-[#C45500] hover:underline cursor-pointer";
+  
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 pb-24 selection:bg-orange-200">
-      <div className="bg-slate-900 text-white py-20 px-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-b from-slate-800 to-transparent opacity-50"></div>
-        <div className="max-w-[1000px] mx-auto relative z-10 text-center">
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-4">Terms & Conditions</h1>
-          <p className="text-slate-400 font-medium text-lg">The rules and guidelines for using our platform.</p>
+    <div className="min-h-screen bg-white font-sans text-[#0F1111] pb-20 selection:bg-[#FEF8F2]">
+      
+      {/* Amazon Style Header Strip */}
+      <div className="border-b border-[#DDD] py-4 bg-white">
+        <div className="max-w-[1000px] mx-auto px-4">
+          <Link href="/">
+             <h1 className="text-2xl font-normal tracking-tighter text-[#111] cursor-pointer inline-block">
+               amazon<span className="text-[#e77600] font-bold tracking-normal">smarts</span>
+             </h1>
+          </Link>
         </div>
       </div>
 
-      <div className="max-w-[1000px] mx-auto px-4 md:px-8 -mt-12 relative z-20">
-        <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 p-8 md:p-14 lg:p-16">
-          <p className="text-sm font-bold text-slate-400 mb-8 uppercase tracking-widest border-b border-slate-100 pb-4">Last Updated: {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</p>
+      <div className="max-w-[1000px] mx-auto px-4 md:px-8 py-8">
+        
+        {/* Breadcrumb */}
+        <div className="text-[12px] text-[#565959] mb-6 flex items-center gap-1">
+          <Link href="/help" className={amzLink}>Help & Customer Service</Link> 
+          <span>›</span> 
+          <span className="text-[#c45500]">Legal Policies</span>
+        </div>
 
-          <div className="space-y-10 text-slate-600 leading-relaxed text-sm md:text-base">
+        {/* Main Document Card */}
+        <div className="border border-[#DDD] rounded-[4px] p-6 md:p-10 shadow-sm">
+          
+          <h1 className="text-[28px] font-normal leading-tight mb-2">Conditions of Use</h1>
+          <p className="text-[13px] text-[#565959] mb-8 border-b border-[#EEE] pb-4">
+            Last Updated: {new Date().toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric' })}
+          </p>
+
+          <div className="space-y-8 text-[14px] leading-[1.5] text-[#0F1111]">
+            
             <section>
-              <h2 className="text-2xl font-black text-slate-900 mb-4">1. Introduction</h2>
-              <p>Welcome to <strong>AMAZON SMARTS</strong>. These Terms and Conditions outline the rules and regulations for the use of the AMAZON SMARTS website, platform, and affiliate services. By accessing this website, we assume you accept these terms in full. Do not continue to use AMAZON SMARTS if you do not agree to all the terms stated on this page.</p>
+              <p>Welcome to Amazon Smarts. Amazon Smarts and/or its affiliates provide website features and other products and services to you when you visit or shop at AmazonSmarts.com. By using Amazon Smarts Services, you agree, on behalf of yourself and all members of your household and others who use any Service under your account, to the following conditions.</p>
+              <p className="mt-4 font-bold italic">Please read these conditions carefully.</p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-black text-slate-900 mb-4">2. Account Registration and Security</h2>
-              <p className="mb-3">To utilize certain features, including purchasing products or participating in our Affiliate Program, you must register for an account.</p>
-              <ul className="list-disc pl-5 space-y-2">
-                <li>You must provide accurate, current, and complete information during registration.</li>
-                <li>You are solely responsible for maintaining the confidentiality of your password and account credentials.</li>
-                <li>AMAZON SMARTS will not be liable for any loss or damage arising from your failure to protect your account.</li>
-              </ul>
+              <h2 className="text-[18px] font-bold mb-3">1. Privacy</h2>
+              <p>Please review our <Link href="/privacy-policy" className={amzLink}>Privacy Notice</Link>, which also governs your use of Amazon Smarts Services, to understand our practices.</p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-black text-slate-900 mb-4">3. Affiliate Wallet and Referral Program</h2>
-              <p>AMAZON SMARTS operates a proprietary Affiliate Program. Users are granted a unique referral code to share. Commissions are added to the user's "Affiliate Wallet" only when a successful, non-returned purchase is made using their code.</p>
-              <p className="mt-3">We strictly prohibit self-referrals, spamming, or fraudulent promotion. AMAZON SMARTS reserves the right to freeze wallets, withhold payouts, and ban accounts if affiliate fraud is detected. Minimum withdrawal limits and standard banking processing times apply to all wallet cashouts.</p>
+              <h2 className="text-[18px] font-bold mb-3">2. Your Account</h2>
+              <p>You may need your own Amazon Smarts account to use certain Services, and you may be required to be logged in to the account and have a valid payment method associated with it. You are responsible for maintaining the confidentiality of your account and password and for restricting access to your account, and you agree to accept responsibility for all activities that occur under your account or password.</p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-black text-slate-900 mb-4">4. Pricing, Accuracy, and Availability</h2>
-              <p>We strive to display accurate pricing and product specifications. However, errors may occasionally occur. AMAZON SMARTS reserves the right to change prices, descriptions, or availability of products without prior notice. If an item's correct price is higher than our stated price, we will, at our discretion, either contact you for instructions before shipping or cancel your order and notify you.</p>
+              <h2 className="text-[18px] font-bold mb-3">3. Affiliate Program & Wallet</h2>
+              <p>Amazon Smarts operates a proprietary Referral Program. Commissions are credited to your Affiliate Wallet upon successful, non-returned delivery of orders placed using your unique code. We strictly prohibit fraudulent promotion, self-referrals, or automated spamming. Amazon Smarts reserves the right to audit wallet activity and withhold payouts if terms are breached.</p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-black text-slate-900 mb-4">5. Intellectual Property</h2>
-              <p>Unless otherwise stated, AMAZON SMARTS and/or its licensors own the intellectual property rights for all material on the website. All intellectual property rights are reserved. You may view and/or print pages from the website for your own personal use, subject to restrictions set in these terms and conditions.</p>
+              <h2 className="text-[18px] font-bold mb-3">4. Product Descriptions & Pricing</h2>
+              <p>Amazon Smarts attempts to be as accurate as possible. However, Amazon Smarts does not warrant that product descriptions or other content of any Service is accurate, complete, reliable, current, or error-free. If a product offered by Amazon Smarts itself is not as described, your sole remedy is to return it in unused condition.</p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-black text-slate-900 mb-4">6. Governing Law</h2>
-              <p>These terms and conditions are governed by and construed in accordance with the laws of India. You irrevocably submit to the exclusive jurisdiction of the courts in Punjab, India, for the resolution of any disputes.</p>
+              <h2 className="text-[18px] font-bold mb-3">5. Sanctions and Export Policy</h2>
+              <p>You may not use any Amazon Smarts Service if you are the subject of Indian sanctions or of sanctions consistent with Indian law imposed by the governments of the country where you are using Amazon Smarts Services.</p>
             </section>
+
+            {/* Gray Legal Disclaimer Box */}
+            <section className="bg-[#F3F3F3] p-6 rounded-[4px] border border-[#DDD]">
+              <h2 className="text-[18px] font-bold mb-3">6. Disclaimer of Warranties and Limitation of Liability</h2>
+              <p className="text-[13px] leading-relaxed">
+                THE AMAZON SMARTS SERVICES AND ALL INFORMATION, CONTENT, MATERIALS, PRODUCTS (INCLUDING SOFTWARE) AND OTHER SERVICES INCLUDED ON OR OTHERWISE MADE AVAILABLE TO YOU THROUGH THE SERVICES ARE PROVIDED BY AMAZON SMARTS ON AN "AS IS" AND "AS AVAILABLE" BASIS, UNLESS OTHERWISE SPECIFIED IN WRITING. AMAZON SMARTS MAKES NO REPRESENTATIONS OR WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-[18px] font-bold mb-3">7. Disputes & Governing Law</h2>
+              <p>Any dispute or claim relating in any way to your use of any Amazon Smarts Service, or to any products or services sold or distributed by Amazon Smarts will be adjudicated in the courts of <strong>Punjab, India</strong>, and you consent to exclusive jurisdiction and venue in these courts.</p>
+            </section>
+
           </div>
         </div>
+
+        {/* Footer Links */}
+        
+
       </div>
     </div>
   );

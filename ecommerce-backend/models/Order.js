@@ -79,6 +79,9 @@ const orderSchema = new mongoose.Schema({
 
   // 🚀 ADDED: Status for the Admin Dashboard Dropdown
   status: { type: String, default: 'Processing' },
+// Inside models/Order.js, add this right below your status field:
+invoiceUrl: { type: String },
+
   
   isDelivered: { type: Boolean, required: true, default: false },
   deliveredAt: { type: Date },

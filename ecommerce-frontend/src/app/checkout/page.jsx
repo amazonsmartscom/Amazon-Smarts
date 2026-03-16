@@ -828,7 +828,6 @@
 // }
 
 
-
 // src/app/checkout/page.jsx
 'use client';
 import { useState, useEffect } from 'react';
@@ -845,7 +844,7 @@ export default function CheckoutPage() {
 
   const [isHydrated, setIsHydrated] = useState(false);
   
-  // 🚀 NEW: Page Flow States
+  // Page Flow States
   const [checkoutStep, setCheckoutStep] = useState('editing'); // 'editing', 'otp', 'success'
   const [isProcessing, setIsProcessing] = useState(false);
   const [otp, setOtp] = useState('');
@@ -853,16 +852,42 @@ export default function CheckoutPage() {
 
   const [shippingInfo, setShippingInfo] = useState({
     fullName: user?.name || user?.user?.name || '', 
-    email: user?.email || user?.user?.email || '', // Added for OTP
+    email: user?.email || user?.user?.email || '', 
     phone: '',
     address: '',
     city: '',
     pincode: ''
   });
+  
+  // 🚀 NEW: State to track if we successfully loaded a saved address
+  const [hasSavedAddress, setHasSavedAddress] = useState(false);
 
   useEffect(() => {
     setIsHydrated(true);
-  }, []);
+    
+    // 🚀 FIXED: Fetch User Profile and pick the FIRST address from the array
+    if (user) {
+      const userId = user?.user?._id || user?._id;
+      axios.get(`${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`)
+        .then(res => {
+          const { phone, addresses } = res.data;
+          
+          // Check if the addresses array exists and has at least one entry
+          if (addresses && addresses.length > 0) {
+            const defaultAddr = addresses[0]; // Pick the first saved address
+            setShippingInfo(prev => ({
+              ...prev,
+              phone: phone || prev.phone,
+              address: defaultAddr.street || '',
+              city: defaultAddr.city || '',
+              pincode: defaultAddr.pincode || ''
+            }));
+            setHasSavedAddress(true);
+          }
+        })
+        .catch(err => console.error("Could not fetch saved address", err));
+    }
+  }, [user]);
 
   const itemsPrice = cart.reduce((total, item) => total + ((item.discountPrice || item.price) * item.quantity), 0);
   const shippingPrice = itemsPrice > 50000 ? 0 : 499; 
@@ -877,7 +902,7 @@ export default function CheckoutPage() {
     return `${baseUrl}/${imagePath}`;
   };
 
-  // 🚀 AMAZON-SPECIFIC TAILWIND STYLES
+  // AMAZON-SPECIFIC TAILWIND STYLES
   const inputStyles = "w-full px-3 py-2 border border-[#a6a6a6] rounded-[3px] text-sm focus:outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_2px_rgba(228,121,17,0.5)] transition-shadow text-[#111]";
   const labelStyles = "block text-[13px] font-bold text-[#111] mb-1";
   const amzButton = "w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-lg py-[6px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer text-center";
@@ -906,7 +931,6 @@ export default function CheckoutPage() {
     
     setIsProcessing(true);
     try {
-      // Assuming your backend has an endpoint to send an OTP
       await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/send-otp`, { email: shippingInfo.email });
       setCheckoutStep('otp');
     } catch (error) {
@@ -923,13 +947,11 @@ export default function CheckoutPage() {
     setIsProcessing(true);
 
     try {
-      // 1. Verify the OTP first
       await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/verify-otp`, { 
         email: shippingInfo.email, 
         otp 
       });
 
-      // 2. If OTP is successful, build and send the order payload
       const orderPayload = {
         userId: user?._id || user?.user?._id || undefined, 
         orderItems: cart.map(item => ({
@@ -952,7 +974,6 @@ export default function CheckoutPage() {
       // Simulate Payment step
       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/${data.order._id}/pay`);
 
-      // 3. Clear cart and show Success Screen
       if(clearCart) clearCart(); 
       setPlacedOrder(data.order);
       setCheckoutStep('success');
@@ -971,13 +992,7 @@ export default function CheckoutPage() {
     
     return (
       <div className="min-h-screen bg-white font-sans text-[#0F1111]">
-        <header className="bg-[#F0F2F2] border-b border-[#ddd] py-3 text-center">
-          <Link href="/">
-            <h1 className="text-2xl font-normal tracking-tighter text-[#111] cursor-pointer inline-block">
-              amazon<span className="text-[#e77600] font-bold tracking-normal">smarts</span>
-            </h1>
-          </Link>
-        </header>
+        
 
         <div className="max-w-[800px] mx-auto px-4 py-8">
           <div className="border-[2px] border-[#007600] rounded-[4px] p-6 mb-6 flex gap-4 items-start">
@@ -1014,21 +1029,10 @@ export default function CheckoutPage() {
     );
   }
 
-  // --- RENDER MAIN CHECKOUT FLOW ---
   return (
     <div className="min-h-screen bg-white font-sans text-[#0F1111]">
       
-      <header className="bg-[#F0F2F2] border-b border-[#ddd] py-3">
-        <div className="max-w-[1000px] mx-auto px-4 flex justify-between items-center">
-          <Link href="/">
-            <h1 className="text-2xl font-normal tracking-tighter text-[#111] cursor-pointer">
-              amazon<span className="text-[#e77600] font-bold tracking-normal">smarts</span>
-            </h1>
-          </Link>
-          <h2 className="text-[24px] font-normal text-[#111] hidden md:block">Checkout</h2>
-          <div className="text-[24px] text-[#565959]">🔒</div>
-        </div>
-      </header>
+      
 
       <div className="max-w-[1000px] mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6 relative">
         
@@ -1042,6 +1046,15 @@ export default function CheckoutPage() {
                 <h2 className={sectionTitle + " mb-0"}>1. Enter a shipping address</h2>
               </div>
               <div className="p-5">
+                
+                {/* 🚀 NEW: Saved Address Alert */}
+                {hasSavedAddress && (
+                  <div className="mb-4 p-3 bg-[#e7f4e4] border border-[#007600] rounded-[4px] flex items-center gap-3 shadow-sm">
+                    <span className="text-[#007600] text-lg leading-none font-bold">✓</span>
+                    <p className="text-[#111] text-[13px] font-bold">We've pre-filled your primary saved address. You can edit it below if needed.</p>
+                  </div>
+                )}
+
                 <h3 className="text-[16px] font-bold text-[#111] mb-4">Add a new address</h3>
                 <div className="space-y-3 max-w-[500px]">
                   <div>
@@ -1125,10 +1138,9 @@ export default function CheckoutPage() {
           </form>
         </div>
 
-        {/* RIGHT: Order Summary (Amazon Box) */}
+        {/* RIGHT: Order Summary */}
         <div className="w-full lg:w-[300px] shrink-0">
           <div className="border border-[#ddd] bg-[#f3f3f3] rounded-[8px] p-4 sticky top-6">
-            
             <button 
               type="submit" 
               form="checkoutForm"
@@ -1137,13 +1149,10 @@ export default function CheckoutPage() {
             >
               {isProcessing ? 'Processing...' : 'Place your order'}
             </button>
-            
             <p className="text-[11px] text-[#565959] text-center border-b border-[#ddd] pb-4 mb-4 leading-tight">
               By placing your order, you agree to Amazon Smarts's <Link href="/privacy" className="text-[#007185] hover:underline">privacy notice</Link> and <Link href="/conditions" className="text-[#007185] hover:underline">conditions of use</Link>.
             </p>
-
             <h3 className="font-bold text-[18px] text-[#111] mb-2">Order Summary</h3>
-            
             <div className="space-y-1.5 text-[13px] text-[#111] border-b border-[#ddd] pb-3 mb-3">
               <div className="flex justify-between">
                 <span>Items:</span>
@@ -1154,60 +1163,27 @@ export default function CheckoutPage() {
                 <span>{shippingPrice === 0 ? '₹0.00' : `₹${shippingPrice.toLocaleString('en-IN')}`}</span>
               </div>
             </div>
-
             <div className="flex justify-between items-center text-[#B12704] font-bold text-[18px] mb-4">
               <span>Order Total:</span>
               <span>₹{grandTotal.toLocaleString('en-IN')}</span>
             </div>
-
-            <div className="bg-[#fef8f2] border border-[#fbd8b4] p-3 rounded-[4px] text-[12px] text-[#111]">
-              <span className="font-bold text-[#c45500]">Payment Method:</span> Pay on Delivery (Cash/UPI)
-            </div>
-            
           </div>
         </div>
-
       </div>
 
-      {/* 🚀 OTP MODAL OVERLAY */}
+      {/* OTP MODAL */}
       {checkoutStep === 'otp' && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-[8px] max-w-[400px] w-full p-6 shadow-xl border border-[#ddd]">
             <h2 className="text-[22px] font-normal mb-2">Verify email address</h2>
-            <p className="text-[13px] text-[#111] mb-4">
-              To verify your purchase, we've sent a One Time Password (OTP) to <span className="font-bold">{shippingInfo.email}</span>.
-            </p>
-            
             <form onSubmit={handleVerifyAndPlaceOrder} className="space-y-4">
               <div>
                 <label className={labelStyles}>Enter OTP</label>
-                <input 
-                  type="text" 
-                  maxLength="6"
-                  required 
-                  className={`${inputStyles} tracking-widest text-center text-lg py-3`}
-                  value={otp} 
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} 
-                />
+                <input type="text" maxLength="6" required className={`${inputStyles} tracking-widest text-center text-lg py-3`} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} />
               </div>
-              
-              <button 
-                type="submit" 
-                disabled={isProcessing || otp.length < 6} 
-                className={amzButton}
-              >
+              <button type="submit" disabled={isProcessing || otp.length < 6} className={amzButton}>
                 {isProcessing ? 'Verifying...' : 'Verify & Place Order'}
               </button>
-
-              <div className="text-center mt-2">
-                <button 
-                  type="button" 
-                  onClick={() => setCheckoutStep('editing')} 
-                  className="text-[13px] text-[#007185] hover:text-[#C45500] hover:underline"
-                >
-                  Cancel and edit order
-                </button>
-              </div>
             </form>
           </div>
         </div>

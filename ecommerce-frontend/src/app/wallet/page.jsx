@@ -951,6 +951,384 @@
 
 
 
+// // src/app/wallet/page.jsx
+// 'use client';
+// import { useState, useEffect } from 'react';
+// import { useAuth } from '../../context/AuthContext';
+// import { useRouter } from 'next/navigation';
+// import axios from 'axios';
+// import Link from 'next/link';
+
+// export default function WalletDashboard() {
+//   const { user } = useAuth();
+//   const router = useRouter();
+//   const [walletData, setWalletData] = useState({ wallet: null, transactions: [] });
+//   const [userProfile, setUserProfile] = useState(null);
+//   const [loading, setLoading] = useState(true);
+//   const [showModal, setShowModal] = useState(false);
+//   const [copied, setCopied] = useState(false); 
+
+//   // Withdrawal Form States
+//   const [amount, setAmount] = useState('');
+//   const [withdrawMethod, setWithdrawMethod] = useState('UPI'); // 'UPI' or 'BANK'
+//   const [upiId, setUpiId] = useState('');
+//   const [bankInfo, setBankInfo] = useState({ accountName: '', accountNumber: '', bankName: '', ifsc: '' });
+//   const [isSubmitting, setIsSubmitting] = useState(false);
+
+//   useEffect(() => {
+//     if (!user) { router.push('/login'); return; }
+
+//     const fetchWalletAndProfile = async () => {
+//       try {
+//         const userId = user?._id || user?.user?._id;
+        
+//         // Fetch both wallet and profile data simultaneously
+//         const [walletRes, profileRes] = await Promise.all([
+//           axios.get(`${process.env.NEXT_PUBLIC_API_URL}/wallet/${userId}`),
+//           axios.get(`${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`)
+//         ]);
+        
+//         setWalletData(walletRes.data);
+//         setUserProfile(profileRes.data);
+
+//         // Auto-fill forms if data is saved in profile
+//         const savedBank = profileRes.data?.bankDetails;
+//         if (savedBank) {
+//           if (savedBank.upiId) setUpiId(savedBank.upiId);
+//           if (savedBank.accountNumber) {
+//             setBankInfo({
+//               accountName: savedBank.accountName || '',
+//               accountNumber: savedBank.accountNumber || '',
+//               bankName: savedBank.bankName || '',
+//               ifsc: savedBank.ifsc || ''
+//             });
+//             // If they only have Bank saved (no UPI), default to BANK tab
+//             if (!savedBank.upiId) setWithdrawMethod('BANK');
+//           }
+//         }
+        
+//         setLoading(false);
+//       } catch (error) {
+//         console.error("Error fetching data:", error);
+//         setLoading(false);
+//       }
+//     };
+//     fetchWalletAndProfile();
+//   }, [user, router]);
+
+//   const handleCopyCode = () => {
+//     const code = user?.myReferralCode || user?.user?.myReferralCode;
+//     if (code) {
+//       navigator.clipboard.writeText(code);
+//       setCopied(true);
+//       setTimeout(() => setCopied(false), 2000); 
+//     }
+//   };
+
+//   const handleShare = async () => {
+//     const referralCode = user?.myReferralCode || user?.user?.myReferralCode;
+//     if (!referralCode) return alert("Referral code not found. Please log in again.");
+
+//     const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://amazon-smarts.vercel.app';
+//     const shareMessage = `Hey! I'm buying awesome gadgets from Amazon Smarts. Use my VIP invite code *${referralCode}* when you sign up to get special deals! Check it out: ${origin}/signup?ref=${referralCode}`;
+
+//     if (navigator.share) {
+//       try { await navigator.share({ title: 'Amazon Smarts VIP Invite', text: shareMessage }); } 
+//       catch (error) { console.log('Error sharing', error); }
+//     } else {
+//       const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`;
+//       window.open(whatsappUrl, '_blank');
+//     }
+//   };
+
+//   const handleWithdrawalSubmit = async () => {
+//     const withdrawAmount = Number(amount);
+//     if (!withdrawAmount || withdrawAmount < 500) return alert("Minimum withdrawal is ₹500");
+//     if (withdrawAmount > walletData.wallet?.availableBalance) return alert("Insufficient balance!");
+
+//     let details = {};
+//     if (withdrawMethod === 'UPI') {
+//       if (!upiId) return alert("Please enter a valid UPI ID");
+//       details = { upiId };
+//     } else {
+//       if (!bankInfo.accountNumber || !bankInfo.ifsc || !bankInfo.accountName) return alert("Please fill all required bank details");
+//       details = { ...bankInfo };
+//     }
+
+//     setIsSubmitting(true);
+//     try {
+//       await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/withdrawals/request`, {
+//         userId: user?._id || user?.user?._id, 
+//         amount: withdrawAmount, 
+//         method: withdrawMethod, 
+//         details: details
+//       });
+//       alert("Withdrawal requested successfully! Admin will review it shortly.");
+//       setShowModal(false);
+//       window.location.reload(); 
+//     } catch (err) { 
+//       alert(err.response?.data?.message || "Error processing request."); 
+//       setIsSubmitting(false);
+//     }
+//   };
+
+//   // 🚀 AMAZON-SPECIFIC TAILWIND STYLES
+//   const boxStyle = "bg-white border border-[#ddd] rounded-[8px] p-5";
+//   const amzInput = "w-full px-3 py-2 border border-[#a6a6a6] rounded-[3px] text-[13px] focus:outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_2px_rgba(228,121,17,0.5)] transition-shadow text-[#111]";
+//   const amzLabel = "block text-[13px] font-bold text-[#111] mb-1";
+//   const amzButton = "w-full bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-[6px] rounded-[8px] text-[13px] text-[#111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer text-center";
+//   const amzSecondaryButton = "w-full bg-white border border-[#d5d9d9] hover:bg-[#f7fafa] py-[6px] rounded-[8px] text-[13px] text-[#111] shadow-[0_2px_5px_0_rgba(213,217,217,.5)] transition-colors cursor-pointer text-center";
+
+//   if (loading) return (
+//     <div className="min-h-screen bg-[#EAEDED] flex flex-col items-center justify-center p-4">
+//       <div className="w-10 h-10 border-4 border-[#e7e7e7] border-t-[#e77600] rounded-full animate-spin mb-4"></div>
+//     </div>
+//   );
+
+//   return (
+//     <div className="min-h-screen bg-[#EAEDED] font-sans text-[#0F1111] pb-20 selection:bg-orange-200">
+      
+//       <div className="max-w-[1000px] mx-auto px-4 py-6">
+        
+//         {/* Breadcrumb & Header */}
+//         <div className="mb-6">
+//           <div className="text-[14px] text-[#565959] mb-2 flex items-center gap-1">
+//             <Link href="/account" className="text-[#007185] hover:text-[#c45500] hover:underline">Your Account</Link> 
+//             <span>›</span> 
+//             <span className="text-[#c45500]">Affiliate Wallet</span>
+//           </div>
+//           <h1 className="text-[28px] font-normal leading-tight">Your Affiliate Wallet</h1>
+//         </div>
+
+//         {/* ================= TOP SECTION ================= */}
+//         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+          
+//           {/* Available Balance Box */}
+//           <div className={boxStyle}>
+//             <h3 className="text-[17px] font-normal text-[#0F1111] mb-1">Available Balance</h3>
+//             <p className="text-[32px] font-normal text-[#B12704] mb-4">
+//               ₹{walletData.wallet?.availableBalance?.toLocaleString('en-IN') || 0}
+//             </p>
+//             <button onClick={() => setShowModal(true)} className={amzButton}>
+//               Withdraw Funds
+//             </button>
+//           </div>
+
+//           {/* Lifetime Earnings Box */}
+//           <div className={boxStyle}>
+//             <h3 className="text-[17px] font-normal text-[#0F1111] mb-1">Lifetime Earnings</h3>
+//             <p className="text-[32px] font-normal text-[#0F1111] mb-4">
+//               ₹{walletData.wallet?.totalEarnings?.toLocaleString('en-IN') || 0}
+//             </p>
+//             <p className="text-[13px] text-[#565959]">
+//               Total money earned from your referrals since joining.
+//             </p>
+//           </div>
+
+//           {/* VIP Referral Box */}
+//           <div className={boxStyle}>
+//             <h3 className="text-[17px] font-normal text-[#0F1111] mb-2">Share & Earn</h3>
+//             <p className="text-[13px] text-[#565959] mb-3">
+//               Give your friends a discount and earn commission on their first purchase.
+//             </p>
+            
+//             <div className="bg-[#f3f3f3] border border-[#ddd] p-2 rounded-[4px] flex items-center justify-between mb-3">
+//               <span className="font-mono text-[14px] font-bold text-[#0F1111] tracking-wider select-all">
+//                 {user?.myReferralCode || user?.user?.myReferralCode}
+//               </span>
+//               <button 
+//                 onClick={handleCopyCode} 
+//                 className="text-[#007185] hover:text-[#c45500] hover:underline text-[13px]"
+//               >
+//                 {copied ? '✓ Copied' : 'Copy'}
+//               </button>
+//             </div>
+            
+//             <button onClick={handleShare} className={amzSecondaryButton}>
+//               Share Referral Link
+//             </button>
+//           </div>
+
+//         </div>
+
+//         {/* ================= TRANSACTION HISTORY ================= */}
+//         <div className="bg-white border border-[#ddd] rounded-[8px] overflow-hidden">
+//           <div className="p-4 border-b border-[#ddd] bg-[#f3f3f3]">
+//             <h2 className="text-[18px] font-normal text-[#0F1111]">Ledger & History</h2>
+//           </div>
+          
+//           {walletData.transactions.length === 0 ? (
+//             <div className="p-8 text-center">
+//               <p className="text-[14px] text-[#565959]">You don't have any transactions yet.</p>
+//               <p className="text-[14px] text-[#007185] hover:text-[#c45500] hover:underline cursor-pointer mt-2" onClick={handleShare}>
+//                 Start sharing your link to earn!
+//               </p>
+//             </div>
+//           ) : (
+//             <div className="overflow-x-auto">
+//               <table className="w-full text-left border-collapse">
+//                 <thead>
+//                   <tr className="border-b border-[#ddd] text-[13px] text-[#565959]">
+//                     <th className="p-4 font-bold">Date</th>
+//                     <th className="p-4 font-bold">Description</th>
+//                     <th className="p-4 font-bold">Status</th>
+//                     <th className="p-4 font-bold text-right">Amount</th>
+//                   </tr>
+//                 </thead>
+//                 <tbody className="divide-y divide-[#eee]">
+//                   {walletData.transactions.map((tx) => (
+//                     <tr key={tx._id} className="text-[14px] text-[#0F1111]">
+//                       <td className="p-4 whitespace-nowrap">
+//                         {new Date(tx.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+//                       </td>
+//                       <td className="p-4">
+//                         <p className="font-medium">
+//                           {tx.source === 'referral_commission' ? 'Affiliate Commission' : 'Bank Payout Request'}
+//                         </p>
+//                         <p className="text-[12px] text-[#565959] mt-0.5">
+//                           Ref: {tx.relatedOrderId ? tx.relatedOrderId.slice(-8).toUpperCase() : tx._id.slice(-8).toUpperCase()}
+//                         </p>
+//                       </td>
+//                       <td className="p-4">
+//                         <span className={`text-[12px] font-bold ${
+//                           tx.status === 'completed' ? 'text-[#007600]' : 
+//                           tx.status === 'rejected' ? 'text-[#c40000]' :
+//                           tx.status === 'approved' ? 'text-[#007185]' :
+//                           'text-[#e77600]'
+//                         }`}>
+//                           {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
+//                         </span>
+//                       </td>
+//                       <td className={`p-4 text-right whitespace-nowrap ${tx.type === 'credit' ? 'text-[#007600]' : 'text-[#B12704]'}`}>
+//                         {tx.type === 'credit' ? '+' : '-'}₹{tx.amount.toLocaleString('en-IN')}
+//                       </td>
+//                     </tr>
+//                   ))}
+//                 </tbody>
+//               </table>
+//             </div>
+//           )}
+//         </div>
+
+//       </div>
+
+//       {/* ================= WITHDRAWAL MODAL ================= */}
+//       {showModal && (
+//         <div className="fixed inset-0 bg-[rgba(0,0,0,0.6)] flex items-center justify-center p-4 z-50">
+//           <div className="bg-white rounded-[8px] w-full max-w-[450px] shadow-[0_2px_10px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col max-h-[90vh]">
+            
+//             <div className="bg-[#f3f3f3] border-b border-[#ddd] p-4 flex justify-between items-center shrink-0">
+//               <h2 className="text-[16px] font-bold text-[#0F1111]">Withdraw Funds</h2>
+//               <button onClick={() => setShowModal(false)} className="text-[#0F1111] hover:text-[#c40000] text-xl leading-none">✕</button>
+//             </div>
+            
+//             <div className="p-5 overflow-y-auto custom-scrollbar">
+//               <div className="bg-[#f0f2f2] border border-[#d5d9d9] p-3 rounded-[4px] mb-5">
+//                 <p className="text-[13px] text-[#565959] mb-1">Available to transfer</p>
+//                 <p className="text-[18px] font-bold text-[#B12704]">₹{walletData.wallet?.availableBalance?.toLocaleString('en-IN')}</p>
+//               </div>
+              
+//               <div className="mb-5">
+//                 <label className={amzLabel}>Amount to withdraw (Min ₹500)</label>
+//                 <div className="relative">
+//                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#565959]">₹</span>
+//                   <input 
+//                     type="number" 
+//                     placeholder="0.00" 
+//                     className={`${amzInput} pl-7`}
+//                     onChange={(e) => setAmount(e.target.value)}
+//                   />
+//                 </div>
+//               </div>
+
+//               {/* Tabs for UPI vs Bank */}
+//               <div className="flex gap-4 border-b border-[#ddd] mb-4">
+//                 <button 
+//                   className={`pb-2 text-[14px] font-bold ${withdrawMethod === 'UPI' ? 'border-b-2 border-[#e77600] text-[#0F1111]' : 'text-[#007185] hover:text-[#c45500]'}`}
+//                   onClick={() => setWithdrawMethod('UPI')}
+//                 >
+//                   UPI Transfer
+//                 </button>
+//                 <button 
+//                   className={`pb-2 text-[14px] font-bold ${withdrawMethod === 'BANK' ? 'border-b-2 border-[#e77600] text-[#0F1111]' : 'text-[#007185] hover:text-[#c45500]'}`}
+//                   onClick={() => setWithdrawMethod('BANK')}
+//                 >
+//                   Bank Account
+//                 </button>
+//               </div>
+              
+//               {/* UPI Form */}
+//               {withdrawMethod === 'UPI' && (
+//                 <div className="mb-2">
+//                   <label className={amzLabel}>Destination UPI ID</label>
+//                   <input 
+//                     type="text" 
+//                     placeholder="e.g. yourname@okhdfc" 
+//                     className={amzInput}
+//                     value={upiId}
+//                     onChange={(e) => setUpiId(e.target.value)}
+//                   />
+//                   {userProfile?.bankDetails?.upiId && (
+//                     <p className="text-[11px] text-[#007600] mt-1 font-bold">✓ Pre-filled from saved settings</p>
+//                   )}
+//                 </div>
+//               )}
+
+//               {/* BANK Form */}
+//               {withdrawMethod === 'BANK' && (
+//                 <div className="space-y-3 mb-2">
+//                   <div>
+//                     <label className={amzLabel}>Account Holder Name</label>
+//                     <input type="text" className={amzInput} value={bankInfo.accountName} onChange={e => setBankInfo({...bankInfo, accountName: e.target.value})} />
+//                   </div>
+//                   <div>
+//                     <label className={amzLabel}>Account Number</label>
+//                     <input type="text" className={amzInput} value={bankInfo.accountNumber} onChange={e => setBankInfo({...bankInfo, accountNumber: e.target.value})} />
+//                   </div>
+//                   <div className="flex gap-3">
+//                     <div className="flex-1">
+//                       <label className={amzLabel}>IFSC Code</label>
+//                       <input type="text" className={amzInput} value={bankInfo.ifsc} onChange={e => setBankInfo({...bankInfo, ifsc: e.target.value})} />
+//                     </div>
+//                     <div className="flex-1">
+//                       <label className={amzLabel}>Bank Name</label>
+//                       <input type="text" className={amzInput} value={bankInfo.bankName} onChange={e => setBankInfo({...bankInfo, bankName: e.target.value})} />
+//                     </div>
+//                   </div>
+//                   {userProfile?.bankDetails?.accountNumber && (
+//                     <p className="text-[11px] text-[#007600] mt-1 font-bold">✓ Pre-filled from saved settings</p>
+//                   )}
+//                 </div>
+//               )}
+
+//               <div className="text-center mt-3 mb-5">
+//                 <Link href="/account?tab=profile" className="text-[12px] text-[#007185] hover:text-[#c45500] hover:underline">
+//                   Manage saved payout methods in Account Settings
+//                 </Link>
+//               </div>
+              
+//               <div className="pt-2 shrink-0">
+//                 <button 
+//                   onClick={handleWithdrawalSubmit}
+//                   disabled={isSubmitting}
+//                   className={amzButton}
+//                 >
+//                   {isSubmitting ? 'Processing...' : 'Submit Request'}
+//                 </button>
+//                 <p className="text-[12px] text-[#565959] text-center mt-3">
+//                   Transfers may take up to 24 hours to reflect in your account.
+//                 </p>
+//               </div>
+              
+//             </div>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+
 // src/app/wallet/page.jsx
 'use client';
 import { useState, useEffect } from 'react';
@@ -963,261 +1341,235 @@ export default function WalletDashboard() {
   const { user } = useAuth();
   const router = useRouter();
   const [walletData, setWalletData] = useState({ wallet: null, transactions: [] });
+  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [amount, setAmount] = useState('');
-  const [upiId, setUpiId] = useState('');
   const [copied, setCopied] = useState(false); 
+
+  // Withdrawal Form States
+  const [amount, setAmount] = useState('');
+  const [withdrawMethod, setWithdrawMethod] = useState('UPI'); 
+  const [upiId, setUpiId] = useState('');
+  const [bankInfo, setBankInfo] = useState({ accountName: '', accountNumber: '', bankName: '', ifsc: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!user) { router.push('/login'); return; }
 
-    const fetchWallet = async () => {
+    const fetchWalletAndProfile = async () => {
       try {
-        const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/wallet/${user?._id || user?.user?._id}`);
-        setWalletData(data);
+        const userId = user?._id || user?.user?._id;
+        const [walletRes, profileRes] = await Promise.all([
+          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/wallet/${userId}`),
+          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`)
+        ]);
+        setWalletData(walletRes.data);
+        setUserProfile(profileRes.data);
+
+        const savedBank = profileRes.data?.bankDetails;
+        if (savedBank) {
+          if (savedBank.upiId) setUpiId(savedBank.upiId);
+          if (savedBank.accountNumber) {
+            setBankInfo({
+              accountName: savedBank.accountName || '',
+              accountNumber: savedBank.accountNumber || '',
+              bankName: savedBank.bankName || '',
+              ifsc: savedBank.ifsc || ''
+            });
+            if (!savedBank.upiId) setWithdrawMethod('BANK');
+          }
+        }
         setLoading(false);
       } catch (error) {
-        console.error("Error fetching wallet:", error);
+        console.error("Error:", error);
         setLoading(false);
       }
     };
-    fetchWallet();
+    fetchWalletAndProfile();
   }, [user, router]);
 
-  const handleCopyCode = () => {
-    const code = user?.myReferralCode || user?.user?.myReferralCode;
-    if (code) {
-      navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000); 
-    }
-  };
+  // 🚀 SOCIAL SHARE LOGIC
+  const referralCode = user?.myReferralCode || user?.user?.myReferralCode;
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://amazon-smarts.vercel.app';
+  const shareUrl = `${origin}/signup?ref=${referralCode}`;
+  const shareText = `Hey! Join Amazon Smarts using my code *${referralCode}* to get exclusive VIP deals on gadgets!`;
 
-  const handleShare = async () => {
-    const referralCode = user?.myReferralCode || user?.user?.myReferralCode;
-    if (!referralCode) return alert("Referral code not found. Please log in again.");
-
-    const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://amazon-smarts.vercel.app';
-    const shareMessage = `Hey! I'm buying awesome gadgets from Amazon Smarts. Use my VIP invite code *${referralCode}* when you sign up to get special deals! Check it out: ${origin}/signup?ref=${referralCode}`;
-
+  // THE MAGIC "SHARE TO WHATEVER" BUTTON
+  const handleNativeShare = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Amazon Smarts VIP Invite', text: shareMessage });
-      } catch (error) { console.log('Error sharing', error); }
+        await navigator.share({
+          title: 'Amazon Smarts VIP Invite',
+          text: shareText,
+          url: shareUrl,
+        });
+      } catch (err) { console.log("Native share failed", err); }
     } else {
-      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`;
-      window.open(whatsappUrl, '_blank');
+      handleCopyLink();
     }
   };
 
-  // 🚀 AMAZON-SPECIFIC TAILWIND STYLES
-  const boxStyle = "bg-white border border-[#ddd] rounded-[8px] p-5";
-  const amzInput = "w-full px-3 py-2 border border-[#a6a6a6] rounded-[3px] text-[14px] focus:outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_2px_rgba(228,121,17,0.5)] transition-shadow text-[#111]";
-  const amzLabel = "block text-[13px] font-bold text-[#111] mb-1";
-  const amzButton = "w-full bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-[6px] rounded-[8px] text-[13px] text-[#111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer text-center";
-  const amzSecondaryButton = "w-full bg-white border border-[#d5d9d9] hover:bg-[#f7fafa] py-[6px] rounded-[8px] text-[13px] text-[#111] shadow-[0_2px_5px_0_rgba(213,217,217,.5)] transition-colors cursor-pointer text-center";
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-  if (loading) return (
-    <div className="min-h-screen bg-[#EAEDED] flex flex-col items-center justify-center p-4">
-      <div className="w-10 h-10 border-4 border-[#e7e7e7] border-t-[#e77600] rounded-full animate-spin mb-4"></div>
-    </div>
-  );
+  const shareToWhatsApp = () => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + " " + shareUrl)}`, '_blank');
+
+  const handleWithdrawalSubmit = async () => {
+    const withdrawAmount = Number(amount);
+    if (!withdrawAmount || withdrawAmount < 500) return alert("Min withdrawal ₹500");
+    if (withdrawAmount > walletData.wallet?.availableBalance) return alert("Insufficient balance!");
+
+    setIsSubmitting(true);
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/withdrawals/request`, {
+        userId: user?._id || user?.user?._id, 
+        amount: withdrawAmount, 
+        method: withdrawMethod, 
+        details: withdrawMethod === 'UPI' ? { upiId } : { ...bankInfo }
+      });
+      alert("Withdrawal requested!");
+      setShowModal(false);
+      window.location.reload(); 
+    } catch (err) { alert("Error processing request."); setIsSubmitting(false); }
+  };
+
+  // Amazon.com UI Constants
+  const amzButtonYellow = "bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-[6px] px-4 rounded-[8px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.15)] transition-colors cursor-pointer text-center";
+  const amzButtonWhite = "bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-[6px] px-4 rounded-[8px] text-[13px] text-[#0F1111] shadow-[0_2px_5px_0_rgba(213,217,217,.5)] transition-colors cursor-pointer text-center";
+  const amzLabel = "block text-[13px] font-bold text-[#111] mb-1";
+  const amzInput = "w-full px-3 py-1.5 border border-[#888C8C] rounded-[3px] text-[13px] focus:outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_2px_rgba(228,121,17,0.5)] text-[#111]";
+
+  if (loading) return <div className="min-h-screen bg-white flex items-center justify-center"><div className="w-10 h-10 border-4 border-t-[#e77600] rounded-full animate-spin"></div></div>;
 
   return (
-    <div className="min-h-screen bg-[#EAEDED] font-sans text-[#0F1111] pb-20 selection:bg-orange-200">
-      
+    <div className="min-h-screen bg-white font-sans text-[#0F1111] pb-20">
       <div className="max-w-[1000px] mx-auto px-4 py-6">
-        
-        {/* Breadcrumb & Header */}
-        <div className="mb-6">
-          <div className="text-[14px] text-[#565959] mb-2 flex items-center gap-1">
-            <Link href="/" className="text-[#007185] hover:text-[#c45500] hover:underline">Your Account</Link> 
-            <span>›</span> 
-            <span className="text-[#c45500]">Affiliate Wallet</span>
-          </div>
-          <h1 className="text-[28px] font-normal leading-tight">Your Affiliate Wallet</h1>
+        <div className="text-[14px] text-[#565959] mb-4 flex items-center gap-1">
+          <Link href="/account" className="text-[#007185] hover:text-[#C45500] hover:underline">Your Account</Link> 
+          <span className="text-[#565959] text-[10px]">›</span> 
+          <span className="text-[#C45500]">Affiliate Wallet</span>
         </div>
 
-        {/* ================= TOP SECTION ================= */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
-          
-          {/* Available Balance Box */}
-          <div className={boxStyle}>
-            <h3 className="text-[17px] font-normal text-[#0F1111] mb-1">Available Balance</h3>
-            <p className="text-[32px] font-normal text-[#B12704] mb-4">
-              ₹{walletData.wallet?.availableBalance?.toLocaleString('en-IN') || 0}
-            </p>
-            <button onClick={() => setShowModal(true)} className={amzButton}>
-              Withdraw Funds
-            </button>
-          </div>
+        <h1 className="text-[28px] font-normal mb-6">Your Affiliate Wallet</h1>
 
-          {/* Lifetime Earnings Box */}
-          <div className={boxStyle}>
-            <h3 className="text-[17px] font-normal text-[#0F1111] mb-1">Lifetime Earnings</h3>
-            <p className="text-[32px] font-normal text-[#0F1111] mb-4">
-              ₹{walletData.wallet?.totalEarnings?.toLocaleString('en-IN') || 0}
-            </p>
-            <p className="text-[13px] text-[#565959]">
-              Total money earned from your referrals since joining.
-            </p>
-          </div>
-
-          {/* VIP Referral Box */}
-          <div className={boxStyle}>
-            <h3 className="text-[17px] font-normal text-[#0F1111] mb-2">Share & Earn</h3>
-            <p className="text-[13px] text-[#565959] mb-3">
-              Give your friends a discount and earn commission on their first purchase.
-            </p>
-            
-            <div className="bg-[#f3f3f3] border border-[#ddd] p-2 rounded-[4px] flex items-center justify-between mb-3">
-              <span className="font-mono text-[14px] font-bold text-[#0F1111] tracking-wider select-all">
-                {user?.myReferralCode || user?.user?.myReferralCode}
-              </span>
-              <button 
-                onClick={handleCopyCode} 
-                className="text-[#007185] hover:text-[#c45500] hover:underline text-[13px]"
-              >
-                {copied ? '✓ Copied' : 'Copy'}
-              </button>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="border border-[#D5D9D9] rounded-[8px] p-5 flex flex-col justify-between">
+            <div>
+                <h3 className="text-[17px] font-normal mb-1">Available Balance</h3>
+                <p className="text-[32px] font-normal text-[#B12704]">₹{walletData.wallet?.availableBalance?.toLocaleString('en-IN') || 0}</p>
             </div>
-            
-            <button onClick={handleShare} className={amzSecondaryButton}>
-              Share Referral Link
-            </button>
+            <button onClick={() => setShowModal(true)} className={`${amzButtonYellow} mt-4 font-normal`}>Withdraw Funds</button>
           </div>
 
+          <div className="border border-[#D5D9D9] rounded-[8px] p-5">
+            <h3 className="text-[17px] font-normal mb-1">Lifetime Earnings</h3>
+            <p className="text-[32px] font-normal">₹{walletData.wallet?.totalEarnings?.toLocaleString('en-IN') || 0}</p>
+            <p className="text-[13px] text-[#565959] mt-2">Total commission earned from referrals.</p>
+          </div>
+
+          {/* 🚀 FIXED: SHARE CARD WITH NATIVE SHARE BUTTON */}
+          <div className="border border-[#D5D9D9] rounded-[8px] p-5 flex flex-col gap-3">
+            <h3 className="text-[17px] font-normal">Invite Friends</h3>
+            
+            <div className="bg-[#F0F2F2] border border-[#D5D9D9] p-2 rounded-[4px] flex items-center justify-between">
+                <span className="font-mono text-[14px] font-bold">{referralCode}</span>
+                <button onClick={handleCopyLink} className="text-[#007185] text-[12px] hover:underline uppercase font-bold">
+                    {copied ? 'Copied' : 'Copy'}
+                </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+                <button onClick={shareToWhatsApp} className={amzButtonWhite + " flex items-center justify-center gap-2"}>
+                   <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" className="w-4 h-4" alt="wa" /> WhatsApp
+                </button>
+                <button onClick={() => window.open(`https://t.me/share/url?url=${shareUrl}`, '_blank')} className={amzButtonWhite + " flex items-center justify-center gap-2"}>
+                   <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" className="w-4 h-4" alt="tg" /> Telegram
+                </button>
+            </div>
+
+            {/* THE "SHARE TO WHATEVER" BUTTON */}
+            <button onClick={handleNativeShare} className={amzButtonWhite + " w-full flex items-center justify-center gap-2 font-bold"}>
+               <span>📤</span> More Share Options
+            </button>
+          </div>
         </div>
 
-        {/* ================= TRANSACTION HISTORY ================= */}
-        <div className="bg-white border border-[#ddd] rounded-[8px] overflow-hidden">
-          <div className="p-4 border-b border-[#ddd] bg-[#f3f3f3]">
-            <h2 className="text-[18px] font-normal text-[#0F1111]">Ledger & History</h2>
-          </div>
-          
-          {walletData.transactions.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="text-[14px] text-[#565959]">You don't have any transactions yet.</p>
-              <p className="text-[14px] text-[#007185] hover:text-[#c45500] hover:underline cursor-pointer mt-2" onClick={handleShare}>
-                Start sharing your link to earn!
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
+        <div className="border border-[#D5D9D9] rounded-[8px] overflow-hidden">
+          <div className="bg-[#F0F2F2] px-4 py-3 border-b border-[#D5D9D9]"><h2 className="text-[18px]">Account Activity</h2></div>
+          <div className="overflow-x-auto">
+            {walletData.transactions.length === 0 ? (
+              <div className="p-10 text-center text-[#565959] text-[14px]">No transactions found.</div>
+            ) : (
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-[#ddd] text-[13px] text-[#565959]">
+                  <tr className="text-[13px] text-[#565959] border-b border-[#D5D9D9]">
                     <th className="p-4 font-bold">Date</th>
                     <th className="p-4 font-bold">Description</th>
                     <th className="p-4 font-bold">Status</th>
                     <th className="p-4 font-bold text-right">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#eee]">
+                <tbody className="divide-y divide-[#EEE]">
                   {walletData.transactions.map((tx) => (
-                    <tr key={tx._id} className="text-[14px] text-[#0F1111]">
-                      <td className="p-4 whitespace-nowrap">
-                        {new Date(tx.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </td>
+                    <tr key={tx._id} className="text-[14px] hover:bg-[#F7F7F7]">
+                      <td className="p-4 whitespace-nowrap text-[#565959]">{new Date(tx.createdAt).toLocaleDateString('en-IN')}</td>
                       <td className="p-4">
-                        <p className="font-medium">
-                          {tx.source === 'referral_commission' ? 'Affiliate Commission' : 'Bank Payout Request'}
-                        </p>
-                        <p className="text-[12px] text-[#565959] mt-0.5">
-                          Ref: {tx.relatedOrderId ? tx.relatedOrderId.slice(-8).toUpperCase() : tx._id.slice(-8).toUpperCase()}
-                        </p>
+                        <p className="font-bold">{tx.source === 'referral_commission' ? 'Commission' : 'Withdrawal'}</p>
+                        <p className="text-[12px] text-[#565959]">ID: {tx._id.slice(-10).toUpperCase()}</p>
                       </td>
-                      <td className="p-4">
-                        <span className={`text-[12px] font-bold ${
-                          tx.status === 'completed' ? 'text-[#007600]' : 
-                          tx.status === 'rejected' ? 'text-[#c40000]' :
-                          tx.status === 'approved' ? 'text-[#007185]' :
-                          'text-[#e77600]'
-                        }`}>
-                          {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
-                        </span>
+                      <td className={`p-4 uppercase text-[12px] font-bold ${tx.status === 'completed' ? 'text-[#007600]' : tx.status === 'rejected' ? 'text-[#B12704]' : 'text-[#E77600]'}`}>
+                        {tx.status}
                       </td>
-                      <td className={`p-4 text-right whitespace-nowrap ${tx.type === 'credit' ? 'text-[#007600]' : 'text-[#B12704]'}`}>
+                      <td className={`p-4 text-right font-bold ${tx.type === 'credit' ? 'text-[#007600]' : 'text-[#B12704]'}`}>
                         {tx.type === 'credit' ? '+' : '-'}₹{tx.amount.toLocaleString('en-IN')}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-
       </div>
 
-      {/* ================= WITHDRAWAL MODAL ================= */}
+      {/* WITHDRAW MODAL */}
       {showModal && (
-        <div className="fixed inset-0 bg-[rgba(0,0,0,0.6)] flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-[8px] w-full max-w-[400px] shadow-[0_2px_10px_rgba(0,0,0,0.2)] overflow-hidden">
-            
-            <div className="bg-[#f3f3f3] border-b border-[#ddd] p-4 flex justify-between items-center">
-              <h2 className="text-[16px] font-bold text-[#0F1111]">Withdraw Funds</h2>
-              <button onClick={() => setShowModal(false)} className="text-[#0F1111] hover:text-[#c40000] text-xl leading-none">✕</button>
+        <div className="fixed inset-0 bg-[rgba(0,0,0,0.6)] flex items-center justify-center p-4 z-[100]">
+          <div className="bg-white rounded-[8px] w-full max-w-[420px] shadow-2xl overflow-hidden">
+            <div className="bg-[#F0F2F2] border-b p-4 flex justify-between items-center">
+              <h2 className="text-[16px] font-bold">Withdraw Funds</h2>
+              <button onClick={() => setShowModal(false)} className="text-2xl leading-none">×</button>
             </div>
-            
-            <div className="p-5 space-y-4">
-              <div className="bg-[#f0f2f2] border border-[#d5d9d9] p-3 rounded-[4px]">
-                <p className="text-[13px] text-[#565959] mb-1">Available to transfer</p>
-                <p className="text-[18px] font-bold text-[#B12704]">₹{walletData.wallet?.availableBalance?.toLocaleString('en-IN')}</p>
+            <div className="p-6">
+              <div className="bg-[#FDF8F3] border border-[#FBD8B4] p-3 rounded-[4px] mb-6">
+                <p className="text-[13px]">Available: <span className="font-bold text-[#B12704]">₹{walletData.wallet?.availableBalance?.toLocaleString('en-IN')}</span></p>
               </div>
-              
-              <div>
-                <label className={amzLabel}>Amount to withdraw (Min ₹500)</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#565959]">₹</span>
-                  <input 
-                    type="number" 
-                    placeholder="0.00" 
-                    className={`${amzInput} pl-7`}
-                    onChange={(e) => setAmount(e.target.value)}
-                  />
+              <div className="space-y-4">
+                <label className={amzLabel}>Amount to withdraw</label>
+                <input type="number" placeholder="Min ₹500" className={amzInput} onChange={(e) => setAmount(e.target.value)} />
+                <div className="flex gap-4 border-b border-[#D5D9D9] mb-2">
+                   <button className={`pb-2 text-[13px] font-bold ${withdrawMethod === 'UPI' ? 'border-b-2 border-[#E77600]' : ''}`} onClick={() => setWithdrawMethod('UPI')}>UPI</button>
+                   <button className={`pb-2 text-[13px] font-bold ${withdrawMethod === 'BANK' ? 'border-b-2 border-[#E77600]' : ''}`} onClick={() => setWithdrawMethod('BANK')}>Bank Account</button>
                 </div>
-              </div>
-              
-              <div>
-                <label className={amzLabel}>Destination UPI ID</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. yourname@okhdfc" 
-                  className={amzInput}
-                  onChange={(e) => setUpiId(e.target.value)}
-                />
-              </div>
-              
-              <div className="pt-2">
-                <button 
-                  onClick={async () => {
-                    if (amount < 500) return alert("Minimum withdrawal is ₹500");
-                    if (amount > walletData.wallet?.availableBalance) return alert("Insufficient balance!");
-                    if (!upiId) return alert("Please enter a valid UPI ID");
-                    
-                    try {
-                      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/withdrawals/request`, {
-                        userId: user?._id || user?.user?._id, 
-                        amount: Number(amount), 
-                        method: 'UPI', 
-                        details: { upiId }
-                      });
-                      alert("Withdrawal requested! Admin will review it shortly.");
-                      setShowModal(false);
-                      window.location.reload(); 
-                    } catch (err) { alert(err.response?.data?.message || "Error processing request."); }
-                  }}
-                  className={amzButton}
-                >
-                  Submit Request
+                {withdrawMethod === 'UPI' ? (
+                   <input type="text" placeholder="e.g. name@okhdfc" className={amzInput} value={upiId} onChange={(e) => setUpiId(e.target.value)} />
+                ) : (
+                  <div className="space-y-3">
+                    <input type="text" placeholder="Name on Account" className={amzInput} value={bankInfo.accountName} onChange={e => setBankInfo({...bankInfo, accountName: e.target.value})} />
+                    <input type="text" placeholder="Account Number" className={amzInput} value={bankInfo.accountNumber} onChange={e => setBankInfo({...bankInfo, accountNumber: e.target.value})} />
+                    <div className="flex gap-2">
+                       <input type="text" placeholder="IFSC" className={amzInput} value={bankInfo.ifsc} onChange={e => setBankInfo({...bankInfo, ifsc: e.target.value})} />
+                       <input type="text" placeholder="Bank Name" className={amzInput} value={bankInfo.bankName} onChange={e => setBankInfo({...bankInfo, bankName: e.target.value})} />
+                    </div>
+                  </div>
+                )}
+                <button onClick={handleWithdrawalSubmit} disabled={isSubmitting} className={amzButtonYellow + " w-full mt-4"}>
+                    {isSubmitting ? 'Processing...' : 'Submit Request'}
                 </button>
               </div>
-              
-              <p className="text-[12px] text-[#565959] text-center mt-2">
-                Transfers may take up to 24 hours to reflect in your account.
-              </p>
             </div>
           </div>
         </div>

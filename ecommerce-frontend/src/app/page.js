@@ -1574,7 +1574,7 @@ import { useAuth } from '../context/AuthContext';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 
-// --- 🎨 AMAZON STYLE PRODUCT CARD ---
+// --- 🎨 AUTHENTIC AMAZON PRODUCT CARD ---
 const ProductCard = ({ product, onAddToCart, onBuyNow, getImageUrl }) => (
   <div className="bg-white flex flex-col relative z-10 p-4 h-full border border-[#ddd] rounded-[4px] hover:shadow-[0_0_10px_rgba(0,0,0,0.1)] transition-shadow">
     {/* Best Seller Badge */}
@@ -1584,8 +1584,8 @@ const ProductCard = ({ product, onAddToCart, onBuyNow, getImageUrl }) => (
       </div>
     )}
 
-    {/* Image */}
-    <Link href={`/product/${product._id}`} className="block relative h-48 w-full mb-3 z-10">
+    {/* Image Container */}
+    <Link href={`/product/${product._id}`} className="block relative h-52 w-full mb-4 z-10 p-2">
       <img 
         src={getImageUrl(product.images?.[0])} 
         alt={product.name} 
@@ -1596,50 +1596,47 @@ const ProductCard = ({ product, onAddToCart, onBuyNow, getImageUrl }) => (
     {/* Content */}
     <div className="flex flex-col flex-1">
       <Link href={`/product/${product._id}`}>
-        <h2 className="text-[15px] font-medium text-[#007185] hover:text-[#C45500] hover:underline line-clamp-3 leading-snug mb-1">
-          {product.brand && <span className="font-bold mr-1">{product.brand}</span>}
+        <h2 className="text-[14px] leading-snug font-medium text-[#007185] hover:text-[#C45500] hover:underline line-clamp-4 mb-1">
+          {product.brand && <span className="font-bold mr-1 text-[#111]">{product.brand}</span>}
           {product.name}
         </h2>
       </Link>
       
       {/* Ratings */}
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-[#FFA41C] text-sm">
+      <div className="flex items-center gap-1 mb-2">
+        <span className="text-[#FFA41C] text-[15px]">
           {'★'.repeat(Math.floor(product.ratings || 5))}{'☆'.repeat(5 - Math.floor(product.ratings || 5))}
         </span>
-        <span className="text-[#007185] text-xs hover:text-[#C45500] hover:underline cursor-pointer">
+        <span className="text-[#007185] text-[13px] hover:text-[#C45500] hover:underline cursor-pointer ml-1">
           {product.numOfReviews || 0}
         </span>
       </div>
 
       {/* Price */}
-      <div className="mt-auto flex flex-col">
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-[21px] font-normal text-[#0F1111]">
-            <span className="text-[11px] align-top relative top-1">₹</span>
+      <div className="mt-auto">
+        <div className="flex items-baseline gap-1">
+          <span className="text-[24px] font-normal text-[#111]">
+            <span className="text-[13px] align-top relative top-1.5 mr-0.5">₹</span>
             {product.discountPrice ? product.discountPrice.toLocaleString('en-IN') : product.price?.toLocaleString('en-IN')}
           </span>
         </div>
         {product.discountPrice && (
-          <span className="text-[12px] text-[#565959]">
+          <div className="text-[12px] text-[#565959] mb-4">
             M.R.P: <span className="line-through">₹{product.price?.toLocaleString('en-IN')}</span> 
-            <span className="text-[#CC0C39] ml-2">({Math.round(((product.price - product.discountPrice) / product.price) * 100)}% off)</span>
-          </span>
+            <span className="ml-1">({Math.round(((product.price - product.discountPrice) / product.price) * 100)}% off)</span>
+          </div>
         )}
         
-        <div className="flex flex-col gap-2 mt-4">
-          {/* Amazon Yellow Button (Add to Cart) */}
+        <div className="flex flex-col gap-2">
           <button 
             onClick={(e) => { e.preventDefault(); onAddToCart(product); }} 
-            className="w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-full py-[6px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer"
+            className="w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-full py-[6px] text-[13px] text-[#111] shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-colors cursor-pointer"
           >
             Add to cart
           </button>
-
-          {/* 🚀 NEW: Amazon Orange Button (Buy Now) */}
           <button 
             onClick={(e) => { e.preventDefault(); onBuyNow(product); }} 
-            className="w-full bg-[#FFA41C] hover:bg-[#FF9900] border border-[#FF8F00] rounded-full py-[6px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer"
+            className="w-full bg-[#FFA41C] hover:bg-[#FF9900] border border-[#FF8F00] rounded-full py-[6px] text-[13px] text-[#111] shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-colors cursor-pointer"
           >
             Buy Now
           </button>
@@ -1649,13 +1646,13 @@ const ProductCard = ({ product, onAddToCart, onBuyNow, getImageUrl }) => (
   </div>
 );
 
-// --- 💀 AMAZON SKELETON LOADER ---
+// --- SKELETON LOADER ---
 const SkeletonCard = () => (
-  <div className="animate-pulse flex flex-col bg-white border border-[#ddd] p-4 h-[380px]">
-    <div className="bg-gray-200 h-48 w-full mb-4"></div>
+  <div className="animate-pulse flex flex-col bg-white border border-[#ddd] p-4 h-[420px] rounded-[4px]">
+    <div className="bg-gray-200 h-52 w-full mb-4"></div>
     <div className="bg-gray-200 h-3 w-full mb-2"></div>
     <div className="bg-gray-200 h-3 w-2/3 mb-4"></div>
-    <div className="bg-gray-200 h-6 w-1/3 mt-auto mb-4"></div>
+    <div className="bg-gray-200 h-8 w-1/3 mt-auto mb-4"></div>
     <div className="bg-gray-200 h-8 w-full rounded-full mb-2"></div>
     <div className="bg-gray-200 h-8 w-full rounded-full"></div>
   </div>
@@ -1687,30 +1684,20 @@ function StoreContent() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'MISSING_API_URL';
-
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       try {
         const prodRes = await axios.get(`${apiUrl}/products`);
         setProducts(prodRes.data);
-      } catch (error) {
-        console.error(`🚨 Failed to fetch products from ${apiUrl}/products`, error.message);
-        setProducts([]); 
-      }
+      } catch (err) { setProducts([]); }
 
       try {
         const bannerRes = await axios.get(`${apiUrl}/banners`);
         setDynamicBanners(bannerRes.data);
-      } catch (error) {
-        console.error(`🚨 Failed to fetch banners from ${apiUrl}/banners`, error.message);
-        setDynamicBanners([]); 
-      } finally {
-        setLoading(false);
-      }
+      } catch (err) { setDynamicBanners([]); } finally { setLoading(false); }
     };
     fetchData();
   }, []);
 
-  // Auto-rotate carousel
   useEffect(() => {
     if (dynamicBanners.length > 1) {
       const timer = setInterval(() => {
@@ -1726,62 +1713,44 @@ function StoreContent() {
   const filteredProducts = products.filter(product => {
     const matchCategory = selectedCategory === 'All' || product.category === selectedCategory;
     const matchBrand = selectedBrand === 'All' || (product.brand || 'Generic') === selectedBrand;
-    const currentPrice = product.discountPrice || product.price;
-    const matchPrice = currentPrice <= maxPrice;
-    
-    const matchSearch = urlSearchQuery === '' || 
-      product.name.toLowerCase().includes(urlSearchQuery) || 
-      (product.brand && product.brand.toLowerCase().includes(urlSearchQuery));
-
+    const matchPrice = (product.discountPrice || product.price) <= maxPrice;
+    const matchSearch = urlSearchQuery === '' || product.name.toLowerCase().includes(urlSearchQuery) || (product.brand && product.brand.toLowerCase().includes(urlSearchQuery));
     return matchCategory && matchBrand && matchPrice && matchSearch;
   });
 
-  const discountedProducts = filteredProducts.filter(p => p.discountPrice && p.discountPrice < p.price);
-  
-  const handleAddToCart = (product) => { 
-    addToCart(product); 
-  };
-
-  // 🚀 NEW: Buy Now Handler
-  const handleBuyNow = (product) => {
-    addToCart(product);
-    router.push('/cart'); // Takes them instantly to the cart/checkout page
-  };
-
+  const handleAddToCart = (product) => addToCart(product);
+  const handleBuyNow = (product) => { addToCart(product); router.push('/cart'); };
   const clearSearch = () => { router.push('/'); };
 
   return (
-    <div className="min-h-screen bg-[#EAEDED] font-sans text-[#0F1111]">
+    <div className="min-h-screen bg-[#F0F2F2] font-sans text-[#111]">
       
-      {/* 🚀 AMAZON HERO BANNER (Full width, fades at bottom, hidden on search) */}
+      {/* 🚀 SOLID HERO BANNER (No gradient fade) */}
       {!urlSearchQuery && dynamicBanners.length > 0 && (
-        <div className="relative w-full h-[300px] sm:h-[400px] lg:h-[600px] max-w-[1500px] mx-auto overflow-hidden bg-[#EAEDED]">
+        <div className="relative w-full h-[250px] sm:h-[350px] lg:h-[450px] overflow-hidden bg-white border-b border-[#ddd]">
           {dynamicBanners.map((slide, index) => (
             <div 
               key={slide._id || index} 
-              className={`absolute inset-0 w-full h-full transition-opacity duration-700 ease-in-out ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+              className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
             >
               {slide.link && slide.link !== '/' ? (
-                <Link href={slide.link} className="block w-full h-full cursor-pointer">
-                  <img src={getImageUrl(slide.image)} alt="Banner" className="w-full h-full object-cover object-top" />
+                <Link href={slide.link} className="block w-full h-full">
+                  <img src={getImageUrl(slide.image)} alt="Banner" className="w-full h-full object-cover" />
                 </Link>
               ) : (
-                <img src={getImageUrl(slide.image)} alt="Banner" className="w-full h-full object-cover object-top" />
+                <img src={getImageUrl(slide.image)} alt="Banner" className="w-full h-full object-cover" />
               )}
             </div>
           ))}
           
-          {/* The signature Amazon bottom gradient that blends into the background */}
-          <div className="absolute inset-0 z-10 pointer-events-none" style={{ background: 'linear-gradient(to bottom, rgba(234,237,237,0) 60%, #EAEDED 100%)' }}></div>
-
-          {/* Amazon Carousel Controls */}
+          {/* Controls */}
           {dynamicBanners.length > 1 && (
-            <div className="absolute top-1/3 w-full flex justify-between px-4 z-20">
-              <button onClick={() => setCurrentSlide(prev => prev === 0 ? dynamicBanners.length - 1 : prev - 1)} className="bg-transparent hover:border-2 border-white text-transparent hover:text-[#0F1111] py-8 px-4 rounded transition-all focus:outline-none focus:border-2 focus:border-[#008296]">
-                <svg className="w-8 h-8 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            <div className="absolute inset-0 w-full flex justify-between items-center px-4 z-20 pointer-events-none">
+              <button onClick={() => setCurrentSlide(prev => prev === 0 ? dynamicBanners.length - 1 : prev - 1)} className="pointer-events-auto bg-white/20 hover:bg-white/40 p-4 rounded text-white transition-all">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
               </button>
-              <button onClick={() => setCurrentSlide(prev => prev === dynamicBanners.length - 1 ? 0 : prev + 1)} className="bg-transparent hover:border-2 border-white text-transparent hover:text-[#0F1111] py-8 px-4 rounded transition-all focus:outline-none focus:border-2 focus:border-[#008296]">
-                <svg className="w-8 h-8 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              <button onClick={() => setCurrentSlide(prev => prev === dynamicBanners.length - 1 ? 0 : prev + 1)} className="pointer-events-auto bg-white/20 hover:bg-white/40 p-4 rounded text-white transition-all">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
               </button>
             </div>
           )}
@@ -1790,32 +1759,29 @@ function StoreContent() {
 
       {/* SEARCH RESULTS HEADER */}
       {urlSearchQuery && (
-        <div className="bg-white border-b border-[#ddd] shadow-[0_1px_2px_rgba(0,0,0,0.1)] py-2 px-4 md:px-6 mb-4">
-          <div className="flex items-center text-[14px]">
-            <span className="font-bold mr-1">1-{filteredProducts.length} of over {filteredProducts.length} results for</span> 
+        <div className="bg-white border-b border-[#ddd] py-3 px-6 mb-4 shadow-sm">
+          <div className="max-w-[1500px] mx-auto text-[14px]">
+            <span className="text-[#565959]">1-{filteredProducts.length} of over {filteredProducts.length} results for </span> 
             <span className="text-[#c45500] font-bold">"{searchParams.get('search')}"</span>
-            <button onClick={clearSearch} className="ml-4 text-[#007185] hover:text-[#c45500] hover:underline text-sm border-l border-gray-300 pl-4">
-              Clear filters
-            </button>
+            <button onClick={clearSearch} className="ml-4 text-[#007185] hover:text-[#c45500] hover:underline border-l border-gray-300 pl-4 font-medium">Clear all</button>
           </div>
         </div>
       )}
 
-      {/* MAIN CONTENT GRID (Overlaps the banner negative margin) */}
-      <div className={`flex flex-col lg:flex-row max-w-[1500px] mx-auto px-4 sm:px-6 gap-6 pb-12 relative z-20 ${!urlSearchQuery && dynamicBanners.length > 0 ? '-mt-[150px] lg:-mt-[280px]' : ''}`}>
+      {/* MAIN CONTENT */}
+      <div className="flex flex-col lg:flex-row max-w-[1500px] mx-auto px-4 sm:px-6 gap-6 py-6">
         
-        {/* Amazon Left Sidebar (Hidden on mobile by default) */}
-        <aside className="w-full lg:w-[240px] shrink-0 bg-transparent">
-          <div className="bg-white lg:bg-transparent p-4 lg:p-0 rounded border lg:border-none border-[#ddd] mb-4">
-            
-            <div className="mb-4">
-              <h3 className="font-bold text-[14px] text-[#0F1111] mb-2">Department</h3>
-              <ul className="space-y-1">
+        {/* Left Sidebar */}
+        <aside className="w-full lg:w-[240px] shrink-0">
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-bold text-[14px] mb-2">Category</h3>
+              <ul className="space-y-1.5">
                 {uniqueCategories.map(cat => (
                   <li key={cat}>
                     <button 
                       onClick={() => setSelectedCategory(cat)} 
-                      className={`text-[14px] text-left w-full hover:text-[#c45500] hover:underline transition-colors ${selectedCategory === cat ? 'font-bold text-[#0F1111]' : 'text-[#0F1111]'}`}
+                      className={`text-[13px] text-left w-full hover:text-[#c45500] ${selectedCategory === cat ? 'font-bold' : 'text-[#111]'}`}
                     >
                       {cat}
                     </button>
@@ -1824,9 +1790,9 @@ function StoreContent() {
               </ul>
             </div>
 
-            <div className="mb-4">
-              <h3 className="font-bold text-[14px] text-[#0F1111] mb-2">Brands</h3>
-              <ul className="space-y-1">
+            <div className="pt-4 border-t border-[#ddd]">
+              <h3 className="font-bold text-[14px] mb-2">Brand</h3>
+              <ul className="space-y-2">
                 {uniqueBrands.map(brand => (
                   <li key={brand} className="flex items-center gap-2">
                     <input 
@@ -1836,58 +1802,53 @@ function StoreContent() {
                       onChange={() => setSelectedBrand(selectedBrand === brand ? 'All' : brand)}
                       className="w-4 h-4 accent-[#007185] cursor-pointer"
                     />
-                    <label htmlFor={brand} className="text-[14px] text-[#0F1111] cursor-pointer hover:text-[#c45500] hover:underline">
-                      {brand}
-                    </label>
+                    <label htmlFor={brand} className="text-[13px] cursor-pointer hover:text-[#c45500]">{brand}</label>
                   </li>
                 ))}
               </ul>
             </div>
 
-            <div>
-              <h3 className="font-bold text-[14px] text-[#0F1111] mb-2">Price</h3>
+            <div className="pt-4 border-t border-[#ddd]">
+              <h3 className="font-bold text-[14px] mb-2">Price</h3>
               <div className="flex flex-col">
                 <input 
                   type="range" min="1000" max="200000" step="1000" value={maxPrice} 
                   onChange={(e) => setMaxPrice(Number(e.target.value))} 
-                  className="w-full h-1 bg-gray-300 rounded outline-none accent-[#007185] cursor-pointer mb-2" 
+                  className="w-full h-1 bg-[#D5D9D9] rounded-lg appearance-none cursor-pointer accent-[#007185] mb-2" 
                 />
-                <span className="text-[14px] text-[#0F1111]">Under ₹{maxPrice.toLocaleString('en-IN')}</span>
+                <span className="text-[13px]">Up to ₹{maxPrice.toLocaleString('en-IN')}</span>
               </div>
             </div>
-
           </div>
         </aside>
 
-        <main className="flex-1 min-w-0">
+        {/* Main Grid */}
+        <main className="flex-1">
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {[...Array(8)].map((_, i) => <SkeletonCard key={i} />)}
             </div>
-          ) : filteredProducts.length === 0 ? (
-             <div className="flex flex-col items-center justify-center py-20 bg-white rounded border border-[#ddd]">
-               <h3 className="text-xl font-bold text-[#0F1111] mb-2">No results for {searchParams.get('search') || 'your filters'}.</h3>
-               <p className="text-[14px] text-[#565959] mb-4">Try checking your spelling or use more general terms</p>
-               <button onClick={() => { clearSearch(); setSelectedCategory('All'); setSelectedBrand('All'); setMaxPrice(200000); }} className="text-[#007185] hover:text-[#c45500] hover:underline text-sm">
-                 Clear all filters
-               </button>
-             </div>
           ) : (
-            <div className="space-y-6">
-              
-              {/* Product Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <>
+              <h1 className="text-[20px] font-bold mb-4">{urlSearchQuery ? 'Results' : 'Recommended for you'}</h1>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filteredProducts.map(product => (
                   <ProductCard 
-                    key={`grid-${product._id}`} 
+                    key={product._id} 
                     product={product} 
                     onAddToCart={handleAddToCart} 
-                    onBuyNow={handleBuyNow} // 🚀 Pass the new handler
+                    onBuyNow={handleBuyNow} 
                     getImageUrl={getImageUrl} 
                   />
                 ))}
               </div>
-            </div>
+              {filteredProducts.length === 0 && (
+                <div className="bg-white p-10 text-center border border-[#ddd] rounded">
+                   <p className="text-lg font-bold">No results found.</p>
+                   <p className="text-sm text-[#565959]">Try adjusting your filters or search terms.</p>
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>
@@ -1895,14 +1856,9 @@ function StoreContent() {
   );
 }
 
-// 🚀 DEFAULT EXPORT
 export default function AdvancedStoreDashboard() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <div className="w-10 h-10 border-4 border-[#e7e7e7] border-t-[#e77600] rounded-full animate-spin"></div>
-      </div>
-    }>
+    <Suspense fallback={null}>
       <StoreContent />
     </Suspense>
   );

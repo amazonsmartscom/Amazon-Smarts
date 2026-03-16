@@ -2,55 +2,94 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Cancellation Policy',
+  title: 'Amazon Smarts Cancellation Policy',
   description: 'Order cancellation details for AMAZON SMARTS.',
 };
 
 export default function CancellationPolicyPage() {
+  const amzLink = "text-[#007185] hover:text-[#C45500] hover:underline cursor-pointer";
+  
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 pb-24 selection:bg-orange-200">
-      <div className="bg-slate-900 text-white py-20 px-6 relative overflow-hidden">
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-red-500/10 rounded-full mix-blend-screen filter blur-[100px]"></div>
-        <div className="max-w-[1000px] mx-auto relative z-10 text-center">
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-4">Cancellation Policy</h1>
-          <p className="text-slate-400 font-medium text-lg">Change of mind? We make cancellations easy.</p>
+    <div className="min-h-screen bg-white font-sans text-[#0F1111] pb-20 selection:bg-[#FEF8F2]">
+      
+      {/* Amazon Style Header Strip */}
+      <div className="border-b border-[#DDD] py-4 bg-white">
+        <div className="max-w-[1000px] mx-auto px-4">
+          <Link href="/">
+             <h1 className="text-2xl font-normal tracking-tighter text-[#111] cursor-pointer inline-block">
+               amazon<span className="text-[#e77600] font-bold tracking-normal">smarts</span>
+             </h1>
+          </Link>
         </div>
       </div>
 
-      <div className="max-w-[1000px] mx-auto px-4 md:px-8 -mt-12 relative z-20">
-        <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 p-8 md:p-14 lg:p-16">
-          <p className="text-sm font-bold text-slate-400 mb-8 uppercase tracking-widest border-b border-slate-100 pb-4">Last Updated: {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</p>
+      <div className="max-w-[1000px] mx-auto px-4 md:px-8 py-8">
+        
+        {/* Breadcrumb */}
+        <div className="text-[12px] text-[#565959] mb-6 flex items-center gap-1">
+          <Link href="/help" className={amzLink}>Help & Customer Service</Link> 
+          <span>›</span> 
+          <span className="text-[#c45500]">Cancellations</span>
+        </div>
 
-          <div className="space-y-10 text-slate-600 leading-relaxed">
+        {/* Main Document Card */}
+        <div className="border border-[#DDD] rounded-[4px] p-6 md:p-10 shadow-sm">
+          
+          <h1 className="text-[28px] font-normal leading-tight mb-2">Order Cancellation Policy</h1>
+          <p className="text-[13px] text-[#565959] mb-8 border-b border-[#EEE] pb-4">
+            Last Updated: {new Date().toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric' })}
+          </p>
+
+          <div className="space-y-8 text-[14px] leading-[1.5] text-[#0F1111]">
+            
             <section>
-              <h2 className="text-2xl font-black text-slate-900 mb-4">1. Cancellation by Customer</h2>
-              <p>At <strong>AMAZON SMARTS</strong>, we understand that you might occasionally change your mind about a purchase. We have a simple cancellation process based on your order's fulfillment status.</p>
+              <h2 className="text-[18px] font-bold mb-3">1. Cancellation by Customer</h2>
+              <p>At <strong>Amazon Smarts</strong>, we prioritize your convenience. We have established a simple cancellation process based on your order's current fulfillment status.</p>
               
-              <h3 className="text-lg font-bold text-slate-900 mt-6 mb-2">Before Shipment (Processing Phase)</h3>
-              <p>You can cancel your order at any time before it has been dispatched from our fulfillment center. No cancellation fees will be charged. If you prepaid for the order, the full amount will be refunded to your original payment method within 2-5 business days.</p>
-              
-              <h3 className="text-lg font-bold text-slate-900 mt-6 mb-2">After Shipment</h3>
-              <p>Once an order has been marked as "Shipped" and handed over to our logistics partners, it cannot be directly cancelled from your dashboard. However, you may refuse to accept the delivery when the courier partner arrives. Once the package is returned to our facility, we will process a refund, deducting any forward and return shipping charges incurred by us.</p>
+              <div className="mt-6 space-y-4">
+                <div className="bg-[#F7FAFA] border-l-4 border-[#007185] p-4">
+                  <h3 className="font-bold text-[15px] mb-1">Before Shipment (Processing Phase)</h3>
+                  <p className="text-[#333]">You can cancel your order at any time before it has been dispatched from our fulfillment center. No cancellation fees apply. If you have already paid, the full amount will be refunded to your original payment method within 2-5 business days.</p>
+                </div>
+
+                <div className="bg-[#FEF8F2] border-l-4 border-[#e77600] p-4">
+                  <h3 className="font-bold text-[15px] mb-1">After Shipment</h3>
+                  <p className="text-[#333]">Once an order is marked as "Shipped," it cannot be cancelled via the dashboard. However, you may refuse the delivery at your doorstep. Once the package returns to us, we will process a refund, deducting any applicable shipping charges.</p>
+                </div>
+              </div>
             </section>
 
             <section>
-              <h2 className="text-2xl font-black text-slate-900 mb-4">2. Cancellation by AMAZON SMARTS</h2>
-              <p className="mb-3">We reserve the right to cancel any order for the following reasons:</p>
-              <ul className="list-disc pl-5 space-y-2">
-                <li>The product is suddenly out of stock or discontinued.</li>
-                <li>Inaccuracies or errors in product pricing or technical information.</li>
-                <li>Problems identified by our credit and fraud avoidance department.</li>
-                <li>The delivery address falls outside our serviceable areas.</li>
+              <h2 className="text-[18px] font-bold mb-3">2. Cancellation by Amazon Smarts</h2>
+              <p className="mb-3">We reserve the right to cancel any order for reasons including but not limited to:</p>
+              <ul className="list-disc pl-8 space-y-2 text-[#333]">
+                <li>Product stock unavailability or discontinuation.</li>
+                <li>Inaccuracies in pricing or technical specifications.</li>
+                <li>Identification of potential fraudulent activity by our security team.</li>
+                <li>Delivery address residing outside our serviceable logistics network.</li>
               </ul>
-              <p className="mt-4">If your order is cancelled by us, you will be notified immediately, and 100% of your payment will be refunded.</p>
+              <p className="mt-4">If we cancel your order, you will be notified immediately via email/SMS, and a 100% refund will be issued.</p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-black text-slate-900 mb-4">3. How to Cancel</h2>
-              <p>To cancel an active order, log in to your account, go to <Link href="/orders" className="text-orange-500 font-bold hover:underline">My Orders</Link>, select the relevant order, and click the "Cancel Order" button. If the button is not visible, it means the order has already been shipped.</p>
+            <section className="bg-[#F3F3F3] p-6 rounded-[4px] border border-[#DDD]">
+              <h2 className="text-[18px] font-bold mb-3">3. How to Cancel</h2>
+              <p className="mb-4">
+                To cancel an active order, please navigate to the 
+                <Link href="/orders" className={amzLink}> Your Orders</Link> section of your account. 
+                Select the item you wish to cancel and click the <strong>"Cancel Order"</strong> button.
+              </p>
+              <p className="text-[13px] text-[#565959]">
+                Note: If the "Cancel Order" button is not visible, your order is likely already in the shipping phase. 
+                Please contact <strong>support@amazonsmarts.com</strong> for further assistance.
+              </p>
             </section>
+
           </div>
         </div>
+
+        {/* Footer Links */}
+      
+
       </div>
     </div>
   );
