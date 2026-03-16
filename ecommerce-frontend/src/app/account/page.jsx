@@ -1,12 +1,15 @@
 // src/app/account/page.jsx
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
 
-export default function AccountDashboard() {
+// =========================================================================
+// 1. MAIN CONTENT COMPONENT (Contains all hooks and logic)
+// =========================================================================
+function AccountContent() {
   const { user, loading: authLoading, logout } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -16,11 +19,11 @@ export default function AccountDashboard() {
   const [notifications, setNotifications] = useState([]);
   const [loadingNotifs, setLoadingNotifs] = useState(false);
 
-  // 🚀 UPDATED: Profile Settings States (address -> addresses array)
+  // Profile Settings States
   const [profileData, setProfileData] = useState({
     name: '',
     phone: '',
-    addresses: [], // Now an array!
+    addresses: [], // Array for multiple addresses
     bankDetails: { upiId: '', accountName: '', accountNumber: '', bankName: '', ifsc: '' }
   });
   const [savingProfile, setSavingProfile] = useState(false);
@@ -64,7 +67,7 @@ export default function AccountDashboard() {
         try {
           const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`);
           
-          // 🚀 Fallback compatibility: If they have an old single address, put it in the array
+          // Fallback compatibility for old single-address schema
           let fetchedAddresses = data.addresses || [];
           if (fetchedAddresses.length === 0 && data.address && data.address.street) {
             fetchedAddresses = [data.address];
@@ -98,7 +101,7 @@ export default function AccountDashboard() {
     } catch (err) {}
   };
 
-  // 🚀 NEW: Add & Remove Address Handlers
+  // Add & Remove Address Handlers
   const handleAddNewAddress = () => {
     if (!newAddress.street || !newAddress.city || !newAddress.pincode) {
       return alert("Please fill out all address fields.");
@@ -124,7 +127,6 @@ export default function AccountDashboard() {
     setSavingProfile(true);
     try {
       const userId = user?.user?._id || user?._id;
-      // Sends the new 'addresses' array to the backend
       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`, profileData);
       alert("✅ Profile updated successfully!");
     } catch (error) {
@@ -134,6 +136,7 @@ export default function AccountDashboard() {
     }
   };
 
+  // Global Loading State
   if (!isHydrated || authLoading || !user) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -144,7 +147,7 @@ export default function AccountDashboard() {
 
   // AMAZON UI STYLES
   const amzLink = "text-[#007185] hover:text-[#C45500] hover:underline cursor-pointer";
-  const inputStyles = "w-full px-3 py-2 border border-[#a6a6a6] rounded-[3px] text-sm focus:outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_2px_rgba(228,121,17,0.5)] transition-shadow text-[#111]";
+  const inputStyles = "w-full px-3 py-2 border border-[#a6a6a6] rounded-[3px] text-[13px] focus:outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_2px_rgba(228,121,17,0.5)] transition-shadow text-[#111]";
   const labelStyles = "block text-[13px] font-bold text-[#111] mb-1";
   const amzButton = "bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-[8px] py-[6px] px-6 text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer text-center";
   const amzSecondaryButton = "bg-white border border-[#d5d9d9] hover:bg-[#f7fafa] py-[6px] px-6 rounded-[8px] text-[13px] text-[#0F1111] shadow-[0_2px_5px_0_rgba(213,217,217,.5)] transition-colors cursor-pointer text-center";
@@ -155,7 +158,7 @@ export default function AccountDashboard() {
       <div className="min-h-screen bg-white font-sans text-[#0F1111] pb-20">
         <div className="max-w-[1000px] mx-auto px-4 py-6">
           <div className="text-[12px] text-[#565959] mb-4 flex items-center gap-1">
-            <Link href="/account" className={amzLink}>Your Account</Link> <span>›</span> <span className="text-[#c45500]">Message Center</span>
+            <Link href="/account" className={amzLink}>Your Account</Link> <span>&gt;</span> <span className="text-[#c45500]">Message Center</span>
           </div>
           <h1 className="text-[28px] font-normal leading-tight mb-6">Your Messages & Notifications</h1>
 
@@ -198,13 +201,13 @@ export default function AccountDashboard() {
       <div className="min-h-screen bg-white font-sans text-[#0F1111] pb-20">
         <div className="max-w-[800px] mx-auto px-4 py-6">
           <div className="text-[12px] text-[#565959] mb-4 flex items-center gap-1">
-            <Link href="/account" className={amzLink}>Your Account</Link> <span>›</span> <span className="text-[#c45500]">Login, Address & Bank Settings</span>
+            <Link href="/account" className={amzLink}>Your Account</Link> <span>&gt;</span> <span className="text-[#c45500]">Login, Address & Bank Settings</span>
           </div>
           <h1 className="text-[28px] font-normal leading-tight mb-6">Account Settings</h1>
 
           <form onSubmit={handleSaveProfile} className="space-y-6">
             
-            {/* Personal Details */}
+            {/* 1. Personal Details */}
             <div className="border border-[#ddd] rounded-[8px] overflow-hidden">
               <div className="bg-[#f0f2f2] p-4 border-b border-[#ddd]"><h2 className="font-bold text-[16px] text-[#0F1111]">1. Personal Information</h2></div>
               <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -213,7 +216,7 @@ export default function AccountDashboard() {
               </div>
             </div>
 
-            {/* 🚀 MULTIPLE ADDRESSES BOOK */}
+            {/* 2. Multiple Addresses Book */}
             <div className="border border-[#ddd] rounded-[8px] overflow-hidden">
               <div className="bg-[#f0f2f2] p-4 border-b border-[#ddd] flex justify-between items-center">
                 <h2 className="font-bold text-[16px] text-[#0F1111]">2. Your Addresses</h2>
@@ -266,7 +269,7 @@ export default function AccountDashboard() {
               </div>
             </div>
 
-            {/* Affiliate Payout / Bank Details */}
+            {/* 3. Affiliate Payout / Bank Details */}
             <div className="border border-[#ddd] rounded-[8px] overflow-hidden">
               <div className="bg-[#f0f2f2] p-4 border-b border-[#ddd]">
                 <h2 className="font-bold text-[16px] text-[#0F1111]">3. Affiliate Payout Details</h2>
@@ -277,7 +280,9 @@ export default function AccountDashboard() {
                   <label className={labelStyles}>Primary UPI ID</label>
                   <input type="text" placeholder="e.g., yourname@okhdfc" className={inputStyles} value={profileData.bankDetails.upiId} onChange={e => setProfileData({...profileData, bankDetails: {...profileData.bankDetails, upiId: e.target.value}})} />
                 </div>
-                <div className="border-t border-[#eee] my-2 pt-4"><label className="block text-[13px] font-bold text-[#111] mb-3 text-center">--- OR DIRECT BANK TRANSFER ---</label></div>
+                <div className="border-t border-[#eee] my-2 pt-4">
+                  <label className="block text-[12px] font-bold text-[#565959] mb-3 text-center uppercase tracking-widest">--- OR Direct Bank Transfer ---</label>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div><label className={labelStyles}>Account Holder Name</label><input type="text" className={inputStyles} value={profileData.bankDetails.accountName} onChange={e => setProfileData({...profileData, bankDetails: {...profileData.bankDetails, accountName: e.target.value}})} /></div>
                   <div><label className={labelStyles}>Bank Name</label><input type="text" className={inputStyles} value={profileData.bankDetails.bankName} onChange={e => setProfileData({...profileData, bankDetails: {...profileData.bankDetails, bankName: e.target.value}})} /></div>
@@ -302,7 +307,6 @@ export default function AccountDashboard() {
   // ================= MAIN DASHBOARD VIEW =================
   const accountCards = [
     { title: "Your Orders", desc: "Track, return, or buy things again", icon: "📦", link: "/orders" },
-    // { title: "Login & security", desc: "Edit login, name, and mobile number", icon: "🔒", link: "/account?tab=profile" },
     { title: "Message Center", desc: "View invoices, alerts, and order updates", icon: "✉️", link: "/account?tab=notifications" },
     { title: "Your Addresses", desc: "Edit addresses for orders and gifts", icon: "📍", link: "/account?tab=profile" },
     { title: "Affiliate Wallet Settings", desc: "Manage payout details & bank accounts", icon: "💳", link: "/account?tab=profile" },
@@ -313,6 +317,7 @@ export default function AccountDashboard() {
     <div className="min-h-screen bg-white font-sans text-[#0F1111] pb-20">
       <div className="max-w-[1000px] mx-auto px-4 py-6">
         <h1 className="text-[28px] font-normal leading-tight mb-6">Your Account</h1>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {accountCards.map((card, index) => (
             <Link key={index} href={card.link}>
@@ -326,16 +331,33 @@ export default function AccountDashboard() {
             </Link>
           ))}
         </div>
+
         <div className="mt-8 border-t border-[#ddd] pt-6">
           <div className="border border-[#ddd] rounded-[8px] p-4 flex justify-between items-center bg-[#f7fafa]">
             <div>
               <p className="text-[14px] font-bold text-[#0F1111]">Account Actions</p>
               <p className="text-[13px] text-[#565959]">Sign out of your secure session.</p>
             </div>
-            <button onClick={logout} className="bg-white border border-[#d5d9d9] hover:bg-[#f7fafa] py-1.5 px-4 rounded-[8px] text-[13px] text-[#0F1111] shadow-[0_2px_5px_0_rgba(213,217,217,.5)] transition-colors cursor-pointer">Sign Out</button>
+            <button onClick={logout} className={amzSecondaryButton}>Sign Out</button>
           </div>
         </div>
+
       </div>
     </div>
+  );
+}
+
+// =========================================================================
+// 2. EXPORT WRAPPED IN SUSPENSE (Fixes Vercel useSearchParams build error)
+// =========================================================================
+export default function AccountPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-[#e7e7e7] border-t-[#e77600] rounded-full animate-spin"></div>
+      </div>
+    }>
+      <AccountContent />
+    </Suspense>
   );
 }
