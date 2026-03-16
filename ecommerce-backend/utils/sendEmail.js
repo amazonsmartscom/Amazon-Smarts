@@ -46,7 +46,7 @@ const sendEmail = async (options) => {
     });
 
     const mailOptions = {
-      from: `"GadgetStore Security" <${process.env.EMAIL_USER}>`,
+      from: `"Amazon Smarts" <${process.env.EMAIL_USER}>`,
       to: options.email,
       subject: options.subject,
       html: options.message,
