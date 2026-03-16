@@ -2513,7 +2513,7 @@
 
 
 
-// src/app/product/[id]/page.jsx
+/// src/app/product/[id]/page.jsx
 'use client';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -2539,6 +2539,7 @@ export default function ProductDetailPage() {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [reviewSubmitLoading, setReviewSubmitLoading] = useState(false);
+  const [reviewSort, setReviewSort] = useState('top'); // 🚀 NEW: Review Sorting
 
   const getImageUrl = (imagePath) => {
     if (!imagePath) return 'https://placehold.co/500x500?text=No+Image';
@@ -2658,13 +2659,19 @@ export default function ProductDetailPage() {
     finally { setReviewSubmitLoading(false); }
   };
 
+  // 🚀 SORT REVIEWS LOGIC
+  const sortedReviews = [...(product.reviews?.filter(r => r.isApproved) || [])].sort((a, b) => {
+    if (reviewSort === 'recent') return new Date(b.createdAt) - new Date(a.createdAt);
+    return b.rating - a.rating; // Top reviews default
+  });
+
   // AMAZON CSS CONSTANTS
   const amzLink = "text-[#007185] hover:text-[#C45500] hover:underline cursor-pointer transition-colors";
-  const amzButtonYellow = "w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-full py-2 text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-colors cursor-pointer";
-  const amzButtonOrange = "w-full bg-[#FFA41C] hover:bg-[#FF9900] border border-[#FF8F00] rounded-full py-2 text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-colors cursor-pointer";
+  const amzButtonYellow = "w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-full py-2 text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-colors cursor-pointer font-medium";
+  const amzButtonOrange = "w-full bg-[#FFA41C] hover:bg-[#FF9900] border border-[#FF8F00] rounded-full py-2 text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-colors cursor-pointer font-medium";
 
   return (
-    <div className="min-h-screen bg-white font-sans text-[#0F1111] selection:bg-[#FEF8F2]">
+    <div className="min-h-screen bg-white font-sans text-[#0F1111] selection:bg-[#FEF8F2] pb-24 lg:pb-0 relative">
       
       {isAdded && (
         <div className="fixed top-20 right-4 z-[200] bg-[#e7f4e4] border border-[#007600] p-4 rounded shadow-lg animate-in slide-in-from-right duration-300">
@@ -2673,7 +2680,7 @@ export default function ProductDetailPage() {
       )}
 
       {/* Breadcrumb */}
-      <div className="max-w-[1500px] mx-auto px-4 py-3 text-[12px] text-[#565959]">
+      <div className="max-w-[1500px] mx-auto px-4 py-3 text-[12px] text-[#565959] overflow-x-auto whitespace-nowrap">
         <Link href="/" className={amzLink}>Home</Link> › <span className={amzLink}>{product.category}</span> › <span className={amzLink}>{product.brand}</span>
       </div>
 
@@ -2681,8 +2688,10 @@ export default function ProductDetailPage() {
         
         {/* ================= COLUMN 1: GALLERY ================= */}
         <div className="w-full lg:w-[40%] flex flex-col-reverse lg:flex-row gap-4 h-fit lg:sticky lg:top-24">
+          
+          {/* Desktop Thumbnail List */}
           {product.images?.length > 1 && (
-            <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible py-2 lg:py-0 w-full lg:w-auto">
+            <div className="hidden lg:flex flex-col gap-2 w-auto">
               {product.images.map((img, index) => (
                 <div 
                   key={index} 
@@ -2694,18 +2703,35 @@ export default function ProductDetailPage() {
               ))}
             </div>
           )}
-          <div className="flex-1 bg-white flex items-center justify-center min-h-[300px] lg:min-h-[500px] p-4 border border-transparent hover:border-gray-50 transition-colors">
-            <img src={getImageUrl(mainImage)} alt={product.name} className="max-h-[500px] w-full object-contain cursor-zoom-in" />
+
+          {/* Main Image View */}
+          <div className="flex-1 bg-white flex items-center justify-center min-h-[300px] lg:min-h-[500px] p-4 relative">
+            <img src={getImageUrl(mainImage)} alt={product.name} className="max-h-[350px] lg:max-h-[500px] w-full object-contain cursor-zoom-in" />
           </div>
+
+          {/* 🚀 Mobile Swipeable Gallery (Amazon App Style) */}
+          {product.images?.length > 1 && (
+            <div className="flex lg:hidden overflow-x-auto snap-x snap-mandatory gap-2 pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+              {product.images.map((img, index) => (
+                <div 
+                  key={index} 
+                  onClick={() => setMainImage(img)} 
+                  className={`snap-center shrink-0 w-[60px] h-[60px] border rounded-[3px] p-1 flex items-center justify-center ${mainImage === img ? 'border-[#e77600] shadow-[0_0_3px_#e77600]' : 'border-[#DDD]'}`}
+                >
+                  <img src={getImageUrl(img)} alt="thumb" className="max-h-full max-w-full object-contain mix-blend-multiply" />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ================= COLUMN 2: CENTER INFO ================= */}
         <div className="w-full lg:w-[35%] flex flex-col border-b lg:border-none pb-6 lg:pb-0">
-          <h1 className="text-[24px] leading-tight font-medium mb-1">{product.name}</h1>
+          <h1 className="text-[20px] lg:text-[24px] leading-tight font-medium mb-1">{product.name}</h1>
           <Link href={`/?search=${product.brand}`} className={`${amzLink} text-[14px]`}>Visit the {product.brand} Store</Link>
 
           <div className="flex items-center gap-3 mt-2 border-b border-[#EEE] pb-2">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 cursor-pointer hover:opacity-80">
               <span className="text-[#FFA41C] text-[18px]">{renderStars(product.ratings)}</span>
               <span className={`${amzLink} text-[14px] ml-2`}>{product.numOfReviews} ratings</span>
             </div>
@@ -2715,8 +2741,8 @@ export default function ProductDetailPage() {
              {finalDiscountPrice ? (
                <>
                 <div className="flex items-center gap-2">
-                   <span className="text-[28px] font-light text-[#CC0C39]">-{discountPercentage}%</span>
-                   <div className="flex items-start text-[28px] font-medium">
+                   <span className="text-[24px] lg:text-[28px] font-light text-[#CC0C39]">-{discountPercentage}%</span>
+                   <div className="flex items-start text-[24px] lg:text-[28px] font-medium">
                       <span className="text-[14px] mt-1.5 mr-0.5">₹</span>
                       {finalDiscountPrice.toLocaleString('en-IN')}
                    </div>
@@ -2724,7 +2750,7 @@ export default function ProductDetailPage() {
                 <div className="text-[13px] text-[#565959]">M.R.P.: <span className="line-through">₹{finalPrice.toLocaleString('en-IN')}</span></div>
                </>
              ) : (
-                <div className="flex items-start text-[28px] font-medium">
+                <div className="flex items-start text-[24px] lg:text-[28px] font-medium">
                   <span className="text-[14px] mt-1.5 mr-0.5">₹</span>
                   {finalPrice.toLocaleString('en-IN')}
                 </div>
@@ -2732,7 +2758,7 @@ export default function ProductDetailPage() {
              <p className="text-[14px] font-bold mt-2">Inclusive of all taxes</p>
           </div>
 
-          {/* Variants */}
+          {/* 🚀 Mobile-Optimized Variants (Pills) */}
           {product.variants?.map((v, i) => (
             <div key={i} className="mb-4">
                <p className="text-[14px] mb-2 font-bold">{v.name}: <span className="font-normal">{selectedVariants[v.name]}</span></p>
@@ -2741,7 +2767,7 @@ export default function ProductDetailPage() {
                     <button 
                       key={idx} 
                       onClick={() => handleVariantSelect(v.name, opt.name)}
-                      className={`px-3 py-1.5 text-[13px] border rounded-[2px] transition-all ${selectedVariants[v.name] === opt.name ? 'border-[#e77600] bg-[#FEF8F2] shadow-[0_0_0_1px_#e77600]' : 'border-[#888C8C] hover:bg-gray-50'}`}
+                      className={`px-3 py-1.5 text-[13px] border rounded-[4px] transition-all whitespace-nowrap ${selectedVariants[v.name] === opt.name ? 'border-[#e77600] bg-[#FEF8F2] shadow-[0_0_0_1px_#e77600]' : 'border-[#D5D9D9] bg-white hover:bg-gray-50'}`}
                     >
                       {opt.name}
                     </button>
@@ -2750,7 +2776,7 @@ export default function ProductDetailPage() {
             </div>
           ))}
 
-          {/* 🚀 ADDED: Technical Specs Grid */}
+          {/* Technical Specs Grid */}
           {product.specs && product.specs.length > 0 && (
             <div className="mt-4 pt-4 border-t border-[#EEE]">
                <table className="w-full text-[14px] text-left">
@@ -2766,7 +2792,7 @@ export default function ProductDetailPage() {
             </div>
           )}
 
-          {/* 🚀 RESTORED: About this item (Bullet Points) */}
+          {/* About this item */}
           <div className="mt-4 pt-4 border-t border-[#EEE]">
              <h3 className="font-bold text-[16px] mb-2">About this item</h3>
              <ul className="list-disc pl-5 space-y-1.5 text-[14px] leading-relaxed text-[#111]">
@@ -2775,8 +2801,8 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        {/* ================= COLUMN 3: BUY BOX ================= */}
-        <div className="w-full lg:w-[20%]">
+        {/* ================= COLUMN 3: BUY BOX (Desktop) ================= */}
+        <div className="w-full lg:w-[20%] hidden lg:block">
           <div className="border border-[#D5D9D9] rounded-[8px] p-5 lg:sticky lg:top-24 bg-white">
              <div className="flex items-start text-[24px] font-normal mb-2">
                 <span className="text-[13px] mt-1 mr-0.5">₹</span>
@@ -2786,7 +2812,7 @@ export default function ProductDetailPage() {
              <div className="text-[14px] space-y-1 mb-4">
                 <p className={amzLink}>FREE delivery <span className="font-bold">{deliveryDate}</span></p>
                 <p>Order within <span className="text-[#007600] font-medium">{timeLeft}</span></p>
-                <p className={`${amzLink} text-[12px]`}>📍 Deliver to {user?.name?.split(' ')[0] || 'Guest'}</p>
+                <p className={`${amzLink} text-[12px] truncate`}>📍 Deliver to {user?.name?.split(' ')[0] || 'Guest'}</p>
              </div>
 
              <p className={`text-[18px] mb-4 ${product.stock > 0 ? 'text-[#007600]' : 'text-[#B12704]'}`}>
@@ -2798,7 +2824,7 @@ export default function ProductDetailPage() {
                   <select 
                     value={quantity} 
                     onChange={(e) => setQuantity(Number(e.target.value))}
-                    className="bg-[#F0F2F2] border border-[#D5D9D9] rounded-[7px] text-[13px] px-2 py-1 shadow-sm focus:border-[#e77600] outline-none cursor-pointer"
+                    className="bg-[#F0F2F2] border border-[#D5D9D9] rounded-[7px] text-[13px] px-2 py-1 shadow-sm focus:border-[#e77600] outline-none cursor-pointer w-full hover:bg-[#E3E6E6]"
                   >
                     {[...Array(Math.min(10, product.stock)).keys()].map(n => <option key={n+1} value={n+1}>Qty: {n+1}</option>)}
                   </select>
@@ -2818,13 +2844,15 @@ export default function ProductDetailPage() {
 
       {/* ================= LOWER SECTIONS ================= */}
       <div className="max-w-[1500px] mx-auto px-4 border-t border-[#EEE] pt-10">
+          
+          {/* A+ Content */}
           {product.banners?.length > 0 && (
             <div className="mb-12">
                <h2 className="text-[22px] font-bold text-[#C60] mb-4">From the manufacturer</h2>
                <div className="space-y-6">
                   {product.banners.map((b, i) => (
                     <div key={i} className="border-b border-[#EEE] pb-6 last:border-0">
-                        <img src={getImageUrl(b)} alt="Manufacturer Info" className="w-full h-auto rounded-sm shadow-sm" />
+                        <img src={getImageUrl(b)} alt="Manufacturer Info" className="w-full h-auto rounded-[4px] shadow-sm" />
                     </div>
                   ))}
                </div>
@@ -2832,34 +2860,20 @@ export default function ProductDetailPage() {
           )}
 
           <div className="mb-12">
-             <h2 className="text-[22px] font-bold text-[#C60] mb-4">Product Description</h2>
+             <h2 className="text-[20px] lg:text-[22px] font-bold text-[#C60] mb-4">Product Description</h2>
              <p className="text-[14px] leading-relaxed whitespace-pre-wrap max-w-4xl text-[#333]">{product.description}</p>
           </div>
 
-          {/* Detailed Technical Table (Amazon Style Bottom Specs) */}
-          {product.specs && product.specs.length > 0 && (
-            <div className="mb-12 bg-white">
-                <h2 className="text-[22px] font-bold text-[#C60] mb-4">Technical Details</h2>
-                <div className="border border-[#DDD] rounded-sm overflow-hidden max-w-2xl">
-                    {product.specs.map((spec, i) => (
-                        <div key={i} className={`flex border-b border-[#DDD] last:border-0 ${i % 2 === 0 ? 'bg-[#F7F7F7]' : 'bg-white'}`}>
-                            <div className="w-1/3 p-3 font-bold text-[13px] border-r border-[#DDD]">{spec.name}</div>
-                            <div className="w-2/3 p-3 text-[13px]">{spec.value}</div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-          )}
-
-          {/* Reviews Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mt-16 border-t border-[#EEE] pt-10 pb-20">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mt-12 border-t border-[#EEE] pt-10 pb-20">
+             
+             {/* Review Form */}
              <div>
                 <h2 className="text-[20px] font-bold mb-2">Customer reviews</h2>
                 <div className="flex items-center gap-2 mb-4">
                    <span className="text-[#FFA41C] text-lg">{renderStars(product.ratings)}</span>
                    <span className="text-[16px] font-medium">{product.ratings} out of 5</span>
                 </div>
-                {/* ... Review submission card ... */}
+                
                 <div className="border border-[#D5D9D9] rounded-[8px] p-5 bg-[#F7Fafa]/50 shadow-sm">
                    <h3 className="font-bold text-[14px] mb-1">Review this product</h3>
                    <p className="text-[13px] mb-4 text-[#565959]">Share your thoughts with other customers</p>
@@ -2872,7 +2886,7 @@ export default function ProductDetailPage() {
                            <option value="2">2 Stars - Poor</option>
                            <option value="1">1 Star - Terrible</option>
                         </select>
-                        <textarea className="w-full p-2 border border-[#888C8C] rounded-[3px] text-[13px] h-24 outline-none focus:border-[#e77600]" placeholder="Write your review..." value={comment} onChange={(e) => setComment(e.target.value)} required />
+                        <textarea className="w-full p-2 border border-[#888C8C] rounded-[3px] text-[13px] h-24 outline-none focus:border-[#e77600] resize-none" placeholder="Write your review..." value={comment} onChange={(e) => setComment(e.target.value)} required />
                         <button type="submit" disabled={reviewSubmitLoading} className="w-full bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-1.5 rounded-[8px] text-[13px] shadow-sm font-medium transition-colors">
                            {reviewSubmitLoading ? 'Submitting...' : 'Write a customer review'}
                         </button>
@@ -2883,19 +2897,31 @@ export default function ProductDetailPage() {
                 </div>
              </div>
              
+             {/* 🚀 Reviews List with Sorting */}
              <div className="lg:col-span-2">
-                <h2 className="text-[20px] font-bold mb-6">Top reviews from India</h2>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-[20px] font-bold">Top reviews from India</h2>
+                  <select 
+                    value={reviewSort} 
+                    onChange={(e) => setReviewSort(e.target.value)} 
+                    className="border border-[#D5D9D9] rounded-[8px] bg-[#F0F2F2] text-[13px] px-3 py-1.5 outline-none focus:border-[#e77600] shadow-sm cursor-pointer hover:bg-[#E3E6E6]"
+                  >
+                    <option value="top">Top reviews</option>
+                    <option value="recent">Most recent</option>
+                  </select>
+                </div>
+                
                 <div className="space-y-8">
-                   {product.reviews?.filter(r => r.isApproved).length > 0 ? (
-                     product.reviews?.filter(r => r.isApproved).map((r, i) => (
+                   {sortedReviews.length > 0 ? (
+                     sortedReviews.map((r, i) => (
                         <div key={i} className="border-b border-[#EEE] pb-6 last:border-0">
                            <div className="flex items-center gap-2 mb-1">
-                              <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-500">👤</div>
+                              <div className="w-8 h-8 bg-[#F0F2F2] rounded-full flex items-center justify-center text-gray-500 border border-[#D5D9D9]">👤</div>
                               <span className="text-[13px] font-medium">{r.name}</span>
                            </div>
-                           <div className="flex items-center gap-2">
+                           <div className="flex items-center gap-2 mt-1">
                               <span className="text-[#FFA41C] text-sm">{'★'.repeat(r.rating)}{'☆'.repeat(5-r.rating)}</span>
-                              <span className="text-[13px] font-bold">Verified Purchase</span>
+                              <span className="text-[13px] font-bold text-[#C45500]">Verified Purchase</span>
                            </div>
                            <p className="text-[12px] text-[#565959] mt-1">Reviewed in India on {new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                            <p className="text-[14px] mt-2 leading-relaxed text-[#111]">{r.comment}</p>
@@ -2908,6 +2934,13 @@ export default function ProductDetailPage() {
              </div>
           </div>
       </div>
+
+      {/* 🚀 STICKY BOTTOM BAR FOR MOBILE (Hidden on LG screens) */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#D5D9D9] p-3 z-50 lg:hidden shadow-[0_-2px_10px_rgba(0,0,0,0.05)] flex gap-3">
+        <button onClick={handleAddToCart} className={amzButtonYellow + " flex-1 !py-3 !text-[14px]"}>Add to Cart</button>
+        <button onClick={handleBuyNow} className={amzButtonOrange + " flex-1 !py-3 !text-[14px]"}>Buy Now</button>
+      </div>
+
     </div>
   );
 }
