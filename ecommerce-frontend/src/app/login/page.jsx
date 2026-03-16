@@ -613,7 +613,7 @@ export default function LoginPage() {
         </div>
 
         {/* Create Account Button */}
-        <Link href="/signup" className="block w-full">
+        <Link href="/register" className="block w-full">
           <button type="button" className={amzSecondaryButton}>
             Create your Amazon account
           </button>
