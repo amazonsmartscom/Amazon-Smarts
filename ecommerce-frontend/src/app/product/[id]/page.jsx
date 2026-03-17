@@ -3079,6 +3079,7 @@ import { useAuth } from '../../../context/AuthContext';
 import axios from 'axios';
 import Link from 'next/link';
 
+
 export default function ProductDetailPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -3140,6 +3141,7 @@ export default function ProductDetailPage() {
     fetchProduct();
   }, [id]);
 
+  
   useEffect(() => {
     const calculateTimeLeft = () => {
       const now = new Date();

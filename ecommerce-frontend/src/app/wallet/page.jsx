@@ -1329,9 +1329,258 @@
 // }
 
 
+// // src/app/wallet/page.jsx
+// 'use client';
+// import { useState, useEffect } from 'react';
+// import { useAuth } from '../../context/AuthContext';
+// import { useRouter } from 'next/navigation';
+// import axios from 'axios';
+// import Link from 'next/link';
+
+// export default function WalletDashboard() {
+//   const { user } = useAuth();
+//   const router = useRouter();
+//   const [walletData, setWalletData] = useState({ wallet: null, transactions: [] });
+//   const [userProfile, setUserProfile] = useState(null);
+//   const [loading, setLoading] = useState(true);
+//   const [showModal, setShowModal] = useState(false);
+//   const [copied, setCopied] = useState(false); 
+
+//   // Withdrawal Form States
+//   const [amount, setAmount] = useState('');
+//   const [withdrawMethod, setWithdrawMethod] = useState('UPI'); 
+//   const [upiId, setUpiId] = useState('');
+//   const [bankInfo, setBankInfo] = useState({ accountName: '', accountNumber: '', bankName: '', ifsc: '' });
+//   const [isSubmitting, setIsSubmitting] = useState(false);
+
+//   useEffect(() => {
+//     if (!user) { router.push('/login'); return; }
+
+//     const fetchWalletAndProfile = async () => {
+//       try {
+//         const userId = user?._id || user?.user?._id;
+//         const [walletRes, profileRes] = await Promise.all([
+//           axios.get(`${process.env.NEXT_PUBLIC_API_URL}/wallet/${userId}`),
+//           axios.get(`${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`)
+//         ]);
+//         setWalletData(walletRes.data);
+//         setUserProfile(profileRes.data);
+
+//         const savedBank = profileRes.data?.bankDetails;
+//         if (savedBank) {
+//           if (savedBank.upiId) setUpiId(savedBank.upiId);
+//           if (savedBank.accountNumber) {
+//             setBankInfo({
+//               accountName: savedBank.accountName || '',
+//               accountNumber: savedBank.accountNumber || '',
+//               bankName: savedBank.bankName || '',
+//               ifsc: savedBank.ifsc || ''
+//             });
+//             if (!savedBank.upiId) setWithdrawMethod('BANK');
+//           }
+//         }
+//         setLoading(false);
+//       } catch (error) {
+//         console.error("Error:", error);
+//         setLoading(false);
+//       }
+//     };
+//     fetchWalletAndProfile();
+//   }, [user, router]);
+
+//   // 🚀 SOCIAL SHARE LOGIC
+//   const referralCode = user?.myReferralCode || user?.user?.myReferralCode;
+//   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://amazon-smarts.vercel.app';
+//   const shareUrl = `${origin}/register?ref=${referralCode}`;
+//   const shareText = `Hey! Join Amazon Smarts using my code *${referralCode}* to get exclusive VIP deals on gadgets!`;
+
+//   // THE MAGIC "SHARE TO WHATEVER" BUTTON
+//   const handleNativeShare = async () => {
+//     if (navigator.share) {
+//       try {
+//         await navigator.share({
+//           title: 'Amazon Smarts VIP Invite',
+//           text: shareText,
+//           url: shareUrl,
+//         });
+//       } catch (err) { console.log("Native share failed", err); }
+//     } else {
+//       handleCopyLink();
+//     }
+//   };
+
+//   const handleCopyLink = () => {
+//     navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+//     setCopied(true);
+//     setTimeout(() => setCopied(false), 2000);
+//   };
+
+//   const shareToWhatsApp = () => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + " " + shareUrl)}`, '_blank');
+
+//   const handleWithdrawalSubmit = async () => {
+//     const withdrawAmount = Number(amount);
+//     if (!withdrawAmount || withdrawAmount < 500) return alert("Min withdrawal ₹500");
+//     if (withdrawAmount > walletData.wallet?.availableBalance) return alert("Insufficient balance!");
+
+//     setIsSubmitting(true);
+//     try {
+//       await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/withdrawals/request`, {
+//         userId: user?._id || user?.user?._id, 
+//         amount: withdrawAmount, 
+//         method: withdrawMethod, 
+//         details: withdrawMethod === 'UPI' ? { upiId } : { ...bankInfo }
+//       });
+//       alert("Withdrawal requested!");
+//       setShowModal(false);
+//       window.location.reload(); 
+//     } catch (err) { alert("Error processing request."); setIsSubmitting(false); }
+//   };
+
+//   // Amazon.com UI Constants
+//   const amzButtonYellow = "bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-[6px] px-4 rounded-[8px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.15)] transition-colors cursor-pointer text-center";
+//   const amzButtonWhite = "bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-[6px] px-4 rounded-[8px] text-[13px] text-[#0F1111] shadow-[0_2px_5px_0_rgba(213,217,217,.5)] transition-colors cursor-pointer text-center";
+//   const amzLabel = "block text-[13px] font-bold text-[#111] mb-1";
+//   const amzInput = "w-full px-3 py-1.5 border border-[#888C8C] rounded-[3px] text-[13px] focus:outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_2px_rgba(228,121,17,0.5)] text-[#111]";
+
+//   if (loading) return <div className="min-h-screen bg-white flex items-center justify-center"><div className="w-10 h-10 border-4 border-t-[#e77600] rounded-full animate-spin"></div></div>;
+
+//   return (
+//     <div className="min-h-screen bg-white font-sans text-[#0F1111] pb-20">
+//       <div className="max-w-[1000px] mx-auto px-4 py-6">
+//         <div className="text-[14px] text-[#565959] mb-4 flex items-center gap-1">
+//           <Link href="/account" className="text-[#007185] hover:text-[#C45500] hover:underline">Your Account</Link> 
+//           <span className="text-[#565959] text-[10px]">›</span> 
+//           <span className="text-[#C45500]">Affiliate Wallet</span>
+//         </div>
+
+//         <h1 className="text-[28px] font-normal mb-6">Your Affiliate Wallet</h1>
+
+//         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+//           <div className="border border-[#D5D9D9] rounded-[8px] p-5 flex flex-col justify-between">
+//             <div>
+//                 <h3 className="text-[17px] font-normal mb-1">Available Balance</h3>
+//                 <p className="text-[32px] font-normal text-[#B12704]">₹{walletData.wallet?.availableBalance?.toLocaleString('en-IN') || 0}</p>
+//             </div>
+//             <button onClick={() => setShowModal(true)} className={`${amzButtonYellow} mt-4 font-normal`}>Withdraw Funds</button>
+//           </div>
+
+//           <div className="border border-[#D5D9D9] rounded-[8px] p-5">
+//             <h3 className="text-[17px] font-normal mb-1">Lifetime Earnings</h3>
+//             <p className="text-[32px] font-normal">₹{walletData.wallet?.totalEarnings?.toLocaleString('en-IN') || 0}</p>
+//             <p className="text-[13px] text-[#565959] mt-2">Total commission earned from referrals.</p>
+//           </div>
+
+//           {/* 🚀 FIXED: SHARE CARD WITH NATIVE SHARE BUTTON */}
+//           <div className="border border-[#D5D9D9] rounded-[8px] p-5 flex flex-col gap-3">
+//             <h3 className="text-[17px] font-normal">Invite Friends</h3>
+            
+//             <div className="bg-[#F0F2F2] border border-[#D5D9D9] p-2 rounded-[4px] flex items-center justify-between">
+//                 <span className="font-mono text-[14px] font-bold">{referralCode}</span>
+//                 <button onClick={handleCopyLink} className="text-[#007185] text-[12px] hover:underline uppercase font-bold">
+//                     {copied ? 'Copied' : 'Copy'}
+//                 </button>
+//             </div>
+
+//             <div className="grid grid-cols-2 gap-2">
+//                 <button onClick={shareToWhatsApp} className={amzButtonWhite + " flex items-center justify-center gap-2"}>
+//                    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" className="w-4 h-4" alt="wa" /> WhatsApp
+//                 </button>
+//                 <button onClick={() => window.open(`https://t.me/share/url?url=${shareUrl}`, '_blank')} className={amzButtonWhite + " flex items-center justify-center gap-2"}>
+//                    <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" className="w-4 h-4" alt="tg" /> Telegram
+//                 </button>
+//             </div>
+
+//             {/* THE "SHARE TO WHATEVER" BUTTON */}
+//             <button onClick={handleNativeShare} className={amzButtonWhite + " w-full flex items-center justify-center gap-2 font-bold"}>
+//                <span>📤</span> More Share Options
+//             </button>
+//           </div>
+//         </div>
+
+//         <div className="border border-[#D5D9D9] rounded-[8px] overflow-hidden">
+//           <div className="bg-[#F0F2F2] px-4 py-3 border-b border-[#D5D9D9]"><h2 className="text-[18px]">Account Activity</h2></div>
+//           <div className="overflow-x-auto">
+//             {walletData.transactions.length === 0 ? (
+//               <div className="p-10 text-center text-[#565959] text-[14px]">No transactions found.</div>
+//             ) : (
+//               <table className="w-full text-left border-collapse">
+//                 <thead>
+//                   <tr className="text-[13px] text-[#565959] border-b border-[#D5D9D9]">
+//                     <th className="p-4 font-bold">Date</th>
+//                     <th className="p-4 font-bold">Description</th>
+//                     <th className="p-4 font-bold">Status</th>
+//                     <th className="p-4 font-bold text-right">Amount</th>
+//                   </tr>
+//                 </thead>
+//                 <tbody className="divide-y divide-[#EEE]">
+//                   {walletData.transactions.map((tx) => (
+//                     <tr key={tx._id} className="text-[14px] hover:bg-[#F7F7F7]">
+//                       <td className="p-4 whitespace-nowrap text-[#565959]">{new Date(tx.createdAt).toLocaleDateString('en-IN')}</td>
+//                       <td className="p-4">
+//                         <p className="font-bold">{tx.source === 'referral_commission' ? 'Commission' : 'Withdrawal'}</p>
+//                         <p className="text-[12px] text-[#565959]">ID: {tx._id.slice(-10).toUpperCase()}</p>
+//                       </td>
+//                       <td className={`p-4 uppercase text-[12px] font-bold ${tx.status === 'completed' ? 'text-[#007600]' : tx.status === 'rejected' ? 'text-[#B12704]' : 'text-[#E77600]'}`}>
+//                         {tx.status}
+//                       </td>
+//                       <td className={`p-4 text-right font-bold ${tx.type === 'credit' ? 'text-[#007600]' : 'text-[#B12704]'}`}>
+//                         {tx.type === 'credit' ? '+' : '-'}₹{tx.amount.toLocaleString('en-IN')}
+//                       </td>
+//                     </tr>
+//                   ))}
+//                 </tbody>
+//               </table>
+//             )}
+//           </div>
+//         </div>
+//       </div>
+
+//       {/* WITHDRAW MODAL */}
+//       {showModal && (
+//         <div className="fixed inset-0 bg-[rgba(0,0,0,0.6)] flex items-center justify-center p-4 z-[100]">
+//           <div className="bg-white rounded-[8px] w-full max-w-[420px] shadow-2xl overflow-hidden">
+//             <div className="bg-[#F0F2F2] border-b p-4 flex justify-between items-center">
+//               <h2 className="text-[16px] font-bold">Withdraw Funds</h2>
+//               <button onClick={() => setShowModal(false)} className="text-2xl leading-none">×</button>
+//             </div>
+//             <div className="p-6">
+//               <div className="bg-[#FDF8F3] border border-[#FBD8B4] p-3 rounded-[4px] mb-6">
+//                 <p className="text-[13px]">Available: <span className="font-bold text-[#B12704]">₹{walletData.wallet?.availableBalance?.toLocaleString('en-IN')}</span></p>
+//               </div>
+//               <div className="space-y-4">
+//                 <label className={amzLabel}>Amount to withdraw</label>
+//                 <input type="number" placeholder="Min ₹500" className={amzInput} onChange={(e) => setAmount(e.target.value)} />
+//                 <div className="flex gap-4 border-b border-[#D5D9D9] mb-2">
+//                    <button className={`pb-2 text-[13px] font-bold ${withdrawMethod === 'UPI' ? 'border-b-2 border-[#E77600]' : ''}`} onClick={() => setWithdrawMethod('UPI')}>UPI</button>
+//                    <button className={`pb-2 text-[13px] font-bold ${withdrawMethod === 'BANK' ? 'border-b-2 border-[#E77600]' : ''}`} onClick={() => setWithdrawMethod('BANK')}>Bank Account</button>
+//                 </div>
+//                 {withdrawMethod === 'UPI' ? (
+//                    <input type="text" placeholder="e.g. name@okhdfc" className={amzInput} value={upiId} onChange={(e) => setUpiId(e.target.value)} />
+//                 ) : (
+//                   <div className="space-y-3">
+//                     <input type="text" placeholder="Name on Account" className={amzInput} value={bankInfo.accountName} onChange={e => setBankInfo({...bankInfo, accountName: e.target.value})} />
+//                     <input type="text" placeholder="Account Number" className={amzInput} value={bankInfo.accountNumber} onChange={e => setBankInfo({...bankInfo, accountNumber: e.target.value})} />
+//                     <div className="flex gap-2">
+//                        <input type="text" placeholder="IFSC" className={amzInput} value={bankInfo.ifsc} onChange={e => setBankInfo({...bankInfo, ifsc: e.target.value})} />
+//                        <input type="text" placeholder="Bank Name" className={amzInput} value={bankInfo.bankName} onChange={e => setBankInfo({...bankInfo, bankName: e.target.value})} />
+//                     </div>
+//                   </div>
+//                 )}
+//                 <button onClick={handleWithdrawalSubmit} disabled={isSubmitting} className={amzButtonYellow + " w-full mt-4"}>
+//                     {isSubmitting ? 'Processing...' : 'Submit Request'}
+//                 </button>
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
 // src/app/wallet/page.jsx
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
@@ -1342,6 +1591,8 @@ export default function WalletDashboard() {
   const router = useRouter();
   const [walletData, setWalletData] = useState({ wallet: null, transactions: [] });
   const [userProfile, setUserProfile] = useState(null);
+  
+  // 🚀 Start loading as true so it shows a spinner while waiting for AuthContext
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [copied, setCopied] = useState(false); 
@@ -1353,40 +1604,59 @@ export default function WalletDashboard() {
   const [bankInfo, setBankInfo] = useState({ accountName: '', accountNumber: '', bankName: '', ifsc: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!user) { router.push('/login'); return; }
+  // 🚀 1. Extracted fetch function so we can update the wallet WITHOUT reloading the page!
+  const fetchWalletAndProfile = useCallback(async () => {
+    if (!user) return;
+    try {
+      const userId = user._id || user.user?._id;
+      const [walletRes, profileRes] = await Promise.all([
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/wallet/${userId}`),
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`)
+      ]);
+      
+      const sortedTransactions = walletRes.data.transactions?.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) || [];
+      
+      setWalletData({ ...walletRes.data, transactions: sortedTransactions });
+      setUserProfile(profileRes.data);
 
-    const fetchWalletAndProfile = async () => {
-      try {
-        const userId = user?._id || user?.user?._id;
-        const [walletRes, profileRes] = await Promise.all([
-          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/wallet/${userId}`),
-          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`)
-        ]);
-        setWalletData(walletRes.data);
-        setUserProfile(profileRes.data);
-
-        const savedBank = profileRes.data?.bankDetails;
-        if (savedBank) {
-          if (savedBank.upiId) setUpiId(savedBank.upiId);
-          if (savedBank.accountNumber) {
-            setBankInfo({
-              accountName: savedBank.accountName || '',
-              accountNumber: savedBank.accountNumber || '',
-              bankName: savedBank.bankName || '',
-              ifsc: savedBank.ifsc || ''
-            });
-            if (!savedBank.upiId) setWithdrawMethod('BANK');
-          }
+      const savedBank = profileRes.data?.bankDetails;
+      if (savedBank) {
+        if (savedBank.upiId) setUpiId(savedBank.upiId);
+        if (savedBank.accountNumber) {
+          setBankInfo({
+            accountName: savedBank.accountName || '',
+            accountNumber: savedBank.accountNumber || '',
+            bankName: savedBank.bankName || '',
+            ifsc: savedBank.ifsc || ''
+          });
+          if (!savedBank.upiId) setWithdrawMethod('BANK');
         }
-        setLoading(false);
-      } catch (error) {
-        console.error("Error:", error);
-        setLoading(false);
       }
-    };
-    fetchWalletAndProfile();
-  }, [user, router]);
+    } catch (error) {
+      console.error("Error fetching wallet:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  // 🚀 2. BULLETPROOF AUTH CHECK (Fixes the false redirect!)
+  useEffect(() => {
+    if (user) {
+      // If user is already loaded, fetch the wallet immediately!
+      fetchWalletAndProfile();
+    } else {
+      // If user is null, they might just be refreshing the page.
+      // Give the AuthContext 1.5 seconds to wake up and fetch the user.
+      const checkAuthTimer = setTimeout(() => {
+        // If 1.5 seconds pass and STILL no user, kick them to login
+        router.push('/login');
+      }, 1500);
+
+      // VERY IMPORTANT: If the user loads BEFORE the 1.5s is up, 
+      // this cleanup function cancels the kick-out timer!
+      return () => clearTimeout(checkAuthTimer);
+    }
+  }, [user, router, fetchWalletAndProfile]);
 
   // 🚀 SOCIAL SHARE LOGIC
   const referralCode = user?.myReferralCode || user?.user?.myReferralCode;
@@ -1394,7 +1664,6 @@ export default function WalletDashboard() {
   const shareUrl = `${origin}/register?ref=${referralCode}`;
   const shareText = `Hey! Join Amazon Smarts using my code *${referralCode}* to get exclusive VIP deals on gadgets!`;
 
-  // THE MAGIC "SHARE TO WHATEVER" BUTTON
   const handleNativeShare = async () => {
     if (navigator.share) {
       try {
@@ -1409,12 +1678,32 @@ export default function WalletDashboard() {
     }
   };
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopyLink = async () => {
+    const textToCopy = referralCode; 
+    
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        textArea.style.position = "absolute";
+        textArea.style.left = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        textArea.remove();
+      }
+      
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      
+    } catch (err) {
+      console.error("Failed to copy code:", err);
+      alert("Copy failed. Your browser might be blocking this action.");
+    }
   };
-
+  
   const shareToWhatsApp = () => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + " " + shareUrl)}`, '_blank');
 
   const handleWithdrawalSubmit = async () => {
@@ -1430,15 +1719,24 @@ export default function WalletDashboard() {
         method: withdrawMethod, 
         details: withdrawMethod === 'UPI' ? { upiId } : { ...bankInfo }
       });
-      alert("Withdrawal requested!");
+      alert("Withdrawal requested successfully!");
       setShowModal(false);
-      window.location.reload(); 
-    } catch (err) { alert("Error processing request."); setIsSubmitting(false); }
+      setAmount(''); 
+      
+      // 🚀 3. FIXED: Fetch new balance instantly without doing a hard page reload!
+      setLoading(true);
+      await fetchWalletAndProfile(); 
+
+    } catch (err) { 
+      alert("Error processing request."); 
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Amazon.com UI Constants
-  const amzButtonYellow = "bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-[6px] px-4 rounded-[8px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.15)] transition-colors cursor-pointer text-center";
-  const amzButtonWhite = "bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-[6px] px-4 rounded-[8px] text-[13px] text-[#0F1111] shadow-[0_2px_5px_0_rgba(213,217,217,.5)] transition-colors cursor-pointer text-center";
+  const amzButtonYellow = "bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-[6px] px-4 rounded-[8px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.15)] transition-colors cursor-pointer text-center disabled:opacity-50";
+  const amzButtonWhite = "bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-[6px] px-4 rounded-[8px] text-[13px] text-[#0F1111] shadow-[0_2px_5px_0_rgba(213,217,217,.5)] transition-colors cursor-pointer text-center disabled:opacity-50";
   const amzLabel = "block text-[13px] font-bold text-[#111] mb-1";
   const amzInput = "w-full px-3 py-1.5 border border-[#888C8C] rounded-[3px] text-[13px] focus:outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_2px_rgba(228,121,17,0.5)] text-[#111]";
 
@@ -1470,7 +1768,6 @@ export default function WalletDashboard() {
             <p className="text-[13px] text-[#565959] mt-2">Total commission earned from referrals.</p>
           </div>
 
-          {/* 🚀 FIXED: SHARE CARD WITH NATIVE SHARE BUTTON */}
           <div className="border border-[#D5D9D9] rounded-[8px] p-5 flex flex-col gap-3">
             <h3 className="text-[17px] font-normal">Invite Friends</h3>
             
@@ -1490,7 +1787,6 @@ export default function WalletDashboard() {
                 </button>
             </div>
 
-            {/* THE "SHARE TO WHATEVER" BUTTON */}
             <button onClick={handleNativeShare} className={amzButtonWhite + " w-full flex items-center justify-center gap-2 font-bold"}>
                <span>📤</span> More Share Options
             </button>
@@ -1506,7 +1802,7 @@ export default function WalletDashboard() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="text-[13px] text-[#565959] border-b border-[#D5D9D9]">
-                    <th className="p-4 font-bold">Date</th>
+                    <th className="p-4 font-bold">Date & Time</th>
                     <th className="p-4 font-bold">Description</th>
                     <th className="p-4 font-bold">Status</th>
                     <th className="p-4 font-bold text-right">Amount</th>
@@ -1514,16 +1810,33 @@ export default function WalletDashboard() {
                 </thead>
                 <tbody className="divide-y divide-[#EEE]">
                   {walletData.transactions.map((tx) => (
-                    <tr key={tx._id} className="text-[14px] hover:bg-[#F7F7F7]">
-                      <td className="p-4 whitespace-nowrap text-[#565959]">{new Date(tx.createdAt).toLocaleDateString('en-IN')}</td>
+                    <tr key={tx._id} className="text-[14px] hover:bg-[#F7F7F7] align-top">
+                      <td className="p-4 whitespace-nowrap">
+                        <div className="font-bold text-[#111]">
+                          {new Date(tx.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </div>
+                        <div className="text-[11px] text-[#565959] mt-0.5">
+                          {new Date(tx.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        </div>
+                      </td>
                       <td className="p-4">
-                        <p className="font-bold">{tx.source === 'referral_commission' ? 'Commission' : 'Withdrawal'}</p>
-                        <p className="text-[12px] text-[#565959]">ID: {tx._id.slice(-10).toUpperCase()}</p>
+                        <p className="font-bold text-[#111]">
+                          {tx.source === 'referral_commission' ? 'Affiliate Commission' : 
+                           tx.source === 'review_reward' ? 'Review Reward' :
+                           tx.source === 'referral_signup_bonus' ? 'Signup Bonus (Referral)' :
+                           tx.source === 'welcome_bonus' ? 'Welcome Bonus' : 'Withdrawal'}
+                        </p>
+                        <p className="text-[11px] text-[#565959] font-mono mt-0.5">ID: {tx._id.slice(-10).toUpperCase()}</p>
                       </td>
-                      <td className={`p-4 uppercase text-[12px] font-bold ${tx.status === 'completed' ? 'text-[#007600]' : tx.status === 'rejected' ? 'text-[#B12704]' : 'text-[#E77600]'}`}>
-                        {tx.status}
+                      <td className="p-4">
+                        <span className={`uppercase text-[11px] font-bold px-2 py-1 rounded-[3px] 
+                          ${tx.status === 'completed' ? 'bg-[#e7f4e4] text-[#007600] border border-[#007600]' : 
+                            tx.status === 'rejected' || tx.status === 'cancelled' ? 'bg-[#fce8e6] text-[#B12704] border border-[#B12704]' : 
+                            'bg-[#fef8f2] text-[#e77600] border border-[#e77600]'}`}>
+                          {tx.status}
+                        </span>
                       </td>
-                      <td className={`p-4 text-right font-bold ${tx.type === 'credit' ? 'text-[#007600]' : 'text-[#B12704]'}`}>
+                      <td className={`p-4 text-right font-bold text-[16px] ${tx.type === 'credit' ? 'text-[#007600]' : 'text-[#B12704]'}`}>
                         {tx.type === 'credit' ? '+' : '-'}₹{tx.amount.toLocaleString('en-IN')}
                       </td>
                     </tr>
@@ -1541,7 +1854,7 @@ export default function WalletDashboard() {
           <div className="bg-white rounded-[8px] w-full max-w-[420px] shadow-2xl overflow-hidden">
             <div className="bg-[#F0F2F2] border-b p-4 flex justify-between items-center">
               <h2 className="text-[16px] font-bold">Withdraw Funds</h2>
-              <button onClick={() => setShowModal(false)} className="text-2xl leading-none">×</button>
+              <button onClick={() => setShowModal(false)} className="text-2xl leading-none hover:text-[#e77600]">×</button>
             </div>
             <div className="p-6">
               <div className="bg-[#FDF8F3] border border-[#FBD8B4] p-3 rounded-[4px] mb-6">
@@ -1549,10 +1862,10 @@ export default function WalletDashboard() {
               </div>
               <div className="space-y-4">
                 <label className={amzLabel}>Amount to withdraw</label>
-                <input type="number" placeholder="Min ₹500" className={amzInput} onChange={(e) => setAmount(e.target.value)} />
+                <input type="number" placeholder="Min ₹500" className={amzInput} value={amount} onChange={(e) => setAmount(e.target.value)} />
                 <div className="flex gap-4 border-b border-[#D5D9D9] mb-2">
-                   <button className={`pb-2 text-[13px] font-bold ${withdrawMethod === 'UPI' ? 'border-b-2 border-[#E77600]' : ''}`} onClick={() => setWithdrawMethod('UPI')}>UPI</button>
-                   <button className={`pb-2 text-[13px] font-bold ${withdrawMethod === 'BANK' ? 'border-b-2 border-[#E77600]' : ''}`} onClick={() => setWithdrawMethod('BANK')}>Bank Account</button>
+                   <button className={`pb-2 text-[13px] font-bold ${withdrawMethod === 'UPI' ? 'border-b-2 border-[#E77600] text-[#111]' : 'text-[#007185]'}`} onClick={() => setWithdrawMethod('UPI')}>UPI</button>
+                   <button className={`pb-2 text-[13px] font-bold ${withdrawMethod === 'BANK' ? 'border-b-2 border-[#E77600] text-[#111]' : 'text-[#007185]'}`} onClick={() => setWithdrawMethod('BANK')}>Bank Account</button>
                 </div>
                 {withdrawMethod === 'UPI' ? (
                    <input type="text" placeholder="e.g. name@okhdfc" className={amzInput} value={upiId} onChange={(e) => setUpiId(e.target.value)} />
@@ -1566,7 +1879,7 @@ export default function WalletDashboard() {
                     </div>
                   </div>
                 )}
-                <button onClick={handleWithdrawalSubmit} disabled={isSubmitting} className={amzButtonYellow + " w-full mt-4"}>
+                <button onClick={handleWithdrawalSubmit} disabled={isSubmitting} className={amzButtonYellow + " w-full mt-4 py-2"}>
                     {isSubmitting ? 'Processing...' : 'Submit Request'}
                 </button>
               </div>

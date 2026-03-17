@@ -36,9 +36,23 @@ function AccountContent() {
     setIsHydrated(true);
   }, []);
 
+  // 🚀 FIXED: Scroll to Top on Load or Tab Switch
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
+    if (!authLoading && typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [authLoading, currentTab]);
+
+  // 🚀 BULLETPROOF AUTH CHECK
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!user) {
+      const redirectTimer = setTimeout(() => {
+        router.push('/login');
+      }, 1500);
+
+      return () => clearTimeout(redirectTimer);
     }
   }, [user, authLoading, router]);
 
@@ -136,7 +150,7 @@ function AccountContent() {
     }
   };
 
-  // Global Loading State
+  // 🚀 Keep showing the spinner as long as `user` is missing OR `authLoading` is true
   if (!isHydrated || authLoading || !user) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -177,7 +191,9 @@ function AccountContent() {
                       <div>
                         <h3 className={`text-[16px] text-[#007185] ${!notif.isRead ? 'font-bold' : 'font-normal'}`}>{notif.title}</h3>
                         <p className="text-[13px] text-[#0F1111] mt-1">{notif.message}</p>
-                        <p className="text-[12px] text-[#565959] mt-1">{new Date(notif.createdAt).toLocaleDateString('en-IN')}</p>
+                        <p className="text-[12px] text-[#565959] mt-1">
+                          {new Date(notif.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </p>
                       </div>
                     </div>
                     <div className="flex gap-4 text-[13px] mt-2 md:mt-0 pl-12 md:pl-0">
@@ -265,7 +281,6 @@ function AccountContent() {
                     </div>
                   </div>
                 )}
-
               </div>
             </div>
 

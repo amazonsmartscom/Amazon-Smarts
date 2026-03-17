@@ -578,14 +578,14 @@
 // }
 // src/app/orders/page.jsx
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Link from 'next/link';
 
 export default function MyOrdersPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -602,33 +602,51 @@ export default function MyOrdersPage() {
     return `${baseUrl}/${imagePath}`;
   };
 
-  const fetchOrders = async () => {
+  // Helper to format Date & Time
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleString('en-IN', { 
+      day: 'numeric', month: 'long', year: 'numeric', 
+      hour: '2-digit', minute: '2-digit', hour12: true 
+    });
+  };
+
+  const fetchOrders = useCallback(async () => {
+    if (!user) return;
     try {
       const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/orders/user/${user?._id || user?.user?._id}`);
       setOrders(data);
-      setLoading(false);
     } catch (error) {
       console.error("Error fetching orders:", error);
+    } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
+  // 🚀 THE ULTIMATE BULLETPROOF REDIRECT FIX
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-      return;
-    }
+    // If the user object exists, they are logged in! Fetch orders.
     if (user) {
       fetchOrders();
+    } else {
+      // If user is null, DO NOT panic. Wait exactly 2 seconds for AuthContext to wake up.
+      const redirectTimer = setTimeout(() => {
+        router.push('/login');
+      }, 2000);
+
+      // If the user object suddenly loads before the 2 seconds are up, 
+      // this cleanup function cancels the redirect timer!
+      return () => clearTimeout(redirectTimer);
     }
-  }, [user, authLoading, router]);
+  }, [user, router, fetchOrders]);
 
   const handleCancelItem = async (orderId, itemId) => {
     if (!window.confirm("Are you sure you want to cancel this item?")) return;
     try {
       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/${orderId}/cancel`, { itemId: itemId });
       alert("Item successfully cancelled. Any paid amount will be refunded to your original payment method.");
-      fetchOrders(); 
+      setLoading(true);
+      await fetchOrders(); 
     } catch (error) {
       alert(error.response?.data?.message || "Cannot cancel this item. The cancellation window may have passed or this product is non-cancellable.");
     }
@@ -644,7 +662,6 @@ export default function MyOrdersPage() {
   if (activeTab === 'buy_again') {
     orders.forEach(order => {
       order.orderItems.forEach(item => {
-        // Safely extract product ID
         const prodId = item.product?._id || item.product;
         if (!buyAgainItems.some(existing => (existing.product?._id || existing.product) === prodId)) {
           buyAgainItems.push(item);
@@ -660,7 +677,8 @@ export default function MyOrdersPage() {
   const activeTabStyle = "font-bold border-b-2 border-[#e77600] text-[#0F1111] pb-1 cursor-pointer";
   const inactiveTabStyle = "text-[#007185] hover:text-[#c45500] hover:underline cursor-pointer pb-1";
 
-  if (authLoading || loading) {
+  // 🚀 Keep showing the spinner as long as `user` is missing OR `loading` is true
+  if (!user || loading) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4 space-y-4">
         <div className="w-10 h-10 border-4 border-[#e7e7e7] border-t-[#e77600] rounded-full animate-spin"></div>
@@ -742,7 +760,7 @@ export default function MyOrdersPage() {
                   <div className="flex flex-wrap gap-8 md:gap-16">
                     <div className="flex flex-col">
                       <span className="uppercase">Order placed</span>
-                      <span className="text-[#0F1111]">{new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                      <span className="text-[#0F1111]">{formatDateTime(order.createdAt)}</span>
                     </div>
                     <div className="flex flex-col">
                       <span className="uppercase">Total</span>
@@ -785,10 +803,8 @@ export default function MyOrdersPage() {
 
                   <div className="space-y-4">
                     {order.orderItems.map((item, index) => {
-                      
-                      // 🚀 NEW: Safely determine Cancellable Status and Product ID
                       const productId = item.product?._id || item.product;
-                      const isItemCancellable = item.product?.isCancellable !== false; // False only if explicitly set to false
+                      const isItemCancellable = item.product?.isCancellable !== false; 
                       const isOrderActive = order.status !== 'Shipped' && order.status !== 'Delivered' && order.status !== 'Cancelled';
                       const showCancelBtn = isOrderActive && isItemCancellable;
 
@@ -960,7 +976,8 @@ export default function MyOrdersPage() {
                 )}
                 <div className="flex gap-4">
                   <div className="text-[12px] font-bold w-16 text-[#565959] shrink-0 text-right mt-0.5">
-                    {new Date(trackingOrder.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                    {new Date(trackingOrder.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}<br/>
+                    <span className="text-[10px] font-normal">{new Date(trackingOrder.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                   </div>
                   <div className="text-[13px] text-[#111]">
                     <span className="font-bold">Ordered</span><br/>
