@@ -1391,7 +1391,7 @@ export default function WalletDashboard() {
   // 🚀 SOCIAL SHARE LOGIC
   const referralCode = user?.myReferralCode || user?.user?.myReferralCode;
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://amazon-smarts.vercel.app';
-  const shareUrl = `${origin}/signup?ref=${referralCode}`;
+  const shareUrl = `${origin}/register?ref=${referralCode}`;
   const shareText = `Hey! Join Amazon Smarts using my code *${referralCode}* to get exclusive VIP deals on gadgets!`;
 
   // THE MAGIC "SHARE TO WHATEVER" BUTTON

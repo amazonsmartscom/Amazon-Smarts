@@ -2951,6 +2951,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [pendingReviews, setPendingReviews] = useState([]);
   const [chartData, setChartData] = useState([]);
+  const [signupBonus, setSignupBonus] = useState(0); 
 
   const [name, setName] = useState('');
   const [brand, setBrand] = useState(''); 
@@ -2973,7 +2974,7 @@ export default function AdminDashboard() {
   const [isCancellable, setIsCancellable] = useState(true);
   const [cancellationWindowHours, setCancellationWindowHours] = useState(24);
   const [affiliateCommission, setAffiliateCommission] = useState(''); 
-  const [reviewCommission, setReviewCommission] = useState(''); // 🚀 NEW STATE
+  const [reviewCommission, setReviewCommission] = useState(''); 
 
   const [editingProduct, setEditingProduct] = useState(null);
   const [editForm, setEditForm] = useState(null);
@@ -3004,19 +3005,24 @@ export default function AdminDashboard() {
         axios.get(`${apiUrl}/withdrawals/admin/all`, config),
         axios.get(`${apiUrl}/banners`),
         axios.get(`${apiUrl}/products/admin/pending-reviews`, config),
-        axios.get(`${apiUrl}/admin/stats`, config)
+        axios.get(`${apiUrl}/admin/stats`, config),
+        axios.get(`${apiUrl}/auth/settings`) 
       ]);
 
       const fetchedProducts = results[0].status === 'fulfilled' ? results[0].value.data : [];
+      // 🚀 Ensure newly added/updated products show up at the top
+      fetchedProducts.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+      
       const fetchedOrders = results[1].status === 'fulfilled' ? results[1].value.data.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)) : [];
       const fetchedWithdrawals = results[2].status === 'fulfilled' ? results[2].value.data : [];
 
       setProducts(fetchedProducts);
       setOrders(fetchedOrders);
       setWithdrawals(fetchedWithdrawals);
+      
       if (results[3].status === 'fulfilled') setAllBanners(results[3].value.data);
       if (results[4].status === 'fulfilled') setPendingReviews(results[4].value.data);
-
+      
       if (results[5].status === 'fulfilled') {
         setStats(results[5].value.data);
       } else {
@@ -3026,6 +3032,10 @@ export default function AdminDashboard() {
           productCount: fetchedProducts.length,
           userCount: [...new Set(fetchedOrders.map(o => o.user?._id))].length
         });
+      }
+
+      if (results[6].status === 'fulfilled' && results[6].value.data) {
+        setSignupBonus(results[6].value.data.signupBonus || 0);
       }
 
       if (fetchedOrders.length > 0) {
@@ -3052,6 +3062,15 @@ export default function AdminDashboard() {
     const result = await login(adminEmail, adminPassword);
     if (!result.success) setLoginError(result.message);
     setIsLoggingIn(false);
+  };
+
+  const handleSaveGlobalSettings = async () => {
+    try {
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/auth/settings`, { signupBonus });
+      alert("✅ Global Signup Bonus Updated!");
+    } catch (error) {
+      alert("Failed to update global settings.");
+    }
   };
 
   const handleUpdateOrderStatus = async (id, status) => {
@@ -3144,7 +3163,7 @@ export default function AdminDashboard() {
     formData.append('seoTitle', seoTitle); formData.append('seoDescription', seoDescription); formData.append('seoKeywords', seoKeywords);
     formData.append('isCancellable', isCancellable); formData.append('cancellationWindowHours', cancellationWindowHours);
     formData.append('affiliateCommission', affiliateCommission || 0); 
-    formData.append('reviewCommission', reviewCommission || 0); // 🚀 APPEND REVIEW COMMISSION
+    formData.append('reviewCommission', reviewCommission || 0); 
     
     formData.append('features', JSON.stringify(features.filter(f => f.trim() !== ''))); 
     formData.append('specs', JSON.stringify(specs.filter(s => s.name.trim() !== '')));
@@ -3159,7 +3178,7 @@ export default function AdminDashboard() {
       setName(''); setBrand(''); setPrice(''); setDiscountPrice(''); setStock(''); setDescription('');
       setImages([]); setProductBanners([]); setFeatures(['']); setSpecs([{ name: '', value: '' }]); setVariants([{ name: '', options: '' }]);
       setSeoTitle(''); setSeoDescription(''); setSeoKeywords(''); setIsCancellable(true); setCancellationWindowHours(24);
-      setAffiliateCommission(''); setReviewCommission(''); // Reset comms
+      setAffiliateCommission(''); setReviewCommission(''); 
       setActiveTab('inventory'); fetchDashboardData(); 
     } catch(err) { alert("Publish failed"); }
   };
@@ -3178,7 +3197,7 @@ export default function AdminDashboard() {
       isCancellable: product.isCancellable !== undefined ? product.isCancellable : true,
       cancellationWindowHours: product.cancellationWindowHours !== undefined ? product.cancellationWindowHours : 24,
       affiliateCommission: product.affiliateCommission || 0,
-      reviewCommission: product.reviewCommission || 0 // 🚀 LOAD REVIEW COMMISSION
+      reviewCommission: product.reviewCommission || 0 
     });
   };
 
@@ -3303,7 +3322,7 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* INVENTORY TAB */}
+          {/* INVENTORY TAB 🚀 DATES ADDED HERE */}
           {activeTab === 'inventory' && (
             <div className="max-w-[1600px] mx-auto">
                <div className="flex justify-between items-center mb-6">
@@ -3313,20 +3332,35 @@ export default function AdminDashboard() {
                <div className="bg-white border border-[#DDD] rounded-[4px] overflow-hidden shadow-sm">
                   <table className="w-full text-left text-[13px]">
                     <thead className="bg-[#F0F2F2] border-b border-[#DDD] font-bold text-[#565959]">
-                      <tr><th className="p-3 border-r border-[#DDD]">Status</th><th className="p-3 border-r border-[#DDD]">Image</th><th className="p-3 border-r border-[#DDD]">Product Name</th><th className="p-3 border-r border-[#DDD]">Price</th><th className="p-3 border-r border-[#DDD]">Stock</th><th className="p-3 text-right">Action</th></tr>
+                      <tr>
+                        <th className="p-3 border-r border-[#DDD]">Status</th>
+                        <th className="p-3 border-r border-[#DDD]">Image</th>
+                        <th className="p-3 border-r border-[#DDD]">Product Name</th>
+                        <th className="p-3 border-r border-[#DDD]">Price</th>
+                        <th className="p-3 border-r border-[#DDD]">Stock</th>
+                        <th className="p-3 border-r border-[#DDD]">Dates</th>
+                        <th className="p-3 text-right">Action</th>
+                      </tr>
                     </thead>
                     <tbody className="divide-y divide-[#EEE]">
                       {products.map(p => (
-                        <tr key={p._id} className="hover:bg-[#F9F9F9]">
+                        <tr key={p._id} className="hover:bg-[#F9F9F9] align-top">
                           <td className="p-3 border-r border-[#DDD]"><span className="text-green-700 font-bold uppercase text-[10px]">Active</span></td>
                           <td className="p-3 border-r border-[#DDD] w-16"><img src={getImageUrl(p.images[0])} className="w-12 h-12 object-contain mix-blend-multiply" alt="thumb" /></td>
                           <td className="p-3 border-r border-[#DDD]">
                             <p className="font-bold text-[#007185] hover:underline cursor-pointer">{p.name}</p>
                             <p className="text-[11px] text-[#565959]">{p.brand} | {p.category}</p>
-                            {p.isBestSeller && <span className="bg-[#e77600] text-white text-[9px] px-1 font-bold rounded">BEST SELLER</span>}
+                            {p.isBestSeller && <span className="bg-[#e77600] text-white text-[9px] px-1 font-bold rounded mt-1 inline-block">BEST SELLER</span>}
                           </td>
                           <td className="p-3 border-r border-[#DDD] font-bold text-[#B12704]">₹{p.discountPrice || p.price}</td>
                           <td className="p-3 border-r border-[#DDD]"><span className={p.stock < 10 ? 'text-[#B12704] font-bold' : ''}>{p.stock} Units</span></td>
+                          
+                          {/* 🚀 NEW: DATES COLUMN */}
+                          <td className="p-3 border-r border-[#DDD] whitespace-nowrap">
+                            <div className="text-[11px] text-[#565959] mb-1"><span className="font-bold text-[#111]">Added:</span> {new Date(p.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                            <div className="text-[11px] text-[#565959]"><span className="font-bold text-[#111]">Updated:</span> {new Date(p.updatedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                          </td>
+
                           <td className="p-3 text-right space-x-3">
                              <button className="text-[#007185] hover:underline font-bold" onClick={() => handleEditClick(p)}>Edit</button>
                              <button className="text-[#B12704] hover:underline" onClick={() => handleDeleteProduct(p._id)}>Delete</button>
@@ -3407,7 +3441,25 @@ export default function AdminDashboard() {
           {/* PAYOUTS TAB */}
           {activeTab === 'payouts' && (
             <div className="max-w-[1200px] mx-auto">
-               <h2 className="text-[22px] font-bold mb-6">Affiliate Payouts</h2>
+               <h2 className="text-[22px] font-bold mb-6">Affiliate Payouts & Settings</h2>
+               
+               <div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-8 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+                  <div>
+                    <h3 className="text-[16px] font-bold text-[#111]">Signup Bonus Reward</h3>
+                    <p className="text-[12px] text-[#565959]">Fixed amount given to referrers when a new user signs up using their code.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[#565959] font-bold text-lg">₹</span>
+                    <input 
+                      type="number" 
+                      className={amzInput + " w-24 text-lg font-bold !py-1.5 text-center"} 
+                      value={signupBonus} 
+                      onChange={e => setSignupBonus(e.target.value)} 
+                    />
+                    <button onClick={handleSaveGlobalSettings} className={amzYellowBtn + " !py-2"}>Save Settings</button>
+                  </div>
+               </div>
+
                <div className="bg-white border border-[#DDD] rounded-[4px] shadow-sm overflow-hidden">
                   <table className="w-full text-left text-[13px]">
                     <thead className="bg-[#F0F2F2] border-b border-[#DDD] font-bold text-[#565959]">
@@ -3572,7 +3624,6 @@ export default function AdminDashboard() {
                        <label className={amzLabel}>Affiliate Comm. (%)</label>
                        <input type="number" className={amzInput} value={affiliateCommission} onChange={e => setAffiliateCommission(e.target.value)} placeholder="e.g. 10" />
                      </div>
-                     {/* 🚀 NEW REVIEW REWARD FIELD */}
                      <div>
                        <label className={amzLabel}>Review Reward (₹)</label>
                        <input type="number" className={amzInput} value={reviewCommission} onChange={e => setReviewCommission(e.target.value)} placeholder="e.g. 50" />
@@ -3775,7 +3826,6 @@ export default function AdminDashboard() {
                     <div><label className={amzLabel}>Offer Price</label><input type="number" className={amzInput} value={editForm.discountPrice || ''} onChange={e => setEditForm({...editForm, discountPrice: e.target.value})} /></div>
                     <div><label className={amzLabel}>Stock</label><input type="number" className={amzInput} value={editForm.stock} onChange={e => setEditForm({...editForm, stock: e.target.value})} required /></div>
                     <div><label className={amzLabel}>Affiliate Comm. (%)</label><input type="number" className={amzInput} value={editForm.affiliateCommission || 0} onChange={e => setEditForm({...editForm, affiliateCommission: e.target.value})} /></div>
-                    {/* 🚀 NEW REVIEW REWARD FIELD */}
                     <div><label className={amzLabel}>Review Reward (₹)</label><input type="number" className={amzInput} value={editForm.reviewCommission || 0} onChange={e => setEditForm({...editForm, reviewCommission: e.target.value})} /></div>
                   </div>
                 </div>

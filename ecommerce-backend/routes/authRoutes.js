@@ -39,18 +39,22 @@ const {
   loginUser, 
   sendOtpOnly,
   sendForgotPasswordOtp, 
-  resetPassword 
+  resetPassword,
+  resendOtp,
+  getSettings,      // 🚀 NEW
+  updateSettings    // 🚀 NEW
 } = require('../controllers/authController');
 
 router.post('/register', registerUser);
 router.post('/verify-otp', verifyOTP); 
 router.post('/login', loginUser);
-
-// Route for Checkout OTP Verification
 router.post('/send-otp', sendOtpOnly);
-
-// 🚀 NEW: Forgot Password Routes
 router.post('/forgot-password-otp', sendForgotPasswordOtp);
 router.post('/reset-password', resetPassword);
+router.post('/resend-otp', resendOtp);
+
+// 🚀 NEW: Global Settings Routes for Admin Signup Bonus
+router.get('/settings', getSettings);
+router.put('/settings', updateSettings);
 
 module.exports = router;

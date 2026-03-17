@@ -475,11 +475,16 @@ export default function CheckoutPage() {
     return `${baseUrl}/${imagePath}`;
   };
 
+  // AMAZON STYLES
   const inputStyles = "w-full px-3 py-2 border border-[#a6a6a6] rounded-[3px] text-sm focus:outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_2px_rgba(228,121,17,0.5)] transition-shadow text-[#111]";
   const labelStyles = "block text-[13px] font-bold text-[#111] mb-1";
   const amzButton = "w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-lg py-[6px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer text-center";
   const sectionTitle = "text-[18px] font-bold text-[#c45500] mb-4";
   const amzLink = "text-[#007185] hover:text-[#C45500] hover:underline cursor-pointer"; 
+
+  // AUTH SCREEN STYLES (Used for OTP)
+  const authInputStyles = "w-full px-3 py-2 border border-[#a6a6a6] rounded-[3px] text-sm focus:outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_2px_rgba(228,121,17,0.5)] transition-shadow text-[#111]";
+  const authButton = "w-full bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-[6px] rounded-[8px] text-sm text-[#111] shadow-sm transition-colors cursor-pointer text-center font-normal mt-2 disabled:opacity-50";
 
   if (!isHydrated) return null;
 
@@ -573,6 +578,77 @@ export default function CheckoutPage() {
     }
   };
 
+  // ========================================================
+  // 🚀 SCREEN 1: OTP VERIFICATION (FULL PAGE AUTH STYLE)
+  // ========================================================
+  if (checkoutStep === 'otp') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center pt-4 font-sans selection:bg-orange-200 relative">
+        {/* Amazon Style Logo */}
+        <div className="mb-4 mt-2">
+          <Link href="/">
+            <h1 className="text-3xl font-normal tracking-tighter text-[#111] cursor-pointer">
+              amazon<span className="text-[#e77600] font-bold tracking-normal">smarts</span>
+            </h1>
+          </Link>
+        </div>
+
+        {/* Verification Card */}
+        <div className="w-full max-w-[350px] mx-auto px-4 sm:px-0 flex-1">
+          <div className="border border-[#ddd] rounded-[4px] p-[22px]">
+            <form onSubmit={handleVerifyAndPlaceOrder} className="space-y-4">
+              <h2 className="text-[28px] font-normal text-[#111] mb-2 leading-[1.2]">Verify email address</h2>
+              
+              <p className="text-[13px] text-[#111] leading-snug">
+                To verify your email, we've sent a One Time Password (OTP) to <span className="font-bold">{shippingInfo.email}</span> 
+              </p>
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-[13px] font-bold text-[#111]">Enter OTP</label>
+                  <button 
+                    type="button" 
+                    onClick={() => { setCheckoutStep('editing'); setOtp(''); }} 
+                    className="text-[13px] text-[#0066c0] hover:text-[#c45500] hover:underline bg-transparent border-none cursor-pointer"
+                  >
+                    Change email
+                  </button>
+                </div>
+                <input 
+                  type="text" 
+                  maxLength="6" 
+                  required 
+                  className={`${authInputStyles} text-lg tracking-widest text-center py-2.5`} 
+                  value={otp} 
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} 
+                />
+              </div>
+
+              <button type="submit" disabled={isProcessing || otp.length < 6} className={authButton}>
+                {isProcessing ? 'Verifying...' : 'Verify & Place Order'}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="w-full mt-10 border-t border-[#ddd] bg-[#fbfbfb] pt-6 pb-10 flex flex-col items-center shadow-[0_-2px_4px_rgba(0,0,0,0.02)] flex-grow">
+          <div className="flex flex-wrap justify-center gap-6 text-[11px] text-[#0066c0] mb-2">
+            <Link href="/conditions" className="hover:underline">Conditions of Use</Link>
+            <Link href="/privacy" className="hover:underline">Privacy Notice</Link>
+            <Link href="/help" className="hover:underline">Help</Link>
+          </div>
+          <p className="text-[11px] text-[#555]">
+            © {new Date().getFullYear()}, AmazonSmarts.com, Inc. or its affiliates
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ========================================================
+  // 🚀 SCREEN 2: SUCCESS SCREEN
+  // ========================================================
   if (checkoutStep === 'success' && placedOrder) {
     const estimatedDelivery = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
     
@@ -613,6 +689,9 @@ export default function CheckoutPage() {
     );
   }
 
+  // ========================================================
+  // 🚀 SCREEN 3: STANDARD CHECKOUT CART VIEW (editing)
+  // ========================================================
   return (
     <div className="min-h-screen bg-white font-sans text-[#0F1111]">
       <div className="max-w-[1000px] mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6 relative">
@@ -751,65 +830,6 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
-
-      {/* OTP MODAL */}
-      {checkoutStep === 'otp' && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-[8px] max-w-[400px] w-full p-6 shadow-xl border border-[#ddd]">
-            
-            <div className="flex justify-between items-start mb-3">
-              <h2 className="text-[22px] font-normal">Verify email address</h2>
-              <button 
-                type="button"
-                onClick={() => { setCheckoutStep('editing'); setOtp(''); }} 
-                className="text-[#565959] hover:text-[#111] text-2xl leading-none"
-              >
-                ✕
-              </button>
-            </div>
-
-            <p className="text-[13px] text-[#111] mb-5 leading-snug">
-              To verify your email, we've sent a One Time Password (OTP) to <span className="font-bold">{shippingInfo.email}</span> 
-              <button 
-                type="button" 
-                onClick={() => { setCheckoutStep('editing'); setOtp(''); }} 
-                className={`${amzLink} ml-2 text-[12px] font-bold`}
-              >
-                (Change)
-              </button>
-            </p>
-
-            <form onSubmit={handleVerifyAndPlaceOrder} className="space-y-5">
-              <div>
-                <label className={labelStyles}>Enter OTP</label>
-                <input 
-                  type="text" 
-                  maxLength="6" 
-                  required 
-                  className={`${inputStyles} tracking-widest text-center text-lg py-3`} 
-                  value={otp} 
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} 
-                />
-              </div>
-              <button type="submit" disabled={isProcessing || otp.length < 6} className={amzButton}>
-                {isProcessing ? 'Verifying...' : 'Verify & Place Order'}
-              </button>
-              
-              <div className="text-center pt-2">
-                <button 
-                  type="button" 
-                  onClick={() => { setCheckoutStep('editing'); setOtp(''); }} 
-                  className={amzLink + " text-[12px]"}
-                >
-                  Return to shipping details
-                </button>
-              </div>
-            </form>
-            
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
