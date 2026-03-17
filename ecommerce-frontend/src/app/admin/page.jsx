@@ -2919,7 +2919,6 @@
 //   );
 // }
 
-
 // src/app/admin/page.jsx
 'use client';
 import { useState, useEffect } from 'react';
@@ -2937,17 +2936,14 @@ export default function AdminDashboard() {
   const adminRole = user?.user?.role || user?.role;
   const adminId = user?.user?._id || user?._id || user?.id;
 
-  // LOGIN STATES
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // NAVIGATION & UI
-  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, inventory, orders, payouts, marketing, reviews, add-product
+  const [activeTab, setActiveTab] = useState('dashboard'); 
   const [loading, setLoading] = useState(true);
 
-  // DATA STATES
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
@@ -2956,9 +2952,6 @@ export default function AdminDashboard() {
   const [pendingReviews, setPendingReviews] = useState([]);
   const [chartData, setChartData] = useState([]);
 
-  // ==========================================
-  // FORM STATES: ADD PRODUCT
-  // ==========================================
   const [name, setName] = useState('');
   const [brand, setBrand] = useState(''); 
   const [price, setPrice] = useState('');
@@ -2968,7 +2961,7 @@ export default function AdminDashboard() {
   const [description, setDescription] = useState('');
   const [isBestSeller, setIsBestSeller] = useState(false); 
   const [images, setImages] = useState([]);
-  const [productBanners, setProductBanners] = useState([]); // A+ Content
+  const [productBanners, setProductBanners] = useState([]); 
   const [features, setFeatures] = useState(['']); 
   const [specs, setSpecs] = useState([{ name: '', value: '' }]); 
   const [variants, setVariants] = useState([{ name: '', options: '' }]); 
@@ -2979,21 +2972,18 @@ export default function AdminDashboard() {
   const [warrantyPolicy, setWarrantyPolicy] = useState('1 Year Warranty');
   const [isCancellable, setIsCancellable] = useState(true);
   const [cancellationWindowHours, setCancellationWindowHours] = useState(24);
+  const [affiliateCommission, setAffiliateCommission] = useState(''); 
+  const [reviewCommission, setReviewCommission] = useState(''); // 🚀 NEW STATE
 
-  // FORM STATES: EDIT PRODUCT
   const [editingProduct, setEditingProduct] = useState(null);
   const [editForm, setEditForm] = useState(null);
 
-  // FORM STATES: HOMEPAGE BANNERS
   const [bannerTitle, setBannerTitle] = useState('');
   const [bannerSubtitle, setBannerSubtitle] = useState('');
   const [bannerLink, setBannerLink] = useState('/');
   const [bannerImage, setBannerImage] = useState(null);
   const [isBannerUploading, setIsBannerUploading] = useState(false);
 
-  // ==========================================
-  // INIT & DATA FETCHING
-  // ==========================================
   useEffect(() => { setIsHydrated(true); }, []);
 
   useEffect(() => {
@@ -3008,7 +2998,6 @@ export default function AdminDashboard() {
     const config = { params: { adminId } };
 
     try {
-      // Using allSettled to prevent one 404 from crashing everything
       const results = await Promise.allSettled([
         axios.get(`${apiUrl}/products`),
         axios.get(`${apiUrl}/orders/admin/all`, config),
@@ -3028,7 +3017,6 @@ export default function AdminDashboard() {
       if (results[3].status === 'fulfilled') setAllBanners(results[3].value.data);
       if (results[4].status === 'fulfilled') setPendingReviews(results[4].value.data);
 
-      // Stats Logic (Fallback to manual calc if endpoint fails)
       if (results[5].status === 'fulfilled') {
         setStats(results[5].value.data);
       } else {
@@ -3040,7 +3028,6 @@ export default function AdminDashboard() {
         });
       }
 
-      // Chart Logic
       if (fetchedOrders.length > 0) {
         const grouped = fetchedOrders.reduce((acc, o) => {
           const d = new Date(o.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
@@ -3058,9 +3045,6 @@ export default function AdminDashboard() {
     return imagePath.startsWith('http') ? imagePath : `${baseUrl}/${imagePath}`;
   };
 
-  // ==========================================
-  // ACTION HANDLERS
-  // ==========================================
   const handleAdminLoginSubmit = async (e) => {
     e.preventDefault();
     setIsLoggingIn(true);
@@ -3135,9 +3119,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // ==========================================
-  // PRODUCT MANAGEMENT LOGIC
-  // ==========================================
   const parseVariantsForDB = (variantArray) => {
     return variantArray.map(v => {
       const parsedOptions = typeof v.options === 'string' ? v.options.split(',').map(opt => {
@@ -3162,6 +3143,8 @@ export default function AdminDashboard() {
     formData.append('returnPolicy', returnPolicy); formData.append('warrantyPolicy', warrantyPolicy);
     formData.append('seoTitle', seoTitle); formData.append('seoDescription', seoDescription); formData.append('seoKeywords', seoKeywords);
     formData.append('isCancellable', isCancellable); formData.append('cancellationWindowHours', cancellationWindowHours);
+    formData.append('affiliateCommission', affiliateCommission || 0); 
+    formData.append('reviewCommission', reviewCommission || 0); // 🚀 APPEND REVIEW COMMISSION
     
     formData.append('features', JSON.stringify(features.filter(f => f.trim() !== ''))); 
     formData.append('specs', JSON.stringify(specs.filter(s => s.name.trim() !== '')));
@@ -3176,6 +3159,7 @@ export default function AdminDashboard() {
       setName(''); setBrand(''); setPrice(''); setDiscountPrice(''); setStock(''); setDescription('');
       setImages([]); setProductBanners([]); setFeatures(['']); setSpecs([{ name: '', value: '' }]); setVariants([{ name: '', options: '' }]);
       setSeoTitle(''); setSeoDescription(''); setSeoKeywords(''); setIsCancellable(true); setCancellationWindowHours(24);
+      setAffiliateCommission(''); setReviewCommission(''); // Reset comms
       setActiveTab('inventory'); fetchDashboardData(); 
     } catch(err) { alert("Publish failed"); }
   };
@@ -3193,6 +3177,8 @@ export default function AdminDashboard() {
       seoTitle: product.seoTitle || '', seoDescription: product.seoDescription || '', seoKeywords: product.seoKeywords || '',
       isCancellable: product.isCancellable !== undefined ? product.isCancellable : true,
       cancellationWindowHours: product.cancellationWindowHours !== undefined ? product.cancellationWindowHours : 24,
+      affiliateCommission: product.affiliateCommission || 0,
+      reviewCommission: product.reviewCommission || 0 // 🚀 LOAD REVIEW COMMISSION
     });
   };
 
@@ -3219,18 +3205,12 @@ export default function AdminDashboard() {
     } catch (err) { alert("Update failed."); }
   };
 
-  // ==========================================
-  // UI STYLES
-  // ==========================================
   const amzYellowBtn = "bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-1.5 px-6 rounded-[8px] text-[13px] font-medium shadow-sm transition-all";
   const amzWhiteBtn = "bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-1.5 px-4 rounded-[8px] text-[13px] shadow-sm";
   const amzInput = "w-full border border-[#888C8C] rounded-[3px] p-2 text-[13px] focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] outline-none";
   const amzLabel = "block text-[13px] font-bold text-[#111] mb-1";
   const amzSection = "bg-white border border-[#DDD] rounded-[4px] p-6 mb-6 shadow-sm";
 
-  // ==========================================
-  // RENDER BLOCKS
-  // ==========================================
   if (isHydrated && (!user || adminRole !== 'admin')) {
     return (
       <div className="min-h-screen bg-[#131921] flex items-center justify-center p-4">
@@ -3293,7 +3273,7 @@ export default function AdminDashboard() {
         {/* 📋 MAIN CONTENT */}
         <main className="flex-1 p-6 overflow-y-auto">
           
-          {/* ==================== DASHBOARD TAB ==================== */}
+          {/* DASHBOARD TAB */}
           {activeTab === 'dashboard' && (
             <div className="max-w-[1600px] mx-auto space-y-8">
               {stats && (
@@ -3323,7 +3303,7 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ==================== INVENTORY TAB ==================== */}
+          {/* INVENTORY TAB */}
           {activeTab === 'inventory' && (
             <div className="max-w-[1600px] mx-auto">
                <div className="flex justify-between items-center mb-6">
@@ -3359,7 +3339,7 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ==================== ORDERS TAB ==================== */}
+          {/* ORDERS TAB */}
           {activeTab === 'orders' && (
             <div className="max-w-[1600px] mx-auto">
                <h2 className="text-[22px] font-bold mb-6">Order Fulfillment</h2>
@@ -3383,36 +3363,28 @@ export default function AdminDashboard() {
                              )}
                           </td>
                           <td className="p-4 border-r border-[#DDD]">
-  <div className="space-y-3">
-    {/* Notice we are using 'o' here instead of 'order' */}
-    {o.orderItems?.map((i, idx) => (
-      <div key={idx} className="text-[11px] flex gap-2 items-start">
-        
-        {/* Quantity Badge */}
-        <span className="font-bold text-[#111] bg-[#F0F2F2] border border-[#DDD] px-1.5 py-0.5 rounded mt-0.5 shrink-0">
-          {i.quantity || i.qty}x
-        </span>
-        
-        {/* Product Name & Variants */}
-        <div className="flex flex-col">
-          <span className="font-bold text-[#007185] line-clamp-2">{i.name}</span>
-          
-          {/* Restored: Selected Options (Variants) */}
-          {i.selectedOptions && Object.keys(i.selectedOptions).length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {Object.entries(i.selectedOptions).map(([key, val]) => (
-                <span key={key} className="bg-[#F7FAFA] border border-[#D5D9D9] text-[#565959] px-1.5 py-0.5 rounded-[3px] text-[10px]">
-                  {key}: <span className="font-bold text-[#111]">{val}</span>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-        
-      </div>
-    ))}
-  </div>
-</td>
+                            <div className="space-y-3">
+                              {o.orderItems?.map((i, idx) => (
+                                <div key={idx} className="text-[11px] flex flex-col">
+                                  <div className="flex gap-2 items-start">
+                                    <span className="font-bold text-[#111] bg-[#F0F2F2] border border-[#DDD] px-1.5 py-0.5 rounded mt-0.5 shrink-0">
+                                      {i.quantity || i.qty}x
+                                    </span>
+                                    <span className="font-bold text-[#007185] leading-snug">{i.name}</span>
+                                  </div>
+                                  {i.selectedOptions && Object.keys(i.selectedOptions).length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1 ml-[30px]">
+                                      {Object.entries(i.selectedOptions).map(([key, val]) => (
+                                        <span key={key} className="bg-[#F7FAFA] border border-[#D5D9D9] text-[#565959] px-1.5 py-0.5 rounded-[3px] text-[10px]">
+                                          {key}: <span className="font-bold text-[#111]">{val}</span>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </td>
                           <td className="p-3 border-r border-[#DDD] font-bold text-[#B12704]">₹{o.totalPrice?.toLocaleString('en-IN')}</td>
                           <td className="p-3">
                              <select value={o.status} onChange={(e) => handleUpdateOrderStatus(o._id, e.target.value)} className={`w-full p-1.5 rounded-[4px] text-[11px] font-bold uppercase tracking-tight border-2 outline-none mb-3 cursor-pointer ${o.status === 'Delivered' ? 'bg-[#F7FCF7] border-[#007600] text-[#007600]' : 'bg-[#FFF8F2] border-[#e77600] text-[#e77600]'}`}>
@@ -3432,7 +3404,7 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ==================== PAYOUTS TAB ==================== */}
+          {/* PAYOUTS TAB */}
           {activeTab === 'payouts' && (
             <div className="max-w-[1200px] mx-auto">
                <h2 className="text-[22px] font-bold mb-6">Affiliate Payouts</h2>
@@ -3471,7 +3443,7 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ==================== MARKETING TAB ==================== */}
+          {/* MARKETING TAB */}
           {activeTab === 'marketing' && (
             <div className="max-w-[1200px] mx-auto">
                <h2 className="text-[22px] font-bold mb-6">Storefront Content</h2>
@@ -3512,7 +3484,7 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ==================== REVIEWS TAB ==================== */}
+          {/* REVIEWS TAB */}
           {activeTab === 'reviews' && (
             <div className="max-w-[1200px] mx-auto">
                <h2 className="text-[22px] font-bold mb-6">Customer Feedback Moderation</h2>
@@ -3539,7 +3511,7 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ==================== ADD PRODUCT TAB ==================== */}
+          {/* ADD PRODUCT TAB */}
           {activeTab === 'add-product' && (
             <div className="max-w-[1000px] mx-auto pb-20">
                <div className="flex items-center justify-between mb-6 border-b border-[#DDD] pb-4">
@@ -3554,204 +3526,211 @@ export default function AdminDashboard() {
                </div>
 
                <form id="addProductForm" onSubmit={handleAddProduct} className="space-y-6">
-                  {/* Basic Info */}
-                  <div className={amzSection}>
-                    <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">ℹ️</span><h3 className="text-[18px] font-bold text-[#111]">Product Identity</h3></div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="md:col-span-2">
-                        <label className={amzLabel}>Product Name (Title)</label>
-                        <input type="text" className={amzInput} value={name} onChange={e => setName(e.target.value)} required />
-                        <p className="text-[10px] text-[#565959] mt-1">Recommended length: 60-150 characters.</p>
-                      </div>
-                      <div><label className={amzLabel}>Brand Name</label><input type="text" className={amzInput} value={brand} onChange={e => setBrand(e.target.value)} required /></div>
-                      <div>
-                        <label className={amzLabel}>Category</label>
-                        <select className={amzInput} value={category} onChange={e => setCategory(e.target.value)}>
-                          <option value="Smartphones">Smartphones</option><option value="Laptops">Laptops</option><option value="Audio">Audio</option><option value="Wearables">Wearables</option><option value="Accessories">Accessories</option>
-                        </select>
-                      </div>
-                      <div className="md:col-span-2"><label className={amzLabel}>Product Description</label><textarea className={amzInput + " h-32 resize-none"} value={description} onChange={e => setDescription(e.target.value)} required /></div>
-                      <div className="bg-[#F7FAFA] border border-[#D5D9D9] p-4 rounded-[4px] md:col-span-2">
-                        <label className="flex items-center gap-3 cursor-pointer">
-                          <input type="checkbox" className="w-4 h-4 accent-[#e77600]" checked={isBestSeller} onChange={e => setIsBestSeller(e.target.checked)} />
-                          <div><span className="text-[13px] font-bold text-[#111]">Apply "Best Seller" Badge</span><p className="text-[11px] text-[#565959]">This adds an orange ribbon to the product on the storefront.</p></div>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
+                 {/* Basic Info */}
+                 <div className={amzSection}>
+                   <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">ℹ️</span><h3 className="text-[18px] font-bold text-[#111]">Product Identity</h3></div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     <div className="md:col-span-2">
+                       <label className={amzLabel}>Product Name (Title)</label>
+                       <input type="text" className={amzInput} value={name} onChange={e => setName(e.target.value)} required />
+                       <p className="text-[10px] text-[#565959] mt-1">Recommended length: 60-150 characters.</p>
+                     </div>
+                     <div><label className={amzLabel}>Brand Name</label><input type="text" className={amzInput} value={brand} onChange={e => setBrand(e.target.value)} required /></div>
+                     <div>
+                       <label className={amzLabel}>Category</label>
+                       <select className={amzInput} value={category} onChange={e => setCategory(e.target.value)}>
+                         <option value="Smartphones">Smartphones</option><option value="Laptops">Laptops</option><option value="Audio">Audio</option><option value="Wearables">Wearables</option><option value="Accessories">Accessories</option>
+                       </select>
+                     </div>
+                     <div className="md:col-span-2"><label className={amzLabel}>Product Description</label><textarea className={amzInput + " h-32 resize-none"} value={description} onChange={e => setDescription(e.target.value)} required /></div>
+                     <div className="bg-[#F7FAFA] border border-[#D5D9D9] p-4 rounded-[4px] md:col-span-2">
+                       <label className="flex items-center gap-3 cursor-pointer">
+                         <input type="checkbox" className="w-4 h-4 accent-[#e77600]" checked={isBestSeller} onChange={e => setIsBestSeller(e.target.checked)} />
+                         <div><span className="text-[13px] font-bold text-[#111]">Apply "Best Seller" Badge</span><p className="text-[11px] text-[#565959]">This adds an orange ribbon to the product on the storefront.</p></div>
+                       </label>
+                     </div>
+                   </div>
+                 </div>
 
-                  {/* Pricing */}
-                  <div className={amzSection}>
-                    <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">💰</span><h3 className="text-[18px] font-bold text-[#111]">Pricing & Inventory</h3></div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div>
-                        <label className={amzLabel}>List Price (MRP)</label>
-                        <div className="relative"><span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[13px]">₹</span><input type="number" className={amzInput + " pl-6"} value={price} onChange={e => setPrice(e.target.value)} required /></div>
-                      </div>
-                      <div>
-                        <label className={amzLabel}>Your Price (Discounted)</label>
-                        <div className="relative"><span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[13px]">₹</span><input type="number" className={amzInput + " pl-6"} value={discountPrice} onChange={e => setDiscountPrice(e.target.value)} /></div>
-                        <p className="text-[10px] text-[#B12704] mt-1 font-bold">Leave blank if no discount.</p>
-                      </div>
-                      <div>
-                        <label className={amzLabel}>Quantity in Stock</label>
-                        <input type="number" className={amzInput} value={stock} onChange={e => setStock(e.target.value)} required />
-                      </div>
-                    </div>
-                  </div>
+                 {/* Pricing & Commission 🚀 */}
+                 <div className={amzSection}>
+                   <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">💰</span><h3 className="text-[18px] font-bold text-[#111]">Pricing, Inventory & Commissions</h3></div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                     <div>
+                       <label className={amzLabel}>List Price</label>
+                       <div className="relative"><span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[13px]">₹</span><input type="number" className={amzInput + " pl-6"} value={price} onChange={e => setPrice(e.target.value)} required /></div>
+                     </div>
+                     <div>
+                       <label className={amzLabel}>Discount Price</label>
+                       <div className="relative"><span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[13px]">₹</span><input type="number" className={amzInput + " pl-6"} value={discountPrice} onChange={e => setDiscountPrice(e.target.value)} /></div>
+                     </div>
+                     <div>
+                       <label className={amzLabel}>Stock</label>
+                       <input type="number" className={amzInput} value={stock} onChange={e => setStock(e.target.value)} required />
+                     </div>
+                     <div>
+                       <label className={amzLabel}>Affiliate Comm. (%)</label>
+                       <input type="number" className={amzInput} value={affiliateCommission} onChange={e => setAffiliateCommission(e.target.value)} placeholder="e.g. 10" />
+                     </div>
+                     {/* 🚀 NEW REVIEW REWARD FIELD */}
+                     <div>
+                       <label className={amzLabel}>Review Reward (₹)</label>
+                       <input type="number" className={amzInput} value={reviewCommission} onChange={e => setReviewCommission(e.target.value)} placeholder="e.g. 50" />
+                     </div>
+                   </div>
+                 </div>
 
-                  {/* Specs & Features */}
-                  <div className={amzSection}>
-                    <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">🛠️</span><h3 className="text-[18px] font-bold text-[#111]">Technical Details & Highlights</h3></div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <div><label className={amzLabel}>Technical Specifications</label><p className="text-[11px] text-[#565959] -mt-1">Appear in the "Details" table</p></div>
-                          <button type="button" onClick={() => setSpecs([...specs, { name: '', value: '' }])} className={amzWhiteBtn + " !py-1 flex items-center gap-1"}><span className="text-lg">+</span> Add</button>
-                        </div>
-                        <div className="bg-[#F9F9F9] border border-[#EEE] rounded-[4px] p-4 space-y-3">
-                          {specs.map((spec, index) => (
-                            <div key={index} className="flex gap-2 relative group items-start">
-                              <input type="text" placeholder="Attribute (e.g. RAM)" className={amzInput + " w-1/3 bg-white"} value={spec.name} onChange={e => {const newSpecs=[...specs]; newSpecs[index].name=e.target.value; setSpecs(newSpecs)}} />
-                              <input type="text" placeholder="Value (e.g. 16GB)" className={amzInput + " flex-1 bg-white"} value={spec.value} onChange={e => {const newSpecs=[...specs]; newSpecs[index].value=e.target.value; setSpecs(newSpecs)}} />
-                              {specs.length > 1 && <button type="button" onClick={() => setSpecs(specs.filter((_, i) => i !== index))} className="p-2 text-[#565959] hover:text-[#B12704] transition-colors">✕</button>}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <div><label className={amzLabel}>Key Features</label><p className="text-[11px] text-[#565959] -mt-1">Appear as bullet points</p></div>
-                          <button type="button" onClick={() => setFeatures([...features, ''])} className={amzWhiteBtn + " !py-1 flex items-center gap-1"}><span className="text-lg">+</span> Add</button>
-                        </div>
-                        <div className="space-y-3">
-                          {features.map((f, index) => (
-                            <div key={index} className="flex gap-2 group items-center">
-                              <div className="h-2 w-2 rounded-full bg-[#e77600] shrink-0"></div>
-                              <input type="text" placeholder="Enter a key selling point..." className={amzInput} value={f} onChange={e => {const newFeatures=[...features]; newFeatures[index]=e.target.value; setFeatures(newFeatures)}} />
-                              {features.length > 1 && <button type="button" onClick={() => setFeatures(features.filter((_, i) => i !== index))} className="p-2 text-[#565959] hover:text-[#B12704] opacity-0 group-hover:opacity-100 transition-all">✕</button>}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                 {/* Specs & Features */}
+                 <div className={amzSection}>
+                   <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">🛠️</span><h3 className="text-[18px] font-bold text-[#111]">Technical Details & Highlights</h3></div>
+                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                     <div className="space-y-4">
+                       <div className="flex justify-between items-center">
+                         <div><label className={amzLabel}>Technical Specifications</label><p className="text-[11px] text-[#565959] -mt-1">Appear in the "Details" table</p></div>
+                         <button type="button" onClick={() => setSpecs([...specs, { name: '', value: '' }])} className={amzWhiteBtn + " !py-1 flex items-center gap-1"}><span className="text-lg">+</span> Add</button>
+                       </div>
+                       <div className="bg-[#F9F9F9] border border-[#EEE] rounded-[4px] p-4 space-y-3">
+                         {specs.map((spec, index) => (
+                           <div key={index} className="flex gap-2 relative group items-start">
+                             <input type="text" placeholder="Attribute (e.g. RAM)" className={amzInput + " w-1/3 bg-white"} value={spec.name} onChange={e => {const newSpecs=[...specs]; newSpecs[index].name=e.target.value; setSpecs(newSpecs)}} />
+                             <input type="text" placeholder="Value (e.g. 16GB)" className={amzInput + " flex-1 bg-white"} value={spec.value} onChange={e => {const newSpecs=[...specs]; newSpecs[index].value=e.target.value; setSpecs(newSpecs)}} />
+                             {specs.length > 1 && <button type="button" onClick={() => setSpecs(specs.filter((_, i) => i !== index))} className="p-2 text-[#565959] hover:text-[#B12704] transition-colors">✕</button>}
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                     <div className="space-y-4">
+                       <div className="flex justify-between items-center">
+                         <div><label className={amzLabel}>Key Features</label><p className="text-[11px] text-[#565959] -mt-1">Appear as bullet points</p></div>
+                         <button type="button" onClick={() => setFeatures([...features, ''])} className={amzWhiteBtn + " !py-1 flex items-center gap-1"}><span className="text-lg">+</span> Add</button>
+                       </div>
+                       <div className="space-y-3">
+                         {features.map((f, index) => (
+                           <div key={index} className="flex gap-2 group items-center">
+                             <div className="h-2 w-2 rounded-full bg-[#e77600] shrink-0"></div>
+                             <input type="text" placeholder="Enter a key selling point..." className={amzInput} value={f} onChange={e => {const newFeatures=[...features]; newFeatures[index]=e.target.value; setFeatures(newFeatures)}} />
+                             {features.length > 1 && <button type="button" onClick={() => setFeatures(features.filter((_, i) => i !== index))} className="p-2 text-[#565959] hover:text-[#B12704] opacity-0 group-hover:opacity-100 transition-all">✕</button>}
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                   </div>
+                 </div>
 
-                  {/* Variants */}
-                  <div className={amzSection}>
-                    <div className="flex items-center justify-between border-b border-[#EEE] pb-4 mb-6">
-                      <div className="flex items-center gap-2"><span className="text-xl">🎭</span><h3 className="text-[18px] font-bold text-[#111]">Variants & Pricing Modifiers</h3></div>
-                      <button type="button" onClick={() => setVariants([...variants, { name: '', options: '' }])} className={amzWhiteBtn + " flex items-center gap-1"}><span className="text-lg">+</span> Add Group</button>
-                    </div>
-                    <div className="bg-[#F0F7FF] border border-[#007185] rounded-[4px] p-3 mb-6 flex gap-3">
-                      <span className="text-[#007185] font-bold mt-0.5">ℹ️</span>
-                      <div>
-                        <p className="text-[12px] text-[#007185] font-bold uppercase tracking-tight">How to set dynamic pricing:</p>
-                        <p className="text-[12px] text-[#111]">List options separated by commas. Use <code className="bg-white px-1 border rounded text-[#e77600] font-bold">(+Value)</code> to increase price.<br /><span className="text-[#565959] italic">Example: Black, Titanium(+5000), Gold(+2500)</span></p>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      {variants.map((variant, index) => (
-                        <div key={index} className="flex flex-col md:flex-row gap-4 bg-[#F9F9F9] p-5 rounded-[4px] border border-[#EEE] relative group">
-                          {variants.length > 1 && <button type="button" onClick={() => setVariants(variants.filter((_, i) => i !== index))} className="absolute -top-2 -right-2 bg-white border border-[#DDD] text-[#565959] hover:text-[#B12704] hover:border-[#B12704] w-7 h-7 rounded-full flex items-center justify-center shadow-sm z-10 opacity-0 group-hover:opacity-100 transition-all">✕</button>}
-                          <div className="w-full md:w-1/4">
-                            <label className="block text-[11px] font-bold text-[#565959] uppercase mb-1.5 ml-1">Attribute Name</label>
-                            <input type="text" placeholder="e.g. Storage" className={amzInput + " bg-white font-bold"} value={variant.name} onChange={e => { const newVars = [...variants]; newVars[index].name = e.target.value; setVariants(newVars); }} />
-                          </div>
-                          <div className="w-full md:flex-1">
-                            <label className="block text-[11px] font-bold text-[#565959] uppercase mb-1.5 ml-1">Options & Price Adjustments</label>
-                            <input type="text" placeholder="e.g. 128GB, 256GB(+5000)" className={amzInput + " bg-white font-mono"} value={variant.options} onChange={e => { const newVars = [...variants]; newVars[index].options = e.target.value; setVariants(newVars); }} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                 {/* Variants */}
+                 <div className={amzSection}>
+                   <div className="flex items-center justify-between border-b border-[#EEE] pb-4 mb-6">
+                     <div className="flex items-center gap-2"><span className="text-xl">🎭</span><h3 className="text-[18px] font-bold text-[#111]">Variants & Pricing Modifiers</h3></div>
+                     <button type="button" onClick={() => setVariants([...variants, { name: '', options: '' }])} className={amzWhiteBtn + " flex items-center gap-1"}><span className="text-lg">+</span> Add Group</button>
+                   </div>
+                   <div className="bg-[#F0F7FF] border border-[#007185] rounded-[4px] p-3 mb-6 flex gap-3">
+                     <span className="text-[#007185] font-bold mt-0.5">ℹ️</span>
+                     <div>
+                       <p className="text-[12px] text-[#007185] font-bold uppercase tracking-tight">How to set dynamic pricing:</p>
+                       <p className="text-[12px] text-[#111]">List options separated by commas. Use <code className="bg-white px-1 border rounded text-[#e77600] font-bold">(+Value)</code> to increase price.<br /><span className="text-[#565959] italic">Example: Black, Titanium(+5000), Gold(+2500)</span></p>
+                     </div>
+                   </div>
+                   <div className="space-y-4">
+                     {variants.map((variant, index) => (
+                       <div key={index} className="flex flex-col md:flex-row gap-4 bg-[#F9F9F9] p-5 rounded-[4px] border border-[#EEE] relative group">
+                         {variants.length > 1 && <button type="button" onClick={() => setVariants(variants.filter((_, i) => i !== index))} className="absolute -top-2 -right-2 bg-white border border-[#DDD] text-[#565959] hover:text-[#B12704] hover:border-[#B12704] w-7 h-7 rounded-full flex items-center justify-center shadow-sm z-10 opacity-0 group-hover:opacity-100 transition-all">✕</button>}
+                         <div className="w-full md:w-1/4">
+                           <label className="block text-[11px] font-bold text-[#565959] uppercase mb-1.5 ml-1">Attribute Name</label>
+                           <input type="text" placeholder="e.g. Storage" className={amzInput + " bg-white font-bold"} value={variant.name} onChange={e => { const newVars = [...variants]; newVars[index].name = e.target.value; setVariants(newVars); }} />
+                         </div>
+                         <div className="w-full md:flex-1">
+                           <label className="block text-[11px] font-bold text-[#565959] uppercase mb-1.5 ml-1">Options & Price Adjustments</label>
+                           <input type="text" placeholder="e.g. 128GB, 256GB(+5000)" className={amzInput + " bg-white font-mono"} value={variant.options} onChange={e => { const newVars = [...variants]; newVars[index].options = e.target.value; setVariants(newVars); }} />
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
 
-                  {/* SEO */}
-                  <div className={amzSection}>
-                    <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">🔍</span><h3 className="text-[18px] font-bold text-[#111]">Search Engine Optimization (SEO)</h3></div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                      <div className="space-y-5">
-                        <div>
-                          <label className={amzLabel}>Meta Title</label>
-                          <input type="text" className={amzInput} value={seoTitle} onChange={e => setSeoTitle(e.target.value)} />
-                          <div className="flex justify-between mt-1"><p className="text-[10px] text-[#565959]">Appears as clickable link.</p><p className={`text-[10px] font-bold ${seoTitle.length > 60 ? 'text-[#B12704]' : 'text-green-700'}`}>{seoTitle.length}/60</p></div>
-                        </div>
-                        <div><label className={amzLabel}>Focus Keywords</label><input type="text" className={amzInput} value={seoKeywords} onChange={e => setSeoKeywords(e.target.value)} /></div>
-                        <div>
-                          <label className={amzLabel}>Meta Description</label>
-                          <textarea className={amzInput + " h-24 resize-none"} value={seoDescription} onChange={e => setSeoDescription(e.target.value)} />
-                          <div className="flex justify-between mt-1"><p className="text-[10px] text-[#565959]">Brief summary.</p><p className={`text-[10px] font-bold ${seoDescription.length > 160 ? 'text-[#B12704]' : 'text-green-700'}`}>{seoDescription.length}/160</p></div>
-                        </div>
-                      </div>
-                      <div className="bg-[#F9F9F9] border border-[#EEE] rounded-[4px] p-6 flex flex-col justify-center">
-                        <p className="text-[12px] font-bold text-[#565959] uppercase tracking-wider mb-4 flex items-center gap-2"><span>🌐</span> Google Search Preview</p>
-                        <div className="bg-white p-5 border border-[#DDD] rounded shadow-sm max-w-[500px]">
-                          <p className="text-[12px] text-[#202124] mb-1 truncate">https://amazonsmarts.com › products › <span className="text-[#5f6368]">{name ? name.toLowerCase().replace(/ /g, '-') : 'url'}</span></p>
-                          <h4 className="text-[18px] text-[#1a0dab] hover:underline cursor-pointer font-medium leading-tight mb-1 truncate">{seoTitle || (name ? `${name} | AMAZON SMARTS` : 'Page Title Goes Here')}</h4>
-                          <p className="text-[13px] text-[#4d5156] line-clamp-2 leading-relaxed">{seoDescription || 'Provide a meta description to see how your product will appear in search engine results.'}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                 {/* SEO */}
+                 <div className={amzSection}>
+                   <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">🔍</span><h3 className="text-[18px] font-bold text-[#111]">Search Engine Optimization (SEO)</h3></div>
+                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                     <div className="space-y-5">
+                       <div>
+                         <label className={amzLabel}>Meta Title</label>
+                         <input type="text" className={amzInput} value={seoTitle} onChange={e => setSeoTitle(e.target.value)} />
+                         <div className="flex justify-between mt-1"><p className="text-[10px] text-[#565959]">Appears as clickable link.</p><p className={`text-[10px] font-bold ${seoTitle.length > 60 ? 'text-[#B12704]' : 'text-green-700'}`}>{seoTitle.length}/60</p></div>
+                       </div>
+                       <div><label className={amzLabel}>Focus Keywords</label><input type="text" className={amzInput} value={seoKeywords} onChange={e => setSeoKeywords(e.target.value)} /></div>
+                       <div>
+                         <label className={amzLabel}>Meta Description</label>
+                         <textarea className={amzInput + " h-24 resize-none"} value={seoDescription} onChange={e => setSeoDescription(e.target.value)} />
+                         <div className="flex justify-between mt-1"><p className="text-[10px] text-[#565959]">Brief summary.</p><p className={`text-[10px] font-bold ${seoDescription.length > 160 ? 'text-[#B12704]' : 'text-green-700'}`}>{seoDescription.length}/160</p></div>
+                       </div>
+                     </div>
+                     <div className="bg-[#F9F9F9] border border-[#EEE] rounded-[4px] p-6 flex flex-col justify-center">
+                       <p className="text-[12px] font-bold text-[#565959] uppercase tracking-wider mb-4 flex items-center gap-2"><span>🌐</span> Google Search Preview</p>
+                       <div className="bg-white p-5 border border-[#DDD] rounded shadow-sm max-w-[500px]">
+                         <p className="text-[12px] text-[#202124] mb-1 truncate">https://amazonsmarts.com › products › <span className="text-[#5f6368]">{name ? name.toLowerCase().replace(/ /g, '-') : 'url'}</span></p>
+                         <h4 className="text-[18px] text-[#1a0dab] hover:underline cursor-pointer font-medium leading-tight mb-1 truncate">{seoTitle || (name ? `${name} | AMAZON SMARTS` : 'Page Title Goes Here')}</h4>
+                         <p className="text-[13px] text-[#4d5156] line-clamp-2 leading-relaxed">{seoDescription || 'Provide a meta description to see how your product will appear in search engine results.'}</p>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
 
-                  {/* Compliance & Cancellation */}
-                  <div className={amzSection}>
-                    <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">🛡️</span><h3 className="text-[18px] font-bold text-[#111]">Compliance & Policies</h3></div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="space-y-4">
-                        <div><label className={amzLabel}>Return Policy</label><input type="text" className={amzInput} value={returnPolicy} onChange={e => setReturnPolicy(e.target.value)} required /></div>
-                        <div><label className={amzLabel}>Warranty Details</label><input type="text" className={amzInput} value={warrantyPolicy} onChange={e => setWarrantyPolicy(e.target.value)} required /></div>
-                      </div>
-                      <div className="bg-[#F7FAFA] border border-[#D5D9D9] p-5 rounded-[4px]">
-                        <div className="flex items-center justify-between mb-4">
-                          <div><h4 className="text-[13px] font-bold text-[#111]">Cancellation Control</h4><p className="text-[11px] text-[#565959]">Allow users to cancel</p></div>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" className="sr-only peer" checked={isCancellable} onChange={e => setIsCancellable(e.target.checked)} />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00a8e1]"></div>
-                          </label>
-                        </div>
-                        <div className={`transition-all duration-300 ${isCancellable ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-                          <label className={amzLabel}>Cancellation Window (Hours)</label>
-                          <div className="flex items-center gap-3"><input type="number" className={amzInput + " w-24 bg-white"} value={cancellationWindowHours} onChange={e => setCancellationWindowHours(e.target.value)} /><span className="text-[12px] text-[#565959]">hours after order</span></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                 {/* Compliance & Cancellation */}
+                 <div className={amzSection}>
+                   <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">🛡️</span><h3 className="text-[18px] font-bold text-[#111]">Compliance & Policies</h3></div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div className="space-y-4">
+                       <div><label className={amzLabel}>Return Policy</label><input type="text" className={amzInput} value={returnPolicy} onChange={e => setReturnPolicy(e.target.value)} required /></div>
+                       <div><label className={amzLabel}>Warranty Details</label><input type="text" className={amzInput} value={warrantyPolicy} onChange={e => setWarrantyPolicy(e.target.value)} required /></div>
+                     </div>
+                     <div className="bg-[#F7FAFA] border border-[#D5D9D9] p-5 rounded-[4px]">
+                       <div className="flex items-center justify-between mb-4">
+                         <div><h4 className="text-[13px] font-bold text-[#111]">Cancellation Control</h4><p className="text-[11px] text-[#565959]">Allow users to cancel</p></div>
+                         <label className="relative inline-flex items-center cursor-pointer">
+                           <input type="checkbox" className="sr-only peer" checked={isCancellable} onChange={e => setIsCancellable(e.target.checked)} />
+                           <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00a8e1]"></div>
+                         </label>
+                       </div>
+                       <div className={`transition-all duration-300 ${isCancellable ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                         <label className={amzLabel}>Cancellation Window (Hours)</label>
+                         <div className="flex items-center gap-3"><input type="number" className={amzInput + " w-24 bg-white"} value={cancellationWindowHours} onChange={e => setCancellationWindowHours(e.target.value)} /><span className="text-[12px] text-[#565959]">hours after order</span></div>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
 
-                  {/* Media */}
-                  <div className={amzSection}>
-                    <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">📸</span><h3 className="text-[18px] font-bold text-[#111]">Product Media & A+ Content</h3></div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="space-y-2">
-                        <label className={amzLabel}>Gallery Images (Main Display)</label>
-                        <div className="border-2 border-dashed border-[#D5D9D9] rounded-[4px] p-8 text-center hover:bg-[#F7FAFA] transition-colors relative cursor-pointer group">
-                          <input type="file" multiple accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => setImages(e.target.files)} required />
-                          <div className="text-[#565959] group-hover:text-[#111]">
-                            <p className="text-2xl mb-1">📤</p><p className="text-[13px] font-medium">Click to upload photos</p><p className="text-[11px] mt-1">{images.length > 0 ? `✅ ${images.length} files selected` : 'Minimum 1 image required'}</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className={amzLabel}>Promo Banners (Description Area)</label>
-                        <div className="border-2 border-dashed border-[#D5D9D9] rounded-[4px] p-8 text-center hover:bg-[#F7FAFA] transition-colors relative cursor-pointer group">
-                          <input type="file" multiple accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => setProductBanners(e.target.files)} />
-                          <div className="text-[#565959] group-hover:text-[#111]">
-                            <p className="text-2xl mb-1">🖼️</p><p className="text-[13px] font-medium">Add manufacturer info banners</p><p className="text-[11px] mt-1">{productBanners.length > 0 ? `✅ ${productBanners.length} banners selected` : 'A+ Content is optional'}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                 {/* Media */}
+                 <div className={amzSection}>
+                   <div className="flex items-center gap-2 border-b border-[#EEE] pb-4 mb-6"><span className="text-xl">📸</span><h3 className="text-[18px] font-bold text-[#111]">Product Media & A+ Content</h3></div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div className="space-y-2">
+                       <label className={amzLabel}>Gallery Images (Main Display)</label>
+                       <div className="border-2 border-dashed border-[#D5D9D9] rounded-[4px] p-8 text-center hover:bg-[#F7FAFA] transition-colors relative cursor-pointer group">
+                         <input type="file" multiple accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => setImages(e.target.files)} required />
+                         <div className="text-[#565959] group-hover:text-[#111]">
+                           <p className="text-2xl mb-1">📤</p><p className="text-[13px] font-medium">Click to upload photos</p><p className="text-[11px] mt-1">{images.length > 0 ? `✅ ${images.length} files selected` : 'Minimum 1 image required'}</p>
+                         </div>
+                       </div>
+                     </div>
+                     <div className="space-y-2">
+                       <label className={amzLabel}>Promo Banners (Description Area)</label>
+                       <div className="border-2 border-dashed border-[#D5D9D9] rounded-[4px] p-8 text-center hover:bg-[#F7FAFA] transition-colors relative cursor-pointer group">
+                         <input type="file" multiple accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => setProductBanners(e.target.files)} />
+                         <div className="text-[#565959] group-hover:text-[#111]">
+                           <p className="text-2xl mb-1">🖼️</p><p className="text-[13px] font-medium">Add manufacturer info banners</p><p className="text-[11px] mt-1">{productBanners.length > 0 ? `✅ ${productBanners.length} banners selected` : 'A+ Content is optional'}</p>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
 
-                  {/* Fixed Bottom Action Bar */}
-                  <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#DDD] p-4 z-50 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] lg:left-[240px]">
-                    <div className="max-w-[1000px] mx-auto flex justify-end gap-4 items-center">
-                      <div className="hidden md:block text-right pr-4 border-r border-[#EEE]"><p className="text-[11px] text-[#565959] uppercase font-bold">Current Status</p><p className="text-[13px] text-green-700 font-bold">Ready to Publish</p></div>
-                      <button type="button" onClick={() => setActiveTab('inventory')} className={amzWhiteBtn}>Discard</button>
-                      <button type="submit" className={amzYellowBtn + " px-12"}>Publish Product Listing</button>
-                    </div>
-                  </div>
+                 <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#DDD] p-4 z-50 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] lg:left-[240px]">
+                   <div className="max-w-[1000px] mx-auto flex justify-end gap-4 items-center">
+                     <div className="hidden md:block text-right pr-4 border-r border-[#EEE]"><p className="text-[11px] text-[#565959] uppercase font-bold">Current Status</p><p className="text-[13px] text-green-700 font-bold">Ready to Publish</p></div>
+                     <button type="button" onClick={() => setActiveTab('inventory')} className={amzWhiteBtn}>Discard</button>
+                     <button type="submit" className={amzYellowBtn + " px-12"}>Publish Product Listing</button>
+                   </div>
+                 </div>
                </form>
             </div>
           )}
@@ -3766,7 +3745,6 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
           <div className="bg-[#EAEDED] rounded-[4px] w-full max-w-5xl shadow-2xl flex flex-col h-[90vh]">
             
-            {/* Modal Header */}
             <div className="bg-[#131921] text-white px-6 py-4 flex justify-between items-center rounded-t-[4px]">
               <div>
                 <h2 className="text-[18px] font-bold">Edit Listing</h2>
@@ -3775,11 +3753,9 @@ export default function AdminDashboard() {
               <button onClick={() => setEditingProduct(null)} className="text-2xl hover:text-[#febd69] transition-colors">✕</button>
             </div>
             
-            {/* Modal Body (Scrollable Form) */}
             <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
               <form id="editForm" onSubmit={handleUpdateProduct} className="space-y-6 max-w-[800px] mx-auto">
                 
-                {/* Basic */}
                 <div className={amzSection}>
                   <h3 className="font-bold text-[14px] border-b border-[#EEE] pb-2 mb-4">Basic Information</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -3791,17 +3767,19 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Price */}
+                {/* Pricing & Commission 🚀 */}
                 <div className={amzSection}>
-                  <h3 className="font-bold text-[14px] border-b border-[#EEE] pb-2 mb-4">Pricing & Inventory</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <h3 className="font-bold text-[14px] border-b border-[#EEE] pb-2 mb-4">Pricing, Inventory & Commissions</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     <div><label className={amzLabel}>MRP</label><input type="number" className={amzInput} value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} required /></div>
                     <div><label className={amzLabel}>Offer Price</label><input type="number" className={amzInput} value={editForm.discountPrice || ''} onChange={e => setEditForm({...editForm, discountPrice: e.target.value})} /></div>
                     <div><label className={amzLabel}>Stock</label><input type="number" className={amzInput} value={editForm.stock} onChange={e => setEditForm({...editForm, stock: e.target.value})} required /></div>
+                    <div><label className={amzLabel}>Affiliate Comm. (%)</label><input type="number" className={amzInput} value={editForm.affiliateCommission || 0} onChange={e => setEditForm({...editForm, affiliateCommission: e.target.value})} /></div>
+                    {/* 🚀 NEW REVIEW REWARD FIELD */}
+                    <div><label className={amzLabel}>Review Reward (₹)</label><input type="number" className={amzInput} value={editForm.reviewCommission || 0} onChange={e => setEditForm({...editForm, reviewCommission: e.target.value})} /></div>
                   </div>
                 </div>
 
-                {/* Specs/Features */}
                 <div className={amzSection}>
                   <h3 className="font-bold text-[14px] border-b border-[#EEE] pb-2 mb-4">Specs & Features</h3>
                   <div className="space-y-6">
@@ -3827,7 +3805,6 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Variants Edit */}
                 <div className={amzSection}>
                   <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-[14px]">Variants & Modifiers</h3><button type="button" onClick={() => setEditForm({...editForm, variants: [...editForm.variants, { name: '', options: '' }]})} className="text-[#007185] text-[11px] font-bold">+ Add Variant</button></div>
                   <div className="space-y-4">
@@ -3841,7 +3818,6 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* SEO & Policies Edit */}
                 <div className={amzSection}>
                   <h3 className="font-bold text-[14px] border-b border-[#EEE] pb-2 mb-4">SEO & Policies</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -3857,7 +3833,6 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Media Edit */}
                 <div className={amzSection}>
                   <h3 className="font-bold text-[14px] border-b border-[#EEE] pb-2 mb-4">Add Media (Appends to existing)</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -3869,7 +3844,6 @@ export default function AdminDashboard() {
               </form>
             </div>
             
-            {/* Modal Footer */}
             <div className="bg-white border-t border-[#DDD] p-4 flex justify-end gap-3 rounded-b-[4px]">
               <button type="button" onClick={() => setEditingProduct(null)} className={amzWhiteBtn}>Cancel Edit</button>
               <button type="submit" form="editForm" className={amzYellowBtn + " px-10"}>Save Changes</button>
