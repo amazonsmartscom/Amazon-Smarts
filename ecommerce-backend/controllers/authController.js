@@ -1217,6 +1217,317 @@
 
 
 
+// // controllers/authController.js
+// const mongoose = require('mongoose');
+// const User = require('../models/User');
+// const WalletTransaction = require('../models/WalletTransaction');
+// const jwt = require('jsonwebtoken');
+// const sendEmail = require('../utils/sendEmail');
+
+// // 🚀 DYNAMIC SETTINGS MODEL (No need to create a new file!)
+// const settingSchema = new mongoose.Schema({ signupBonus: { type: Number, default: 0 } });
+// const Setting = mongoose.models.Setting || mongoose.model('Setting', settingSchema);
+
+// const getBrandedOtpTemplate = (title, message, otpCode) => {
+//   const brandColor = "#232f3e"; 
+//   const accentColor = "#febd69"; 
+
+//   return `
+//     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; background-color: #fff;">
+//       <div style="background-color: ${brandColor}; padding: 20px; text-align: center;">
+//         <h1 style="color: ${accentColor}; margin: 0; font-size: 26px; letter-spacing: -1px;">amazon<span style="color: #fff; font-weight: bold;">smarts</span></h1>
+//       </div>
+//       <div style="padding: 30px; line-height: 1.6;">
+//         <h2 style="color: #111; font-size: 20px; margin-top: 0; border-bottom: 2px solid ${accentColor}; padding-bottom: 10px; display: inline-block;">${title}</h2>
+//         <p style="font-size: 15px; color: #333; margin-top: 20px;">${message}</p>
+//         <div style="margin: 30px 0; text-align: center;">
+//           <span style="display: inline-block; padding: 15px 30px; font-size: 32px; font-weight: bold; color: #111; background-color: #f9f9f9; border: 2px dashed ${accentColor}; border-radius: 8px; letter-spacing: 5px;">
+//             ${otpCode}
+//           </span>
+//           <p style="font-size: 13px; color: #666; margin-top: 15px;">Valid for 10 minutes. Do not share this code with anyone.</p>
+//         </div>
+//       </div>
+//       <div style="background-color: #f0f2f2; padding: 20px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd;">
+//         <p style="margin: 0 0 10px 0;">This email was sent from a notification-only address. Please do not reply to this message.</p>
+//         <p style="margin: 0;">© ${new Date().getFullYear()} AmazonSmarts.com, Inc. or its affiliates</p>
+//       </div>
+//     </div>
+//   `;
+// };
+
+// const generateUniqueReferralCode = async () => {
+//   let code;
+//   let isUnique = false;
+//   while (!isUnique) {
+//     code = Math.random().toString(36).substring(2, 8).toUpperCase();
+//     const existingUser = await User.findOne({ myReferralCode: code });
+//     if (!existingUser) isUnique = true;
+//   }
+//   return code;
+// };
+
+// const generateToken = (id) => {
+//   return jwt.sign({ id }, process.env.JWT_SECRET || 'gadgetstore_super_secret_key_123', { expiresIn: '30d' });
+// };
+
+// // 1. REGISTER
+// exports.registerUser = async (req, res) => {
+//   try {
+//     const { name, email, password, referralCode } = req.body;
+//     const userExists = await User.findOne({ email });
+
+//     let referrerId = null;
+//     if (referralCode) {
+//       const referrer = await User.findOne({ myReferralCode: referralCode });
+//       if (referrer) referrerId = referrer._id;
+//     }
+
+//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//     const otpExpiry = Date.now() + 10 * 60 * 1000; 
+
+//     let user;
+
+//     if (userExists) {
+//       if (userExists.isVerified) {
+//         return res.status(400).json({ message: 'User already exists with this email. Please sign in.' });
+//       } else {
+//         userExists.name = name;
+//         userExists.password = password; 
+//         userExists.referredBy = referrerId;
+//         userExists.otp = otp;
+//         userExists.otpExpiry = otpExpiry;
+//         user = await userExists.save();
+//       }
+//     } else {
+//       const myReferralCode = await generateUniqueReferralCode();
+//       user = await User.create({
+//         name, email, password, myReferralCode, referredBy: referrerId, isVerified: false, otp, otpExpiry
+//       });
+//     }
+
+//     const message = getBrandedOtpTemplate("Verify your email address", `Hello <strong>${name}</strong>,<br><br>Your OTP for account verification is:`, otp);
+
+//     try {
+//       await sendEmail({ email: user.email, subject: 'Verify Your Amazon Smarts Account', message });
+//     } catch (emailError) {
+//       console.log(`[FALLBACK] OTP for ${user.email} is: ${otp}`); 
+//     }
+
+//     res.status(201).json({ message: 'Registration successful.', email: user.email });
+//   } catch (error) {
+//     res.status(500).json({ message: 'Server error during registration', error: error.message });
+//   }
+// };
+
+// // 2. VERIFY OTP & PAYOUT SIGNUP BONUS 🚀
+// exports.verifyOTP = async (req, res) => {
+//   try {
+//     const { email, otp } = req.body;
+//     const user = await User.findOne({ email });
+
+//     if (!user) return res.status(404).json({ message: 'User not found' });
+//     if (user.otp !== otp) return res.status(400).json({ message: 'Invalid OTP' });
+//     if (user.otpExpiry < Date.now()) return res.status(400).json({ message: 'OTP expired' });
+
+//     // Store state before we update them
+//     const wasAlreadyVerified = user.isVerified;
+
+//     const updatedUser = await User.findByIdAndUpdate(
+//       user._id,
+//       { $set: { isVerified: true }, $unset: { otp: 1, otpExpiry: 1 } },
+//       { new: true }
+//     );
+
+//     // ==============================================
+//     // 🚀 SIGNUP BONUS LOGIC
+//     // ==============================================
+//     if (!wasAlreadyVerified && updatedUser.referredBy) {
+//       const referrer = await User.findById(updatedUser.referredBy);
+//       if (referrer) {
+//         let config = await Setting.findOne();
+//         const bonusAmount = config ? config.signupBonus : 0;
+
+//         if (bonusAmount > 0) {
+//           referrer.wallet.availableBalance += bonusAmount;
+//           referrer.wallet.totalEarnings += bonusAmount;
+//           await referrer.save();
+
+//           await WalletTransaction.create({
+//             userId: referrer._id,
+//             amount: bonusAmount,
+//             type: 'credit',
+//             source: 'referral_signup_bonus',
+//             status: 'completed'
+//           });
+
+//           try {
+//             const { createNotification } = require('./notificationController');
+//             await createNotification(
+//               referrer._id, 
+//               "Referral Signup Bonus! 🎉", 
+//               `${updatedUser.name} just joined Amazon Smarts using your link. ₹${bonusAmount} has been added to your wallet!`, 
+//               "success", 
+//               "/wallet"
+//             );
+//           } catch(err) { console.log('Notification error'); }
+//         }
+//       }
+//     }
+//     // ==============================================
+
+//     res.status(200).json({
+//       _id: updatedUser._id, name: updatedUser.name, email: updatedUser.email,
+//       role: updatedUser.role, myReferralCode: updatedUser.myReferralCode,
+//       token: generateToken(updatedUser._id),
+//     });
+
+//   } catch (error) {
+//     res.status(500).json({ message: 'Verification error', error: error.message });
+//   }
+// };
+
+// // 3. LOGIN
+// exports.loginUser = async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+//     const user = await User.findOne({ email });
+
+//     if (user && (await user.matchPassword(password))) {
+//       if (!user.isVerified) {
+//         return res.status(401).json({ message: 'Please verify your email.', requiresVerification: true });
+//       }
+
+//       res.json({
+//         _id: user._id, name: user.name, email: user.email,
+//         role: user.role, myReferralCode: user.myReferralCode,
+//         token: generateToken(user._id),
+//       });
+//     } else {
+//       res.status(401).json({ message: 'Invalid email or password' });
+//     }
+//   } catch (error) {
+//     res.status(500).json({ message: 'Login error', error: error.message });
+//   }
+// };
+
+// // 4. SEND OTP ONLY
+// exports.sendOtpOnly = async (req, res) => {
+//   try {
+//     const { email } = req.body;
+//     if (!email) return res.status(400).json({ message: "Email is required" });
+
+//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//     const otpExpiry = Date.now() + 10 * 60 * 1000; 
+
+//     let user = await User.findOne({ email });
+    
+//     if (!user) {
+//       user = await User.create({
+//         name: 'Guest Customer', email: email, password: Math.random().toString(36).slice(-8) + 'A1@', 
+//         myReferralCode: await generateUniqueReferralCode(), isVerified: false, otp, otpExpiry
+//       });
+//     } else {
+//       user.otp = otp; user.otpExpiry = otpExpiry; await user.save();
+//     }
+
+//     const message = getBrandedOtpTemplate("Your Checkout Verification Code", "Please use the following OTP to securely complete your order on Amazon Smarts:", otp);
+//     try { await sendEmail({ email: user.email, subject: 'Your Checkout OTP', message }); } catch (emailError) { console.log(`[FALLBACK] Checkout OTP is: ${otp}`); }
+
+//     res.status(200).json({ success: true, message: "OTP sent successfully" });
+//   } catch (error) {
+//     res.status(500).json({ message: 'Server error sending OTP', error: error.message });
+//   }
+// };
+
+// // 5. SEND FORGOT PASSWORD OTP
+// exports.sendForgotPasswordOtp = async (req, res) => {
+//   try {
+//     const { email } = req.body;
+//     const user = await User.findOne({ email });
+//     if (!user) return res.status(404).json({ message: "No account found with that email address." });
+
+//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//     user.otp = otp; user.otpExpiry = Date.now() + 10 * 60 * 1000; await user.save();
+
+//     const message = getBrandedOtpTemplate("Password Reset Request", "We received a request to reset the password for your Amazon Smarts account. If you initiated this request, please use the OTP below:", otp);
+//     try { await sendEmail({ email: user.email, subject: 'Amazon Smarts - Password Reset OTP', message }); } catch (emailError) { console.log(`[FALLBACK] Forgot Password OTP is: ${otp}`); }
+
+//     res.status(200).json({ message: "OTP sent to your email." });
+//   } catch (error) { res.status(500).json({ message: "Server error." }); }
+// };
+
+// // 6. RESET PASSWORD
+// exports.resetPassword = async (req, res) => {
+//   try {
+//     const { email, otp, newPassword } = req.body;
+//     const user = await User.findOne({ email });
+
+//     if (!user) return res.status(404).json({ message: "User not found." });
+//     if (user.otp !== otp) return res.status(400).json({ message: "Invalid OTP. Please check the code and try again." });
+//     if (Date.now() > user.otpExpiry) return res.status(400).json({ message: "OTP has expired. Please request a new one." });
+//     if (newPassword.length < 6) return res.status(400).json({ message: "Password must be at least 6 characters long." });
+
+//     user.password = newPassword; user.otp = undefined; user.otpExpiry = undefined; await user.save();
+
+//     res.status(200).json({ message: "Password reset successful! You can now log in." });
+//   } catch (error) { res.status(500).json({ message: "Server error resetting password." }); }
+// };
+
+// // 7. RESEND REGISTRATION OTP
+// exports.resendOtp = async (req, res) => {
+//   try {
+//     const { email } = req.body;
+//     if (!email) return res.status(400).json({ message: "Email is required" });
+
+//     const user = await User.findOne({ email });
+//     if (!user) return res.status(404).json({ message: "User not found" });
+//     if (user.isVerified) return res.status(400).json({ message: "Account is already verified. Please go to login." });
+
+//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//     user.otp = otp; user.otpExpiry = Date.now() + 10 * 60 * 1000; await user.save();
+
+//     const message = getBrandedOtpTemplate("Verify your email address", `Hello <strong>${user.name}</strong>,<br><br>You requested a new code. Your new OTP for account verification is:`, otp);
+//     try { await sendEmail({ email: user.email, subject: 'New OTP - Verify Your Amazon Smarts Account', message }); } catch (emailError) { console.log(`[FALLBACK] Resend OTP is: ${otp}`); }
+
+//     res.status(200).json({ message: "A new OTP has been sent to your email." });
+//   } catch (error) { res.status(500).json({ message: 'Server error resending OTP', error: error.message }); }
+// };
+
+// // ==========================================
+// // 🚀 8. ADMIN: GET GLOBAL SETTINGS
+// // ==========================================
+// exports.getSettings = async (req, res) => {
+//   try {
+//     let config = await Setting.findOne();
+//     if (!config) config = await Setting.create({ signupBonus: 0 });
+//     res.status(200).json(config);
+//   } catch (error) {
+//     res.status(500).json({ message: "Error fetching settings" });
+//   }
+// };
+
+// // ==========================================
+// // 🚀 9. ADMIN: UPDATE GLOBAL SETTINGS
+// // ==========================================
+// exports.updateSettings = async (req, res) => {
+//   try {
+//     const { signupBonus } = req.body;
+//     let config = await Setting.findOne();
+    
+//     if (!config) {
+//       config = await Setting.create({ signupBonus: Number(signupBonus) });
+//     } else {
+//       config.signupBonus = Number(signupBonus);
+//       await config.save();
+//     }
+    
+//     res.status(200).json({ message: "Settings updated successfully", config });
+//   } catch (error) {
+//     res.status(500).json({ message: "Error updating settings" });
+//   }
+// };
+
+
 // controllers/authController.js
 const mongoose = require('mongoose');
 const User = require('../models/User');
@@ -1224,8 +1535,11 @@ const WalletTransaction = require('../models/WalletTransaction');
 const jwt = require('jsonwebtoken');
 const sendEmail = require('../utils/sendEmail');
 
-// 🚀 DYNAMIC SETTINGS MODEL (No need to create a new file!)
-const settingSchema = new mongoose.Schema({ signupBonus: { type: Number, default: 0 } });
+// 🚀 DYNAMIC SETTINGS MODEL (Added newUserBonus)
+const settingSchema = new mongoose.Schema({ 
+  signupBonus: { type: Number, default: 0 }, // For the referrer
+  newUserBonus: { type: Number, default: 0 } // For the new user
+});
 const Setting = mongoose.models.Setting || mongoose.model('Setting', settingSchema);
 
 const getBrandedOtpTemplate = (title, message, otpCode) => {
@@ -1319,7 +1633,7 @@ exports.registerUser = async (req, res) => {
   }
 };
 
-// 2. VERIFY OTP & PAYOUT SIGNUP BONUS 🚀
+// 2. VERIFY OTP & PAYOUT BONUSES 🚀
 exports.verifyOTP = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -1329,7 +1643,6 @@ exports.verifyOTP = async (req, res) => {
     if (user.otp !== otp) return res.status(400).json({ message: 'Invalid OTP' });
     if (user.otpExpiry < Date.now()) return res.status(400).json({ message: 'OTP expired' });
 
-    // Store state before we update them
     const wasAlreadyVerified = user.isVerified;
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -1339,38 +1652,46 @@ exports.verifyOTP = async (req, res) => {
     );
 
     // ==============================================
-    // 🚀 SIGNUP BONUS LOGIC
+    // 🚀 SIGNUP BONUSES LOGIC (Referrer & New User)
     // ==============================================
-    if (!wasAlreadyVerified && updatedUser.referredBy) {
-      const referrer = await User.findById(updatedUser.referredBy);
-      if (referrer) {
-        let config = await Setting.findOne();
-        const bonusAmount = config ? config.signupBonus : 0;
+    if (!wasAlreadyVerified) {
+      let config = await Setting.findOne();
+      const referrerBonusAmount = config ? config.signupBonus : 0;
+      const welcomeBonusAmount = config ? config.newUserBonus : 0;
 
-        if (bonusAmount > 0) {
-          referrer.wallet.availableBalance += bonusAmount;
-          referrer.wallet.totalEarnings += bonusAmount;
+      // 1. Give money to the REFERRER (if applicable)
+      if (updatedUser.referredBy && referrerBonusAmount > 0) {
+        const referrer = await User.findById(updatedUser.referredBy);
+        if (referrer) {
+          referrer.wallet.availableBalance += referrerBonusAmount;
+          referrer.wallet.totalEarnings += referrerBonusAmount;
           await referrer.save();
 
           await WalletTransaction.create({
-            userId: referrer._id,
-            amount: bonusAmount,
-            type: 'credit',
-            source: 'referral_signup_bonus',
-            status: 'completed'
+            userId: referrer._id, amount: referrerBonusAmount, type: 'credit', source: 'referral_signup_bonus', status: 'completed'
           });
 
           try {
             const { createNotification } = require('./notificationController');
-            await createNotification(
-              referrer._id, 
-              "Referral Signup Bonus! 🎉", 
-              `${updatedUser.name} just joined Amazon Smarts using your link. ₹${bonusAmount} has been added to your wallet!`, 
-              "success", 
-              "/wallet"
-            );
+            await createNotification(referrer._id, "Referral Signup Bonus! 🎉", `${updatedUser.name} just joined Amazon Smarts using your link. ₹${referrerBonusAmount} has been added to your wallet!`, "success", "/wallet");
           } catch(err) { console.log('Notification error'); }
         }
+      }
+
+      // 2. Give money to the NEW USER (Welcome Bonus)
+      if (welcomeBonusAmount > 0) {
+        updatedUser.wallet.availableBalance += welcomeBonusAmount;
+        updatedUser.wallet.totalEarnings += welcomeBonusAmount;
+        await updatedUser.save();
+
+        await WalletTransaction.create({
+          userId: updatedUser._id, amount: welcomeBonusAmount, type: 'credit', source: 'welcome_bonus', status: 'completed'
+        });
+
+        try {
+          const { createNotification } = require('./notificationController');
+          await createNotification(updatedUser._id, "Welcome Bonus! 🎉", `Welcome to Amazon Smarts! A welcome bonus of ₹${welcomeBonusAmount} has been added to your wallet.`, "success", "/wallet");
+        } catch(err) { console.log('Notification error'); }
       }
     }
     // ==============================================
@@ -1396,12 +1717,7 @@ exports.loginUser = async (req, res) => {
       if (!user.isVerified) {
         return res.status(401).json({ message: 'Please verify your email.', requiresVerification: true });
       }
-
-      res.json({
-        _id: user._id, name: user.name, email: user.email,
-        role: user.role, myReferralCode: user.myReferralCode,
-        token: generateToken(user._id),
-      });
+      res.json({ _id: user._id, name: user.name, email: user.email, role: user.role, myReferralCode: user.myReferralCode, token: generateToken(user._id) });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
     }
@@ -1420,23 +1736,16 @@ exports.sendOtpOnly = async (req, res) => {
     const otpExpiry = Date.now() + 10 * 60 * 1000; 
 
     let user = await User.findOne({ email });
-    
     if (!user) {
-      user = await User.create({
-        name: 'Guest Customer', email: email, password: Math.random().toString(36).slice(-8) + 'A1@', 
-        myReferralCode: await generateUniqueReferralCode(), isVerified: false, otp, otpExpiry
-      });
+      user = await User.create({ name: 'Guest Customer', email: email, password: Math.random().toString(36).slice(-8) + 'A1@', myReferralCode: await generateUniqueReferralCode(), isVerified: false, otp, otpExpiry });
     } else {
       user.otp = otp; user.otpExpiry = otpExpiry; await user.save();
     }
 
     const message = getBrandedOtpTemplate("Your Checkout Verification Code", "Please use the following OTP to securely complete your order on Amazon Smarts:", otp);
     try { await sendEmail({ email: user.email, subject: 'Your Checkout OTP', message }); } catch (emailError) { console.log(`[FALLBACK] Checkout OTP is: ${otp}`); }
-
     res.status(200).json({ success: true, message: "OTP sent successfully" });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error sending OTP', error: error.message });
-  }
+  } catch (error) { res.status(500).json({ message: 'Server error sending OTP' }); }
 };
 
 // 5. SEND FORGOT PASSWORD OTP
@@ -1451,7 +1760,6 @@ exports.sendForgotPasswordOtp = async (req, res) => {
 
     const message = getBrandedOtpTemplate("Password Reset Request", "We received a request to reset the password for your Amazon Smarts account. If you initiated this request, please use the OTP below:", otp);
     try { await sendEmail({ email: user.email, subject: 'Amazon Smarts - Password Reset OTP', message }); } catch (emailError) { console.log(`[FALLBACK] Forgot Password OTP is: ${otp}`); }
-
     res.status(200).json({ message: "OTP sent to your email." });
   } catch (error) { res.status(500).json({ message: "Server error." }); }
 };
@@ -1468,7 +1776,6 @@ exports.resetPassword = async (req, res) => {
     if (newPassword.length < 6) return res.status(400).json({ message: "Password must be at least 6 characters long." });
 
     user.password = newPassword; user.otp = undefined; user.otpExpiry = undefined; await user.save();
-
     res.status(200).json({ message: "Password reset successful! You can now log in." });
   } catch (error) { res.status(500).json({ message: "Server error resetting password." }); }
 };
@@ -1488,36 +1795,32 @@ exports.resendOtp = async (req, res) => {
 
     const message = getBrandedOtpTemplate("Verify your email address", `Hello <strong>${user.name}</strong>,<br><br>You requested a new code. Your new OTP for account verification is:`, otp);
     try { await sendEmail({ email: user.email, subject: 'New OTP - Verify Your Amazon Smarts Account', message }); } catch (emailError) { console.log(`[FALLBACK] Resend OTP is: ${otp}`); }
-
     res.status(200).json({ message: "A new OTP has been sent to your email." });
-  } catch (error) { res.status(500).json({ message: 'Server error resending OTP', error: error.message }); }
+  } catch (error) { res.status(500).json({ message: 'Server error resending OTP' }); }
 };
 
-// ==========================================
-// 🚀 8. ADMIN: GET GLOBAL SETTINGS
-// ==========================================
+// 8. ADMIN: GET GLOBAL SETTINGS
 exports.getSettings = async (req, res) => {
   try {
     let config = await Setting.findOne();
-    if (!config) config = await Setting.create({ signupBonus: 0 });
+    if (!config) config = await Setting.create({ signupBonus: 0, newUserBonus: 0 });
     res.status(200).json(config);
   } catch (error) {
     res.status(500).json({ message: "Error fetching settings" });
   }
 };
 
-// ==========================================
-// 🚀 9. ADMIN: UPDATE GLOBAL SETTINGS
-// ==========================================
+// 9. ADMIN: UPDATE GLOBAL SETTINGS
 exports.updateSettings = async (req, res) => {
   try {
-    const { signupBonus } = req.body;
+    const { signupBonus, newUserBonus } = req.body;
     let config = await Setting.findOne();
     
     if (!config) {
-      config = await Setting.create({ signupBonus: Number(signupBonus) });
+      config = await Setting.create({ signupBonus: Number(signupBonus), newUserBonus: Number(newUserBonus) });
     } else {
       config.signupBonus = Number(signupBonus);
+      config.newUserBonus = Number(newUserBonus);
       await config.save();
     }
     

@@ -14,6 +14,28 @@
 
 // module.exports = mongoose.model('WalletTransaction', walletTransactionSchema);
 
+// // models/WalletTransaction.js
+// const mongoose = require('mongoose');
+
+// const walletTransactionSchema = new mongoose.Schema({
+//   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+//   amount: { type: Number, required: true },
+//   type: { type: String, enum: ['credit', 'debit'], required: true },
+  
+//   // 🚀 FIXED: Added 'referral_signup_bonus' for the new feature
+//   source: { 
+//     type: String, 
+//     enum: ['referral_commission', 'withdrawal', 'purchase_deduction', 'refund', 'review_reward', 'referral_signup_bonus'], 
+//     required: true 
+//   },
+  
+//   status: { type: String, enum: ['pending', 'completed', 'failed', 'rejected', 'cancelled'], default: 'completed' },
+//   relatedOrderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' } 
+// }, { timestamps: true });
+
+// module.exports = mongoose.model('WalletTransaction', walletTransactionSchema);
+
+
 // models/WalletTransaction.js
 const mongoose = require('mongoose');
 
@@ -22,10 +44,10 @@ const walletTransactionSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   type: { type: String, enum: ['credit', 'debit'], required: true },
   
-  // 🚀 FIXED: Added 'referral_signup_bonus' for the new feature
+  // 🚀 FIXED: Added 'welcome_bonus' to the allowed sources
   source: { 
     type: String, 
-    enum: ['referral_commission', 'withdrawal', 'purchase_deduction', 'refund', 'review_reward', 'referral_signup_bonus'], 
+    enum: ['referral_commission', 'withdrawal', 'purchase_deduction', 'refund', 'review_reward', 'referral_signup_bonus', 'welcome_bonus'], 
     required: true 
   },
   
