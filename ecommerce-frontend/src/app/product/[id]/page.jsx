@@ -3185,8 +3185,8 @@ export default function ProductDetailPage() {
       setDeliveryLocation(city);
       setPincodeStatus('success');
 
-      const WAREHOUSE_LAT = 28.6139; 
-      const WAREHOUSE_LON = 77.2090;
+      const WAREHOUSE_LAT = 30.704649; 
+      const WAREHOUSE_LON = 76.717873;
 
       const distanceInKm = calculateDistanceKm(WAREHOUSE_LAT, WAREHOUSE_LON, targetLat, targetLon);
 

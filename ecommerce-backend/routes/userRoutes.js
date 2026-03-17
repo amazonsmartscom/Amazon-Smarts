@@ -1,12 +1,28 @@
+// // routes/userRoutes.js
+// const express = require('express');
+// const router = express.Router();
+// const { getUserProfile, updateUserProfile } = require('../controllers/userController');
+
+// // GET /api/users/:id - Fetch user profile
+// router.get('/:id', getUserProfile);
+
+// // PUT /api/users/:id - Update user profile
+// router.put('/:id', updateUserProfile);
+
+// module.exports = router;
+
 // routes/userRoutes.js
 const express = require('express');
 const router = express.Router();
-const { getUserProfile, updateUserProfile } = require('../controllers/userController');
+const { getUserProfile, updateUserProfile, addAddress } = require('../controllers/userController');
 
 // GET /api/users/:id - Fetch user profile
 router.get('/:id', getUserProfile);
 
 // PUT /api/users/:id - Update user profile
 router.put('/:id', updateUserProfile);
+
+// 🚀 NEW: POST /api/users/:id/addresses - Add single address
+router.post('/:id/addresses', addAddress);
 
 module.exports = router;
