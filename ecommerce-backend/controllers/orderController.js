@@ -2535,14 +2535,26 @@ exports.createOrder = async (req, res) => {
     `;
 
     const emailToSend = shippingAddress?.email || guestEmail;
+    
     if (emailToSend) {
+      console.log(`[EMAIL SYSTEM] Attempting to send Order Confirmation to: ${emailToSend}`);
       try { 
-  await sendStatusEmailsToBoth(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready.", itemsHtml, emailToSend); 
-} catch (err) { 
-  console.error("🚨 EMAIL FAILED TO SEND:", err); 
-}res.status(201).json({ message: 'Order created successfully', order: createdOrder });
-} 
+        await sendStatusEmailsToBoth(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready.", itemsHtml, emailToSend); 
+        console.log(`[EMAIL SYSTEM] ✅ Successfully sent to ${emailToSend}`);
+      } catch (err) {
+        // 🚀 THIS IS THE MAGIC LOG THAT WILL TELL YOU WHAT IS BROKEN!
+        console.error("🚨 [EMAIL SYSTEM] FAILED TO SEND! Error Details:", err.message || err); 
+      }
+    } else {
+      console.log("🚨 [EMAIL SYSTEM] No email address found to send the confirmation to.");
+    }
 
+    res.status(201).json({ message: 'Order created successfully', order: createdOrder });
+  } catch (error) { 
+    console.error("BACKEND CREATE ORDER ERROR:", error);
+    res.status(500).json({ message: 'Error saving order to database', error: error.message }); 
+  }
+};
 // ==========================================
 // 🚀 RAZORPAY CONTROLLERS ADDED HERE
 // ==========================================
