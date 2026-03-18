@@ -1969,6 +1969,285 @@
 // }
 
 
+// // src/app/orders/page.jsx
+// 'use client';
+// import { useState, useEffect, useCallback } from 'react';
+// import { useAuth } from '../../context/AuthContext';
+// import { useRouter } from 'next/navigation';
+// import axios from 'axios';
+// import Link from 'next/link';
+
+// export default function MyOrdersPage() {
+//   const { user } = useAuth();
+//   const router = useRouter();
+//   const [orders, setOrders] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [activeTab, setActiveTab] = useState('orders'); 
+//   const [trackingOrder, setTrackingOrder] = useState(null);
+//   const [viewingDetails, setViewingDetails] = useState(null);
+
+//   const getImageUrl = (imagePath) => {
+//     if (!imagePath) return '#';
+//     if (imagePath.startsWith('http')) return imagePath.replace('http://localhost:5000', process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000');
+//     const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+//     return `${baseUrl}/${imagePath}`;
+//   };
+
+//   const formatDateTime = (dateString) => {
+//     if (!dateString) return 'N/A';
+//     return new Date(dateString).toLocaleString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+//   };
+
+//   const fetchOrders = useCallback(async () => {
+//     if (!user) return;
+//     try {
+//       const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/orders/user/${user?._id || user?.user?._id}`);
+//       setOrders(data);
+//     } catch (error) { console.error("Error fetching orders:", error); } finally { setLoading(false); }
+//   }, [user]);
+
+//   useEffect(() => {
+//     if (user) { fetchOrders(); } else { const redirectTimer = setTimeout(() => { router.push('/login'); }, 2000); return () => clearTimeout(redirectTimer); }
+//   }, [user, router, fetchOrders]);
+
+//   const handleCancelItem = async (orderId, itemId) => {
+//     if (!window.confirm("Are you sure you want to cancel this item?")) return;
+//     try {
+//       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/${orderId}/cancel`, { itemId: itemId });
+//       alert("Item successfully cancelled. Any paid amount will be refunded to your original payment method."); setLoading(true); await fetchOrders(); 
+//     } catch (error) { alert(error.response?.data?.message || "Cannot cancel this item."); }
+//   };
+
+//   const filteredOrders = orders.filter(order => {
+//     if (activeTab === 'not_shipped') return order.status === 'Processing';
+//     if (activeTab === 'cancelled') return order.status === 'Cancelled';
+//     return true; 
+//   });
+
+//   const buyAgainItems = [];
+//   if (activeTab === 'buy_again') {
+//     orders.forEach(order => {
+//       order.orderItems.forEach(item => {
+//         const prodId = item.product?._id || item.product;
+//         if (!buyAgainItems.some(existing => (existing.product?._id || existing.product) === prodId)) { buyAgainItems.push(item); }
+//       });
+//     });
+//   }
+
+//   const amzButtonYellow = "bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-[8px] py-[5px] px-[14px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer text-center w-full";
+//   const amzButtonWhite = "bg-white border border-[#d5d9d9] hover:bg-[#f7fafa] py-[5px] px-[14px] rounded-[8px] text-[13px] text-[#0F1111] shadow-[0_2px_5px_0_rgba(213,217,217,.5)] transition-colors cursor-pointer text-center w-full";
+//   const amzLink = "text-[#007185] hover:text-[#C45500] hover:underline cursor-pointer";
+//   const activeTabStyle = "font-bold border-b-2 border-[#e77600] text-[#0F1111] pb-1 cursor-pointer";
+//   const inactiveTabStyle = "text-[#007185] hover:text-[#c45500] hover:underline cursor-pointer pb-1";
+
+//   if (!user || loading) return <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4 space-y-4"><div className="w-10 h-10 border-4 border-[#e7e7e7] border-t-[#e77600] rounded-full animate-spin"></div></div>;
+
+//   return (
+//     <div className="min-h-screen bg-white font-sans text-[#0F1111] pb-20 selection:bg-orange-200">
+      
+//       <div className="max-w-[1000px] mx-auto px-4 pt-4 pb-2">
+//         <div className="text-[12px] text-[#565959] mb-4 flex items-center gap-1"><Link href="/account" className={amzLink}>Your Account</Link> <span>›</span> <span className="text-[#c45500]">Your Orders</span></div>
+//         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline mb-4 gap-4">
+//           <h1 className="text-[28px] font-normal leading-tight">Your Orders</h1>
+//           <div className="flex flex-wrap gap-4 text-[14px] border-b sm:border-none border-[#ddd] pb-2 sm:pb-0 w-full sm:w-auto">
+//             <span onClick={() => setActiveTab('orders')} className={activeTab === 'orders' ? activeTabStyle : inactiveTabStyle}>Orders</span>
+//             <span onClick={() => setActiveTab('buy_again')} className={activeTab === 'buy_again' ? activeTabStyle : inactiveTabStyle}>Buy Again</span>
+//             <span onClick={() => setActiveTab('not_shipped')} className={activeTab === 'not_shipped' ? activeTabStyle : inactiveTabStyle}>Not Yet Shipped</span>
+//             <span onClick={() => setActiveTab('cancelled')} className={activeTab === 'cancelled' ? activeTabStyle : inactiveTabStyle}>Cancelled Orders</span>
+//           </div>
+//         </div>
+//       </div>
+
+//       <div className="max-w-[1000px] mx-auto px-4">
+//         {activeTab === 'buy_again' ? (
+//           buyAgainItems.length === 0 ? (
+//             <div className="border border-[#ddd] rounded-[8px] p-8 text-center bg-[#f7fafa]"><p className="text-[14px] text-[#0F1111] font-bold">No past purchases found.</p></div>
+//           ) : (
+//             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+//               {buyAgainItems.map((item, idx) => {
+//                 const prodId = item.product?._id || item.product;
+//                 return (
+//                   <div key={idx} className="border border-[#ddd] rounded-[8px] p-4 flex flex-col items-center text-center">
+//                     <div className="w-32 h-32 mb-4"><img src={getImageUrl(item.image)} alt={item.name} className="w-full h-full object-contain mix-blend-multiply" /></div>
+//                     <Link href={`/product/${prodId}`} className={`${amzLink} text-[13px] font-medium line-clamp-2 mb-2 h-10`}>{item.name}</Link>
+//                     <Link href={`/product/${prodId}`} className="w-full mt-auto"><button className={amzButtonYellow}>View Item</button></Link>
+//                   </div>
+//                 );
+//               })}
+//             </div>
+//           )
+//         ) : filteredOrders.length === 0 ? (
+//           <div className="border border-[#ddd] rounded-[8px] p-8 text-center flex flex-col items-center bg-[#f7fafa]">
+//             <p className="text-[14px] text-[#0F1111] font-bold mb-4">{activeTab === 'not_shipped' ? "You don't have any pending shipments." : activeTab === 'cancelled' ? "You don't have any cancelled orders." : "Looks like you haven't placed any orders yet."}</p>
+//             <Link href="/"><button className={amzButtonYellow + " w-auto px-8"}>Start Shopping</button></Link>
+//           </div>
+//         ) : (
+//           <div className="space-y-6">
+//             <p className="text-[14px] font-bold mb-4">{filteredOrders.length} orders placed</p>
+//             {filteredOrders.map((order) => (
+//               <div key={order._id} className="border border-[#d5d9d9] rounded-[8px] overflow-hidden mb-4">
+                
+//                 <div className="bg-[#f0f2f2] p-3.5 border-b border-[#d5d9d9] flex flex-wrap justify-between text-[12px] text-[#565959]">
+//                   <div className="flex flex-wrap gap-8 md:gap-16">
+//                     <div className="flex flex-col"><span className="uppercase">Order placed</span><span className="text-[#0F1111]">{formatDateTime(order.createdAt)}</span></div>
+//                     <div className="flex flex-col"><span className="uppercase">Total</span><span className="text-[#0F1111]">₹{order.totalPrice.toLocaleString('en-IN')}</span></div>
+//                     <div className="flex flex-col relative group">
+//                       <span className="uppercase">Ship to</span><span className={`${amzLink} flex items-center gap-1`}>{order.shippingAddress?.fullName || user?.name?.split(' ')[0] || 'Customer'} <span className="text-[8px]">▼</span></span>
+//                     </div>
+//                   </div>
+//                   <div className="flex flex-col text-left md:text-right w-full md:w-auto mt-2 md:mt-0">
+//                     <span className="uppercase">Order # {order._id.toUpperCase()}</span>
+//                     <div className="flex gap-2 justify-start md:justify-end mt-1">
+//                       <span onClick={() => setViewingDetails(order)} className={amzLink + " font-bold"}>View order details</span><span className="text-[#ddd]">|</span>
+//                       {order.invoiceUrl ? <a href={getImageUrl(order.invoiceUrl)} target="_blank" rel="noopener noreferrer" className={amzLink}>Invoice</a> : <span className="text-[#a6a6a6] cursor-default" title="Invoice processing...">Invoice</span>}
+//                     </div>
+//                   </div>
+//                 </div>
+
+//                 <div className="p-4 bg-white">
+//                   <div className="mb-3">
+//                     <h3 className={`font-bold text-[18px] ${order.status === 'Cancelled' ? 'text-[#c40000]' : 'text-[#0F1111]'}`}>{order.status === 'Delivered' ? 'Delivered' : order.status === 'Shipped' ? 'Shipped' : order.status === 'Cancelled' ? 'Cancelled' : 'Arriving soon'}</h3>
+//                     <p className="text-[14px] text-[#565959]">{order.status === 'Delivered' ? 'Your package was delivered.' : order.status === 'Cancelled' ? 'This order has been cancelled.' : 'We are preparing your order for shipment.'}</p>
+//                   </div>
+
+//                   <div className="space-y-4">
+//                     {order.orderItems.map((item, index) => {
+//                       const productId = item.product?._id || item.product;
+//                       const isItemCancellable = item.product?.isCancellable !== false; 
+//                       const isOrderActive = order.status !== 'Shipped' && order.status !== 'Delivered' && order.status !== 'Cancelled';
+//                       const showCancelBtn = isOrderActive && isItemCancellable;
+
+//                       return (
+//                         <div key={index} className="flex flex-col md:flex-row gap-4 items-start py-2">
+//                           <div className="w-[90px] shrink-0"><Link href={`/product/${productId}`}><img src={getImageUrl(item.image)} alt={item.name} className={`w-full object-contain cursor-pointer mix-blend-multiply ${order.status === 'Cancelled' ? 'opacity-50 grayscale' : ''}`} /></Link></div>
+//                           <div className="flex-1">
+//                             <Link href={`/product/${productId}`}><h4 className={`${amzLink} text-[14px] font-medium leading-tight mb-1 line-clamp-2 ${order.status === 'Cancelled' ? 'text-[#565959] line-through' : ''}`}>{item.name}</h4></Link>
+//                             {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+//                               <div className="text-[12px] text-[#565959] mb-1">{Object.entries(item.selectedOptions).map(([key, val]) => (<span key={key} className="mr-3">{key}: <span className="text-[#0F1111] font-bold">{val}</span></span>))}</div>
+//                             )}
+//                             <div className="text-[12px] text-[#0F1111] mt-2">{order.status === 'Cancelled' ? <span className="text-[#c40000] font-bold">Item Cancelled</span> : <span className="text-[#565959]">Return window valid for 7 days after delivery</span>}</div>
+//                             <div className="mt-4 flex flex-wrap gap-2 md:hidden">
+//                               <Link href={`/product/${productId}`} className="flex-1"><button className={amzButtonYellow}>Buy it again</button></Link>
+//                               {showCancelBtn ? <button onClick={() => handleCancelItem(order._id, item._id)} className={amzButtonWhite + " flex-1"}>Cancel item</button> : isOrderActive ? <span className="text-[#B12704] text-[11px] font-bold py-1 w-full flex-1 mt-1">Non-cancellable item</span> : null}
+//                             </div>
+//                           </div>
+//                           <div className="hidden md:flex w-[200px] flex-col gap-2 shrink-0 border-l border-[#eee] pl-4">
+//                             <Link href={`/product/${productId}`}><button className={amzButtonYellow + " flex items-center justify-center gap-2"}><span className="text-lg leading-none">↻</span> Buy it again</button></Link>
+//                             {showCancelBtn ? <button onClick={() => handleCancelItem(order._id, item._id)} className={amzButtonWhite}>Cancel item</button> : (<><Link href={`/product/${productId}`}><button className={amzButtonWhite}>View your item</button></Link>{!isItemCancellable && isOrderActive && (<span className="text-[#B12704] text-[10px] text-center font-bold px-2">Non-cancellable item</span>)}</>)}
+//                             {order.status === 'Delivered' && <Link href={`/product/${productId}`}><button className={amzButtonWhite}>Write a product review</button></Link>}
+//                             {order.status !== 'Cancelled' && <button onClick={() => setTrackingOrder(order)} className={amzButtonWhite}>Track package</button>}
+//                           </div>
+//                         </div>
+//                       )
+//                     })}
+//                   </div>
+//                 </div>
+//               </div>
+//             ))}
+//           </div>
+//         )}
+//       </div>
+
+//       {/* TRACKING MODAL */}
+//       {trackingOrder && (
+//         <div className="fixed inset-0 bg-[rgba(0,0,0,0.6)] flex items-center justify-center p-4 z-50">
+//           <div className="bg-white rounded-[8px] w-full max-w-[500px] shadow-[0_2px_10px_rgba(0,0,0,0.2)] overflow-hidden">
+//             <div className="bg-[#f3f3f3] border-b border-[#ddd] p-4 flex justify-between items-center"><h2 className="text-[16px] font-bold text-[#0F1111]">Track Package</h2><button onClick={() => setTrackingOrder(null)} className="text-[#0F1111] hover:text-[#c40000] text-xl leading-none">✕</button></div>
+//             <div className="p-6">
+//               <p className="font-bold text-[18px] text-[#111] mb-1">{trackingOrder.status === 'Delivered' ? 'Delivered successfully' : trackingOrder.status === 'Shipped' ? 'On the way' : 'Order received'}</p>
+//               <p className="text-[13px] text-[#565959] mb-6">Order ID: {trackingOrder._id.toUpperCase()}</p>
+//               <div className="relative mb-8 px-4 mt-8">
+//                 <div className="absolute top-1/2 left-[10%] right-[10%] h-1.5 bg-[#ddd] -translate-y-1/2 rounded-full z-0"></div>
+//                 <div className={`absolute top-1/2 left-[10%] h-1.5 bg-[#007600] -translate-y-1/2 rounded-full z-0 transition-all duration-500 ${trackingOrder.status === 'Processing' ? 'w-[10%]' : trackingOrder.status === 'Shipped' ? 'w-[50%]' : trackingOrder.status === 'Delivered' ? 'w-[80%]' : 'w-0'}`}></div>
+//                 <div className="flex justify-between relative z-10">
+//                   <div className="flex flex-col items-center"><div className="w-5 h-5 bg-[#007600] rounded-full border-4 border-white shadow-[0_0_0_1px_#007600]"></div><span className="text-[11px] font-bold text-[#111] mt-2">Ordered</span></div>
+//                   <div className="flex flex-col items-center"><div className={`w-5 h-5 rounded-full border-4 border-white shadow-[0_0_0_1px_#ddd] transition-colors ${(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') ? 'bg-[#007600] shadow-[0_0_0_1px_#007600]' : 'bg-[#f3f3f3]'}`}></div><span className={`text-[11px] font-bold mt-2 ${(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') ? 'text-[#111]' : 'text-[#565959]'}`}>Shipped</span></div>
+//                   <div className="flex flex-col items-center"><div className={`w-5 h-5 rounded-full border-4 border-white shadow-[0_0_0_1px_#ddd] transition-colors ${trackingOrder.status === 'Delivered' ? 'bg-[#007600] shadow-[0_0_0_1px_#007600]' : 'bg-[#f3f3f3]'}`}></div><span className={`text-[11px] font-bold mt-2 ${trackingOrder.status === 'Delivered' ? 'text-[#111]' : 'text-[#565959]'}`}>Delivered</span></div>
+//                 </div>
+//               </div>
+//               <div className="space-y-4 border-t border-[#eee] pt-4">
+//                 {trackingOrder.status === 'Delivered' && (
+//                   <div className="flex gap-4"><div className="text-[12px] font-bold w-16 text-[#565959] shrink-0 text-right mt-0.5">Updated</div><div className="text-[13px] text-[#111]"><span className="font-bold text-[#007600]">Delivered</span><br/>Package was handed directly to resident.</div></div>
+//                 )}
+//                 {(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') && (
+//                   <div className="flex gap-4"><div className="text-[12px] font-bold w-16 text-[#565959] shrink-0 text-right mt-0.5">Updated</div><div className="text-[13px] text-[#111]"><span className="font-bold text-[#e77600]">Shipped</span><br/>Package has left the Amazon Smarts fulfillment center.</div></div>
+//                 )}
+//                 <div className="flex gap-4"><div className="text-[12px] font-bold w-16 text-[#565959] shrink-0 text-right mt-0.5">{new Date(trackingOrder.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}<br/><span className="text-[10px] font-normal">{new Date(trackingOrder.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</span></div><div className="text-[13px] text-[#111]"><span className="font-bold">Ordered</span><br/>Order received and is currently being processed.</div></div>
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       {/* ORDER DETAILS MODAL */}
+//       {viewingDetails && (
+//         <div className="fixed inset-0 bg-[rgba(0,0,0,0.6)] flex items-center justify-center p-4 z-[100]">
+//           <div className="bg-white rounded-[8px] w-full max-w-[700px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+//             <div className="bg-[#f0f2f2] border-b border-[#ddd] p-4 flex justify-between items-center shrink-0">
+//               <h2 className="text-[18px] font-bold text-[#111]">Order Details</h2><button onClick={() => setViewingDetails(null)} className="text-2xl text-[#111] hover:text-[#e77600] leading-none">✕</button>
+//             </div>
+//             <div className="p-6 overflow-y-auto custom-scrollbar">
+//               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-6 gap-4">
+//                 <div><p className="text-[14px] text-[#565959]">Ordered on {formatDateTime(viewingDetails.createdAt)}</p><p className="text-[14px] text-[#565959]">Order# <span className="text-[#111] font-mono">{viewingDetails._id.toUpperCase()}</span></p></div>
+//                 {viewingDetails.invoiceUrl && <a href={getImageUrl(viewingDetails.invoiceUrl)} target="_blank" rel="noopener noreferrer" className={amzButtonWhite + " w-auto text-[12px] whitespace-nowrap"}>Download Invoice</a>}
+//               </div>
+
+//               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+//                 <div className="border border-[#ddd] rounded-[4px] p-4">
+//                   <h3 className="font-bold text-[14px] mb-2">Shipping Address</h3>
+//                   <p className="text-[13px] font-bold text-[#111]">{viewingDetails.shippingAddress?.fullName}</p>
+//                   <p className="text-[13px] text-[#111]">{viewingDetails.shippingAddress?.address}</p>
+//                   <p className="text-[13px] text-[#111]">{viewingDetails.shippingAddress?.city}, {viewingDetails.shippingAddress?.pincode}</p>
+//                   <p className="text-[13px] text-[#111] mt-1">Phone: {viewingDetails.shippingAddress?.phone}</p>
+//                 </div>
+//                 {/* <div className="border border-[#ddd] rounded-[4px] p-4">
+//                   <h3 className="font-bold text-[14px] mb-2">Payment Method</h3>
+//                   <p className="text-[13px] text-[#111] font-medium">
+//                     {viewingDetails.paymentMethod?.toUpperCase().includes('COD') || viewingDetails.paymentMethod?.toUpperCase().includes('CASH') ? 'Pay on Delivery (Cash/UPI)' : viewingDetails.paymentMethod?.toUpperCase().includes('RAZORPAY') || viewingDetails.paymentMethod?.toUpperCase().includes('ONLINE') ? 'Online Payment (Razorpay)' : viewingDetails.paymentMethod || 'Online Payment'}
+//                   </p>
+//                 </div> */}
+//                 <div className="border border-[#ddd] rounded-[4px] p-4">
+//                   <h3 className="font-bold text-[14px] mb-2">Payment Method</h3>
+//                   <p className="text-[13px] text-[#111] font-medium">
+//                     {/* 🚀 BULLETPROOF PAYMENT LOGIC BASED ON 'isPaid' FLAG */}
+//                     {viewingDetails.isPaid === false || viewingDetails.paymentMethod?.toUpperCase().includes('COD')
+//                       ? 'Pay on Delivery (Cash/UPI)' 
+//                       : 'Online Payment (Razorpay)'}
+//                   </p>
+//                 </div>
+//               </div>
+
+//               {/* 🚀 NEW: CUSTOMER TRACKING BOX */}
+//               {viewingDetails.shippingDetails && viewingDetails.shippingDetails.trackingId && (
+//                 <div className="border border-[#007185] bg-[#f0f7ff] rounded-[4px] p-4 mb-6 flex items-center justify-between">
+//                   <div>
+//                     <h3 className="font-bold text-[14px] text-[#007185] mb-1">Tracking Information</h3>
+//                     <p className="text-[13px] text-[#111]">Shipped via <span className="font-bold">{viewingDetails.shippingDetails.carrierName}</span></p>
+//                     <p className="text-[13px] text-[#111]">Tracking ID / AWB: <span className="font-mono font-bold">{viewingDetails.shippingDetails.trackingId}</span></p>
+//                   </div>
+//                   <div className="text-3xl">📦</div>
+//                 </div>
+//               )}
+
+//               <div className="border border-[#ddd] rounded-[4px] overflow-hidden mb-2">
+//                 <div className="bg-[#f0f2f2] p-3 border-b border-[#ddd]"><h3 className="font-bold text-[14px]">Order Summary</h3></div>
+//                 <div className="p-4 bg-white space-y-2 text-[13px] text-[#111]">
+//                   <div className="flex justify-between"><span>Item(s) Subtotal:</span><span>₹{viewingDetails.itemsPrice?.toLocaleString('en-IN')}</span></div>
+//                   <div className="flex justify-between"><span>Shipping & Handling:</span><span>{viewingDetails.shippingPrice === 0 ? 'Free' : `₹${viewingDetails.shippingPrice?.toLocaleString('en-IN')}`}</span></div>
+//                   {viewingDetails.discountAmount > 0 && <div className="flex justify-between text-[#007600]"><span>Promotion Applied:</span><span>-₹{viewingDetails.discountAmount?.toLocaleString('en-IN')}</span></div>}
+//                   <div className="flex justify-between font-bold text-[16px] text-[#B12704] border-t border-[#eee] pt-3 mt-3"><span>Grand Total:</span><span>₹{viewingDetails.totalPrice?.toLocaleString('en-IN')}</span></div>
+//                 </div>
+//               </div>
+
+//             </div>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+
 // src/app/orders/page.jsx
 'use client';
 import { useState, useEffect, useCallback } from 'react';
@@ -1983,7 +2262,12 @@ export default function MyOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('orders'); 
+  
+  // 🚀 UPDATED TRACKING STATES
   const [trackingOrder, setTrackingOrder] = useState(null);
+  const [liveTrackingData, setLiveTrackingData] = useState(null);
+  const [isTrackingLoading, setIsTrackingLoading] = useState(false);
+  
   const [viewingDetails, setViewingDetails] = useState(null);
 
   const getImageUrl = (imagePath) => {
@@ -1995,7 +2279,7 @@ export default function MyOrdersPage() {
 
   const formatDateTime = (dateString) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+    return new Date(dateString).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
   };
 
   const fetchOrders = useCallback(async () => {
@@ -2016,6 +2300,23 @@ export default function MyOrdersPage() {
       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/${orderId}/cancel`, { itemId: itemId });
       alert("Item successfully cancelled. Any paid amount will be refunded to your original payment method."); setLoading(true); await fetchOrders(); 
     } catch (error) { alert(error.response?.data?.message || "Cannot cancel this item."); }
+  };
+
+  // 🚀 NEW: FUNCTION TO FETCH LIVE SHIPROCKET DATA
+  const handleTrackPackage = async (order) => {
+    setTrackingOrder(order);
+    setLiveTrackingData(null);
+    setIsTrackingLoading(true);
+    
+    try {
+      const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/orders/${order._id}/tracking`);
+      setLiveTrackingData(data);
+    } catch (error) {
+      console.error("Tracking API Error", error);
+      setLiveTrackingData({ isLive: false, status: order.status }); // Fallback to DB status
+    } finally {
+      setIsTrackingLoading(false);
+    }
   };
 
   const filteredOrders = orders.filter(order => {
@@ -2135,7 +2436,11 @@ export default function MyOrdersPage() {
                             <Link href={`/product/${productId}`}><button className={amzButtonYellow + " flex items-center justify-center gap-2"}><span className="text-lg leading-none">↻</span> Buy it again</button></Link>
                             {showCancelBtn ? <button onClick={() => handleCancelItem(order._id, item._id)} className={amzButtonWhite}>Cancel item</button> : (<><Link href={`/product/${productId}`}><button className={amzButtonWhite}>View your item</button></Link>{!isItemCancellable && isOrderActive && (<span className="text-[#B12704] text-[10px] text-center font-bold px-2">Non-cancellable item</span>)}</>)}
                             {order.status === 'Delivered' && <Link href={`/product/${productId}`}><button className={amzButtonWhite}>Write a product review</button></Link>}
-                            {order.status !== 'Cancelled' && <button onClick={() => setTrackingOrder(order)} className={amzButtonWhite}>Track package</button>}
+                            {order.status !== 'Cancelled' && (
+                              <button onClick={() => handleTrackPackage(order)} className={amzButtonWhite}>
+                                Track package
+                              </button>
+                            )}
                           </div>
                         </div>
                       )
@@ -2148,32 +2453,93 @@ export default function MyOrdersPage() {
         )}
       </div>
 
-      {/* TRACKING MODAL */}
+      {/* 🚀 LIVE TRACKING MODAL */}
       {trackingOrder && (
         <div className="fixed inset-0 bg-[rgba(0,0,0,0.6)] flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-[8px] w-full max-w-[500px] shadow-[0_2px_10px_rgba(0,0,0,0.2)] overflow-hidden">
-            <div className="bg-[#f3f3f3] border-b border-[#ddd] p-4 flex justify-between items-center"><h2 className="text-[16px] font-bold text-[#0F1111]">Track Package</h2><button onClick={() => setTrackingOrder(null)} className="text-[#0F1111] hover:text-[#c40000] text-xl leading-none">✕</button></div>
-            <div className="p-6">
-              <p className="font-bold text-[18px] text-[#111] mb-1">{trackingOrder.status === 'Delivered' ? 'Delivered successfully' : trackingOrder.status === 'Shipped' ? 'On the way' : 'Order received'}</p>
-              <p className="text-[13px] text-[#565959] mb-6">Order ID: {trackingOrder._id.toUpperCase()}</p>
-              <div className="relative mb-8 px-4 mt-8">
-                <div className="absolute top-1/2 left-[10%] right-[10%] h-1.5 bg-[#ddd] -translate-y-1/2 rounded-full z-0"></div>
-                <div className={`absolute top-1/2 left-[10%] h-1.5 bg-[#007600] -translate-y-1/2 rounded-full z-0 transition-all duration-500 ${trackingOrder.status === 'Processing' ? 'w-[10%]' : trackingOrder.status === 'Shipped' ? 'w-[50%]' : trackingOrder.status === 'Delivered' ? 'w-[80%]' : 'w-0'}`}></div>
-                <div className="flex justify-between relative z-10">
-                  <div className="flex flex-col items-center"><div className="w-5 h-5 bg-[#007600] rounded-full border-4 border-white shadow-[0_0_0_1px_#007600]"></div><span className="text-[11px] font-bold text-[#111] mt-2">Ordered</span></div>
-                  <div className="flex flex-col items-center"><div className={`w-5 h-5 rounded-full border-4 border-white shadow-[0_0_0_1px_#ddd] transition-colors ${(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') ? 'bg-[#007600] shadow-[0_0_0_1px_#007600]' : 'bg-[#f3f3f3]'}`}></div><span className={`text-[11px] font-bold mt-2 ${(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') ? 'text-[#111]' : 'text-[#565959]'}`}>Shipped</span></div>
-                  <div className="flex flex-col items-center"><div className={`w-5 h-5 rounded-full border-4 border-white shadow-[0_0_0_1px_#ddd] transition-colors ${trackingOrder.status === 'Delivered' ? 'bg-[#007600] shadow-[0_0_0_1px_#007600]' : 'bg-[#f3f3f3]'}`}></div><span className={`text-[11px] font-bold mt-2 ${trackingOrder.status === 'Delivered' ? 'text-[#111]' : 'text-[#565959]'}`}>Delivered</span></div>
+          <div className="bg-white rounded-[8px] w-full max-w-[550px] max-h-[90vh] flex flex-col shadow-[0_2px_10px_rgba(0,0,0,0.2)] overflow-hidden">
+            <div className="bg-[#f3f3f3] border-b border-[#ddd] p-4 flex justify-between items-center shrink-0">
+              <h2 className="text-[16px] font-bold text-[#0F1111]">Live Package Tracking</h2>
+              <button onClick={() => setTrackingOrder(null)} className="text-[#0F1111] hover:text-[#c40000] text-xl leading-none">✕</button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto custom-scrollbar">
+              
+              {/* Loader */}
+              {isTrackingLoading ? (
+                <div className="flex flex-col items-center justify-center py-10">
+                  <div className="w-8 h-8 border-4 border-t-[#007185] border-[#e7e7e7] rounded-full animate-spin mb-4"></div>
+                  <p className="text-[13px] font-bold text-[#111]">Fetching live data from Shiprocket...</p>
                 </div>
-              </div>
-              <div className="space-y-4 border-t border-[#eee] pt-4">
-                {trackingOrder.status === 'Delivered' && (
-                  <div className="flex gap-4"><div className="text-[12px] font-bold w-16 text-[#565959] shrink-0 text-right mt-0.5">Updated</div><div className="text-[13px] text-[#111]"><span className="font-bold text-[#007600]">Delivered</span><br/>Package was handed directly to resident.</div></div>
-                )}
-                {(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') && (
-                  <div className="flex gap-4"><div className="text-[12px] font-bold w-16 text-[#565959] shrink-0 text-right mt-0.5">Updated</div><div className="text-[13px] text-[#111]"><span className="font-bold text-[#e77600]">Shipped</span><br/>Package has left the Amazon Smarts fulfillment center.</div></div>
-                )}
-                <div className="flex gap-4"><div className="text-[12px] font-bold w-16 text-[#565959] shrink-0 text-right mt-0.5">{new Date(trackingOrder.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}<br/><span className="text-[10px] font-normal">{new Date(trackingOrder.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</span></div><div className="text-[13px] text-[#111]"><span className="font-bold">Ordered</span><br/>Order received and is currently being processed.</div></div>
-              </div>
+              ) : (
+                <>
+                  {/* Status Header */}
+                  <div className="mb-6">
+                    <p className="font-bold text-[22px] text-[#007600] mb-1">
+                      {liveTrackingData?.trackingData?.track_status === 7 || trackingOrder.status === 'Delivered' ? 'Delivered' : 
+                       liveTrackingData?.trackingData?.track_status === 6 || trackingOrder.status === 'Shipped' ? 'Shipped' : 
+                       'Order Processing'}
+                    </p>
+                    <p className="text-[13px] text-[#565959]">
+                      Tracking ID: <span className="font-bold text-[#111] font-mono">{liveTrackingData?.trackingId || liveTrackingData?.trackingData?.track_url?.split('awb=')[1] || trackingOrder.shippingDetails?.trackingId || 'Pending Allocation'}</span>
+                    </p>
+                    <p className="text-[13px] text-[#565959]">
+                      Carrier: <span className="font-bold text-[#111]">{liveTrackingData?.carrierName || trackingOrder.shippingDetails?.carrierName || 'Pending Partner'}</span>
+                    </p>
+                  </div>
+
+                  {/* Standard Progress Bar */}
+                  <div className="relative mb-10 px-4 mt-8">
+                    <div className="absolute top-1/2 left-[10%] right-[10%] h-1.5 bg-[#ddd] -translate-y-1/2 rounded-full z-0"></div>
+                    <div className={`absolute top-1/2 left-[10%] h-1.5 bg-[#007600] -translate-y-1/2 rounded-full z-0 transition-all duration-500 ${trackingOrder.status === 'Processing' ? 'w-[10%]' : trackingOrder.status === 'Shipped' ? 'w-[50%]' : trackingOrder.status === 'Delivered' ? 'w-[80%]' : 'w-0'}`}></div>
+                    <div className="flex justify-between relative z-10">
+                      <div className="flex flex-col items-center"><div className="w-5 h-5 bg-[#007600] rounded-full border-4 border-white shadow-[0_0_0_1px_#007600]"></div><span className="text-[11px] font-bold text-[#111] mt-2">Ordered</span></div>
+                      <div className="flex flex-col items-center"><div className={`w-5 h-5 rounded-full border-4 border-white shadow-[0_0_0_1px_#ddd] transition-colors ${(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') ? 'bg-[#007600] shadow-[0_0_0_1px_#007600]' : 'bg-[#f3f3f3]'}`}></div><span className={`text-[11px] font-bold mt-2 ${(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') ? 'text-[#111]' : 'text-[#565959]'}`}>Shipped</span></div>
+                      <div className="flex flex-col items-center"><div className={`w-5 h-5 rounded-full border-4 border-white shadow-[0_0_0_1px_#ddd] transition-colors ${trackingOrder.status === 'Delivered' ? 'bg-[#007600] shadow-[0_0_0_1px_#007600]' : 'bg-[#f3f3f3]'}`}></div><span className={`text-[11px] font-bold mt-2 ${trackingOrder.status === 'Delivered' ? 'text-[#111]' : 'text-[#565959]'}`}>Delivered</span></div>
+                    </div>
+                  </div>
+
+                  {/* 🚀 LIVE SHIPROCKET TIMELINE */}
+                  <div className="border-t border-[#eee] pt-6">
+                    <h3 className="font-bold text-[14px] text-[#111] mb-4">Tracking History</h3>
+                    
+                    {liveTrackingData?.isLive && liveTrackingData?.trackingData?.shipment_track_activities?.length > 0 ? (
+                      <div className="space-y-0">
+                        {liveTrackingData.trackingData.shipment_track_activities.map((activity, idx) => (
+                          <div key={idx} className="flex gap-4">
+                            <div className="text-[12px] font-bold w-20 text-[#565959] shrink-0 text-right mt-1">
+                              {new Date(activity.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}<br/>
+                              <span className="text-[10px] font-normal">{new Date(activity.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                            </div>
+                            {/* Vertical Line Container */}
+                            <div className="text-[13px] text-[#111] pb-6 border-l-2 border-[#ddd] pl-6 relative">
+                              {/* Dot */}
+                              <div className={`absolute w-3 h-3 rounded-full -left-[7px] top-1.5 border-2 border-white ${idx === 0 ? 'bg-[#007600]' : 'bg-[#a6a6a6]'}`}></div>
+                              
+                              <span className={`font-bold ${idx === 0 ? 'text-[#007600]' : 'text-[#111]'}`}>
+                                {activity.activity}
+                              </span>
+                              <br/>
+                              {activity.location && <span className="text-[#565959] text-[12px]">{activity.location}</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      // Fallback for Manual or Just-Created orders
+                      <div className="space-y-4">
+                        {trackingOrder.status === 'Delivered' && (
+                          <div className="flex gap-4"><div className="text-[12px] font-bold w-20 text-[#565959] shrink-0 text-right mt-0.5">Updated</div><div className="text-[13px] text-[#111]"><span className="font-bold text-[#007600]">Delivered</span><br/>Package was handed directly to resident.</div></div>
+                        )}
+                        {(trackingOrder.status === 'Shipped' || trackingOrder.status === 'Delivered') && (
+                          <div className="flex gap-4"><div className="text-[12px] font-bold w-20 text-[#565959] shrink-0 text-right mt-0.5">Updated</div><div className="text-[13px] text-[#111]"><span className="font-bold text-[#e77600]">Shipped</span><br/>Package has left the fulfillment center.</div></div>
+                        )}
+                        <div className="flex gap-4"><div className="text-[12px] font-bold w-20 text-[#565959] shrink-0 text-right mt-0.5">{new Date(trackingOrder.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}<br/><span className="text-[10px] font-normal">{new Date(trackingOrder.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</span></div><div className="text-[13px] text-[#111]"><span className="font-bold">Ordered</span><br/>Order received and is currently being processed.</div></div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+              
             </div>
           </div>
         </div>
@@ -2200,12 +2566,6 @@ export default function MyOrdersPage() {
                   <p className="text-[13px] text-[#111]">{viewingDetails.shippingAddress?.city}, {viewingDetails.shippingAddress?.pincode}</p>
                   <p className="text-[13px] text-[#111] mt-1">Phone: {viewingDetails.shippingAddress?.phone}</p>
                 </div>
-                {/* <div className="border border-[#ddd] rounded-[4px] p-4">
-                  <h3 className="font-bold text-[14px] mb-2">Payment Method</h3>
-                  <p className="text-[13px] text-[#111] font-medium">
-                    {viewingDetails.paymentMethod?.toUpperCase().includes('COD') || viewingDetails.paymentMethod?.toUpperCase().includes('CASH') ? 'Pay on Delivery (Cash/UPI)' : viewingDetails.paymentMethod?.toUpperCase().includes('RAZORPAY') || viewingDetails.paymentMethod?.toUpperCase().includes('ONLINE') ? 'Online Payment (Razorpay)' : viewingDetails.paymentMethod || 'Online Payment'}
-                  </p>
-                </div> */}
                 <div className="border border-[#ddd] rounded-[4px] p-4">
                   <h3 className="font-bold text-[14px] mb-2">Payment Method</h3>
                   <p className="text-[13px] text-[#111] font-medium">
@@ -2217,7 +2577,7 @@ export default function MyOrdersPage() {
                 </div>
               </div>
 
-              {/* 🚀 NEW: CUSTOMER TRACKING BOX */}
+              {/* 🚀 CUSTOMER TRACKING BOX */}
               {viewingDetails.shippingDetails && viewingDetails.shippingDetails.trackingId && (
                 <div className="border border-[#007185] bg-[#f0f7ff] rounded-[4px] p-4 mb-6 flex items-center justify-between">
                   <div>

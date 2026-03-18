@@ -8535,6 +8535,7 @@ export default function AdminDashboard() {
   //   } catch(err) { alert("Shiprocket Error: Check console or .env keys"); console.error(err); }
   // };
 // 🚀 SHIPROCKET HANDLER
+  // 🚀 SHIPROCKET HANDLER
   const handleShiprocketFulfill = async (orderId) => {
     if(!window.confirm("Automate AWB via Shiprocket?")) return;
     try {
@@ -8542,9 +8543,14 @@ export default function AdminDashboard() {
       alert("Shiprocket AWB Generated! Email sent to customer.");
       fetchDashboardData();
     } catch(err) { 
-      // 🚀 NEW: Show the exact error to the admin
-      alert(`Shiprocket Error: ${err.response?.data?.details || err.message}`); 
-      console.error(err); 
+      // Safely turn the object into a readable string
+      const errorDetails = err.response?.data?.details;
+      const errorMessage = typeof errorDetails === 'object' 
+        ? JSON.stringify(errorDetails, null, 2) 
+        : errorDetails || err.message;
+        
+      alert(`Shiprocket Error:\n\n${errorMessage}`); 
+      console.error("Detailed Error:", err.response?.data); 
     }
   };
   const handleProductCheckbox = (productId) => {

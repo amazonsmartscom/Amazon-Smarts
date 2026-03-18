@@ -2430,3 +2430,47 @@ exports.fulfillShiprocket = async (req, res) => {
     }); 
   }
 };
+// ==========================================
+// 🚀 8. LIVE SHIPROCKET TRACKING API
+// ==========================================
+exports.getLiveTracking = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // 1. If it's a Shiprocket Order, fetch live data from their API
+    if (order.shippingDetails?.provider === 'Shiprocket' && order.shippingDetails?.trackingId) {
+      
+      // Authenticate
+      const authRes = await axios.post('https://apiv2.shiprocket.in/v1/external/auth/login', { 
+        email: process.env.SHIPROCKET_EMAIL, 
+        password: process.env.SHIPROCKET_PASSWORD 
+      });
+      const token = authRes.data.token;
+
+      // Fetch Live Tracking for this AWB
+      const trackRes = await axios.get(`https://apiv2.shiprocket.in/v1/external/courier/track/awb/${order.shippingDetails.trackingId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      return res.status(200).json({
+        isLive: true,
+        provider: 'Shiprocket',
+        trackingData: trackRes.data.tracking_data // Contains shiprocket's track_status & shipment_track_activities
+      });
+    }
+
+    // 2. If it's Manual or Not Shipped yet, just return the standard database info
+    return res.status(200).json({
+      isLive: false,
+      status: order.status,
+      provider: order.shippingDetails?.provider || 'Pending',
+      carrierName: order.shippingDetails?.carrierName,
+      trackingId: order.shippingDetails?.trackingId
+    });
+
+  } catch (error) {
+    console.error("Live Tracking Error:", error.response?.data || error.message);
+    res.status(500).json({ message: 'Error fetching live tracking', error: error.message });
+  }
+};
