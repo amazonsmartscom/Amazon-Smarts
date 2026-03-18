@@ -63,15 +63,52 @@
 
 // module.exports = router;
 
+// const express = require('express');
+// const router = express.Router();
+// const multer = require('multer'); // 🚀 Require multer
+// const path = require('path');
+
+// // 🚀 Configure Multer for Invoices
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) {
+//     cb(null, 'uploads/'); // Save to your uploads folder
+//   },
+//   filename: function (req, file, cb) {
+//     cb(null, 'invoice-' + Date.now() + path.extname(file.originalname));
+//   }
+// });
+// const upload = multer({ storage: storage });
+
+// const { 
+//   createOrder, simulatePayment, getUserOrders, getAllOrders, updateOrderStatus, cancelOrder, 
+//   uploadInvoice // 🚀 Import new function
+// } = require('../controllers/orderController');
+
+// // Existing Routes...
+// router.post('/', createOrder);
+// router.put('/:id/pay', simulatePayment);
+// router.get('/user/:userId', getUserOrders); 
+// router.put('/:id/cancel', cancelOrder); 
+// router.get('/admin/all', getAllOrders);
+// router.put('/admin/:id/status', updateOrderStatus);
+
+// // 🚀 NEW: Route for uploading invoices
+// router.put('/admin/:id/invoice', upload.single('invoice'), uploadInvoice);
+
+// module.exports = router;
+
+
+
+// routes/orderRoutes.js
 const express = require('express');
 const router = express.Router();
-const multer = require('multer'); // 🚀 Require multer
+const multer = require('multer'); 
 const path = require('path');
 
 // 🚀 Configure Multer for Invoices
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/'); // Save to your uploads folder
+    cb(null, 'uploads/'); 
   },
   filename: function (req, file, cb) {
     cb(null, 'invoice-' + Date.now() + path.extname(file.originalname));
@@ -80,19 +117,27 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 const { 
-  createOrder, simulatePayment, getUserOrders, getAllOrders, updateOrderStatus, cancelOrder, 
-  uploadInvoice // 🚀 Import new function
+  createOrder, simulatePayment, getUserOrders, getAllOrders, updateOrderStatus, cancelOrder, uploadInvoice 
 } = require('../controllers/orderController');
 
-// Existing Routes...
+// 🚀 IMPORT RAZORPAY CONTROLLERS
+const { createRazorpayOrder, verifyRazorpayPayment } = require('../controllers/paymentController');
+
+// ==========================================
+// 🚀 RAZORPAY ROUTES (MUST BE AT THE TOP)
+// ==========================================
+router.post('/razorpay/create', createRazorpayOrder);
+router.post('/razorpay/verify', verifyRazorpayPayment);
+
+// ==========================================
+// EXISTING ORDER ROUTES
+// ==========================================
 router.post('/', createOrder);
 router.put('/:id/pay', simulatePayment);
 router.get('/user/:userId', getUserOrders); 
 router.put('/:id/cancel', cancelOrder); 
 router.get('/admin/all', getAllOrders);
 router.put('/admin/:id/status', updateOrderStatus);
-
-// 🚀 NEW: Route for uploading invoices
 router.put('/admin/:id/invoice', upload.single('invoice'), uploadInvoice);
 
 module.exports = router;
