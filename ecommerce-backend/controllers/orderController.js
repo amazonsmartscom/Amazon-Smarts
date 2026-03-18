@@ -2431,7 +2431,6 @@
 //   }
 // };
 
-
 // controllers/orderController.js
 const axios = require('axios');
 const Order = require('../models/Order');
@@ -2490,7 +2489,7 @@ const sendStatusEmailsToBoth = async (order, statusTitle, statusMessage) => {
     const adminBody = getBrandedEmailTemplate(
       order, 
       `[ADMIN ALERT] Order ${order.status}`, 
-      `Customer (${customerEmail || 'Unknown'}) order status is now ${order.status}.`, 
+      `Customer (${customerEmail || 'Guest User'}) order status is now ${order.status}.`, 
       trackingHtml
     );
     
@@ -2502,7 +2501,6 @@ const sendStatusEmailsToBoth = async (order, statusTitle, statusMessage) => {
 
 exports.createOrder = async (req, res) => {
   try {
-    // 1. Safely extract all possible fields the frontend might send
     const { 
       userId, user, orderItems, shippingAddress, paymentMethod, 
       itemsPrice, shippingPrice, discountAmount, couponCode, totalPrice, 
@@ -2513,9 +2511,8 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ message: 'No order items provided' });
     }
 
-    // 2. Create the Order (handling both 'userId' and 'user' safely)
-    const order = new Order({
-      user: userId || user, 
+    // 🚀 GUEST CHECKOUT FIX: Only attach user ID if it exists
+    const orderData = {
       orderItems, 
       shippingAddress: shippingAddress || {}, 
       paymentMethod: paymentMethod || 'Cash on Delivery', 
@@ -2528,11 +2525,16 @@ exports.createOrder = async (req, res) => {
       paidAt: paidAt || null, 
       paymentResult, 
       status: 'Processing' 
-    });
-    
+    };
+
+    const finalUserId = userId || user;
+    if (finalUserId) {
+      orderData.user = finalUserId;
+    }
+
+    const order = new Order(orderData);
     const createdOrder = await order.save();
 
-    // 3. Build the Email HTML Safely (Using Number() prevents undefined crashes)
     let discountHtml = discountAmount > 0 
       ? `<tr><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">Discount applied:</td><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">-₹${Number(discountAmount).toLocaleString('en-IN')}</td></tr>` 
       : '';
@@ -2562,13 +2564,11 @@ exports.createOrder = async (req, res) => {
       </table>
     `;
 
-    // 4. Safely get the email to send to
     const emailToSend = shippingAddress?.email || req.body.email || null;
 
-    // 5. Send Email using our robust dual-email helper (if you added it previously)
-    if (emailToSend && typeof sendStatusEmailsToBoth === 'function') {
+    if (emailToSend) {
       try {
-        await sendStatusEmailsToBoth(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready.");
+        await sendStatusEmailsToBoth(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready.", itemsHtml);
       } catch (err) { console.log("Confirmation email failed to send"); }
     }
 
@@ -2585,21 +2585,25 @@ exports.simulatePayment = async (req, res) => {
     const order = await Order.findById(req.params.id).populate('orderItems.product');
     if (order) {
       order.isPaid = true; order.paidAt = Date.now(); const updatedOrder = await order.save();
-      try {
-        const buyingUser = await User.findById(order.user);
-        if (buyingUser && buyingUser.referredBy) {
-          const referrer = await User.findById(buyingUser.referredBy);
-          if (referrer) {
-            let totalCommissionAmount = 0;
-            order.orderItems.forEach(item => { if (item.product && item.product.affiliateCommission > 0) { totalCommissionAmount += (item.price * (item.quantity || 1)) * (item.product.affiliateCommission / 100); } });
-            totalCommissionAmount = Math.round(totalCommissionAmount);
-            if (totalCommissionAmount > 0) {
-              await WalletTransaction.create({ userId: referrer._id, amount: totalCommissionAmount, type: 'credit', source: 'referral_commission', status: 'pending', relatedOrderId: order._id });
-              await createNotification(referrer._id, "Pending Commission ⏳", `A referral order was placed! ₹${totalCommissionAmount} will be credited upon delivery.`, "info", "/wallet");
+      
+      // Referral Logic (Only if it's a logged-in user)
+      if (order.user) {
+        try {
+          const buyingUser = await User.findById(order.user);
+          if (buyingUser && buyingUser.referredBy) {
+            const referrer = await User.findById(buyingUser.referredBy);
+            if (referrer) {
+              let totalCommissionAmount = 0;
+              order.orderItems.forEach(item => { if (item.product && item.product.affiliateCommission > 0) { totalCommissionAmount += (item.price * (item.quantity || 1)) * (item.product.affiliateCommission / 100); } });
+              totalCommissionAmount = Math.round(totalCommissionAmount);
+              if (totalCommissionAmount > 0) {
+                await WalletTransaction.create({ userId: referrer._id, amount: totalCommissionAmount, type: 'credit', source: 'referral_commission', status: 'pending', relatedOrderId: order._id });
+                await createNotification(referrer._id, "Pending Commission ⏳", `A referral order was placed! ₹${totalCommissionAmount} will be credited upon delivery.`, "info", "/wallet");
+              }
             }
           }
-        }
-      } catch (err) { console.error("Commission Error:", err); }
+        } catch (err) { console.error("Commission Error:", err); }
+      }
       res.json(updatedOrder);
     } else { res.status(404).json({ message: 'Order not found' }); }
   } catch (error) { res.status(500).json({ message: 'Payment error' }); }
@@ -2634,7 +2638,11 @@ exports.updateOrderStatus = async (req, res) => {
     // 🚀 DUAL EMAIL TRIGGER
     await sendStatusEmailsToBoth(order, `Order Update: ${order.status}`, statusMsg);
     
-    await createNotification(order.user, "Order Updated", `Order #${order._id.toString().slice(-6).toUpperCase()} is ${order.status}.`, "alert", "/orders");
+    // 🚀 GUEST FIX: Only send in-app notification if the user actually exists
+    if (order.user) {
+      await createNotification(order.user._id || order.user, "Order Updated", `Order #${order._id.toString().slice(-6).toUpperCase()} is ${order.status}.`, "alert", "/orders");
+    }
+
     res.status(200).json({ message: 'Updated', order });
   } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
@@ -2690,6 +2698,10 @@ exports.fulfillManual = async (req, res) => {
     // 🚀 DUAL EMAIL TRIGGER
     await sendStatusEmailsToBoth(order, "Order Shipped!", `Your order shipped via ${carrierName}.`);
     
+    if (order.user) {
+      await createNotification(order.user._id || order.user, "Order Shipped!", `Your order is on the way via ${carrierName}.`, "info", "/orders");
+    }
+    
     res.status(200).json({ message: 'Fulfilled manually', order });
   } catch (error) { res.status(500).json({ message: 'Error', error: error.message }); }
 };
@@ -2704,7 +2716,7 @@ exports.fulfillShiprocket = async (req, res) => {
       order_id: order._id.toString() + "-" + Date.now().toString().slice(-4),
       order_date: new Date(order.createdAt).toISOString().split('T')[0],
       pickup_location: process.env.SHIPROCKET_PICKUP_LOCATION || "Primary",
-      billing_customer_name: order.shippingAddress.fullName, billing_last_name: ".", billing_address: order.shippingAddress.address, billing_city: order.shippingAddress.city, billing_pincode: order.shippingAddress.pincode, billing_state: "Punjab", billing_country: "India", billing_email: order.shippingAddress.email || order.user.email, billing_phone: order.shippingAddress.phone, shipping_is_billing: true,
+      billing_customer_name: order.shippingAddress.fullName, billing_last_name: ".", billing_address: order.shippingAddress.address, billing_city: order.shippingAddress.city, billing_pincode: order.shippingAddress.pincode, billing_state: "Punjab", billing_country: "India", billing_email: order.shippingAddress.email || (order.user && order.user.email) || "guest@example.com", billing_phone: order.shippingAddress.phone, shipping_is_billing: true,
       order_items: order.orderItems.map(item => ({ name: item.name, sku: item.product?._id?.toString() || 'SKU-1', units: item.quantity || 1, selling_price: item.price, discount: 0, tax: 0, hsn: 441122 })),
       payment_method: order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD' ? 'COD' : 'Prepaid',
       shipping_charges: order.shippingPrice || 0, total_discount: order.discountAmount || 0, sub_total: order.totalPrice, length: 10, breadth: 10, height: 10, weight: 0.5 
@@ -2722,6 +2734,10 @@ exports.fulfillShiprocket = async (req, res) => {
 
     // 🚀 DUAL EMAIL TRIGGER
     await sendStatusEmailsToBoth(order, "Order Shipped!", `Your order shipped via <b>${awbData.courier_name}</b>.`);
+
+    if (order.user) {
+      await createNotification(order.user._id || order.user, "Order Shipped!", `Your order is shipped via ${awbData.courier_name}.`, "info", "/orders");
+    }
 
     res.status(200).json({ message: 'Shiprocket automated successfully', order });
   } catch (error) { 
@@ -2776,7 +2792,11 @@ exports.handleShiprocketWebhook = async (req, res) => {
 
       // 🚀 DUAL EMAIL TRIGGER (Automated by Shiprocket Webhook)
       await sendStatusEmailsToBoth(order, `Order Update: ${newStatus}`, statusMsg);
-      await createNotification(order.user, "Delivery Update", `Your order is now ${newStatus}!`, "info", "/orders");
+      
+      // 🚀 GUEST FIX: Only notify if it's a registered user
+      if (order.user) {
+        await createNotification(order.user._id || order.user, "Delivery Update", `Your order is now ${newStatus}!`, "info", "/orders");
+      }
     }
 
     res.status(200).send("Webhook Received");

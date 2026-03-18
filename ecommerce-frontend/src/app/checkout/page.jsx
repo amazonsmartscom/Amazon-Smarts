@@ -1368,9 +1368,7 @@ export default function CheckoutPage() {
   }, [user]);
 
   const itemsPrice = cart.reduce((total, item) => total + ((item.discountPrice || item.price) * item.quantity), 0);
-  // const shippingPrice = itemsPrice > 50000 ? 0 : 499; 
   const shippingPrice = itemsPrice > 50000 ? 0 : 0; 
-
   const grandTotal = Math.max(0, itemsPrice + (cart.length > 0 ? shippingPrice : 0) - appliedDiscount);
 
   const getImageUrl = (imagePath) => {
@@ -1396,17 +1394,6 @@ export default function CheckoutPage() {
 
   const handleRemoveCoupon = () => { setCouponCode(''); setAppliedDiscount(0); setCouponMessage(null); };
 
-  const handleRequestOTP = async (e) => {
-    e.preventDefault();
-    if (!shippingInfo.email) return alert("Please enter an email address.");
-    setIsProcessing(true);
-    try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/send-otp`, { email: shippingInfo.email });
-      setCheckoutStep('otp');
-    } catch (error) { alert(error.response?.data?.message || "Error sending OTP."); } 
-    finally { setIsProcessing(false); }
-  };
-
   const placeOrderToDatabase = async (methodString, razorpayPaymentId = null) => {
     try {
       const userId = user?._id || user?.user?._id;
@@ -1418,8 +1405,6 @@ export default function CheckoutPage() {
         })),
         itemsPrice, shippingPrice, discountAmount: appliedDiscount, couponCode: appliedDiscount > 0 ? couponCode : null,
         totalPrice: grandTotal, shippingAddress: shippingInfo,
-        
-        // 🚀 SEND STRICT STRINGS TO DATABASE
         paymentMethod: methodString,
         isPaid: methodString !== 'COD',
         paidAt: methodString !== 'COD' ? new Date() : null,
@@ -1445,13 +1430,10 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleVerifyAndPlaceOrder = async (e) => {
-    e.preventDefault();
+  // 🚀 REUSABLE FUNCTION: Handles Razorpay OR COD (Used by both Guests and Logged In users)
+  const executeOrderPlacement = async () => {
     setIsProcessing(true);
-
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/verify-otp`, { email: shippingInfo.email, otp });
-
       if (paymentMethod === 'ONLINE') {
         setPaymentGatewayStatus('redirecting');
         
@@ -1464,7 +1446,7 @@ export default function CheckoutPage() {
             rzpOrder = response.data;
           } catch (backendError) {
             console.error("Razorpay Backend Error:", backendError);
-            alert("Backend Error: Could not reach Razorpay. Check orderRoutes.js and .env keys.");
+            alert("Backend Error: Could not reach Razorpay.");
             setIsProcessing(false); setPaymentGatewayStatus(null);
             return; 
           }
@@ -1499,6 +1481,7 @@ export default function CheckoutPage() {
           paymentObject.open();
 
         } else {
+          // Fallback if Razorpay fails to load
           await new Promise(resolve => setTimeout(resolve, 2000));
           setPaymentGatewayStatus('success');
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -1506,14 +1489,53 @@ export default function CheckoutPage() {
         }
 
       } else {
-        // 🚀 SUBMIT EXPLICIT 'COD' STRING
         await placeOrderToDatabase('COD', null);
       }
+    } catch (error) {
+      console.error(error);
+      alert("An error occurred. Please try again.");
+      setIsProcessing(false); setPaymentGatewayStatus(null);
+    }
+  };
+
+  // 🚀 MAIN CHECKOUT BUTTON CLICK
+  const handleCheckoutSubmit = async (e) => {
+    e.preventDefault();
+    if (!shippingInfo.email) return alert("Please enter an email address.");
+    
+    if (user) {
+      // ✅ USER LOGGED IN: Skip OTP, place order directly
+      await executeOrderPlacement();
+    } else {
+      // ❌ GUEST USER: Send OTP and show verification step
+      setIsProcessing(true);
+      try {
+        await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/send-otp`, { email: shippingInfo.email });
+        setCheckoutStep('otp');
+      } catch (error) { 
+        alert(error.response?.data?.message || "Error sending OTP."); 
+      } finally { 
+        setIsProcessing(false); 
+      }
+    }
+  };
+
+  // 🚀 OTP VERIFICATION (GUESTS ONLY)
+  const handleVerifyAndPlaceOrder = async (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
+
+    try {
+      // 1. Verify OTP
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/verify-otp`, { email: shippingInfo.email, otp });
+      
+      // 2. If valid, proceed to place order
+      await executeOrderPlacement();
 
     } catch (error) {
       console.error(error);
       alert(error.response?.data?.message || "Invalid OTP Code. Please try again.");
-      setIsProcessing(false); setPaymentGatewayStatus(null);
+      setIsProcessing(false); 
     }
   };
 
@@ -1614,7 +1636,7 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-white font-sans text-[#0F1111]">
       <div className="max-w-[1000px] mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6 relative">
         <div className="flex-1 w-full space-y-4">
-          <form id="checkoutForm" onSubmit={handleRequestOTP} className="space-y-4">
+          <form id="checkoutForm" onSubmit={handleCheckoutSubmit} className="space-y-4">
             <div className="border border-[#ddd] rounded-[8px] overflow-hidden">
               <div className="bg-[#f0f2f2] p-4 border-b border-[#ddd]"><h2 className={sectionTitle + " mb-0"}>1. Enter a shipping address</h2></div>
               <div className="p-5">
@@ -1691,8 +1713,18 @@ export default function CheckoutPage() {
           </form>
         </div>
 
+        {/* 🚀 STICKY SUMMARY BOX */}
         <div className="w-full lg:w-[300px] shrink-0 space-y-4">
           <div className="border border-[#ddd] bg-[#f3f3f3] rounded-[8px] p-4 sticky top-6">
+            
+            {/* OVERLAY LOADER FOR LOGGED IN USERS SO THEY KNOW IT'S WORKING */}
+            {isProcessing && paymentGatewayStatus === 'redirecting' && (
+              <div className="absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center rounded-[8px]">
+                <div className="w-6 h-6 border-2 border-t-[#007185] border-[#e7e7e7] rounded-full animate-spin mb-2"></div>
+                <p className="text-[12px] font-bold">Securely connecting...</p>
+              </div>
+            )}
+
             <button type="submit" form="checkoutForm" disabled={isProcessing || checkoutStep !== 'editing'} className={`${amzButton} mb-4 font-normal`}>
               {isProcessing ? 'Processing...' : 'Place your order'}
             </button>
