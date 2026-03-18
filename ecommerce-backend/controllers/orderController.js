@@ -2360,15 +2360,17 @@ exports.fulfillShiprocket = async (req, res) => {
     const order = await Order.findById(req.params.id).populate('user', 'email').populate('orderItems.product');
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
+    // A. Authenticate with Shiprocket
     const authRes = await axios.post('https://apiv2.shiprocket.in/v1/external/auth/login', { email: process.env.SHIPROCKET_EMAIL, password: process.env.SHIPROCKET_PASSWORD });
     const token = authRes.data.token;
 
+    // B. Map our Order to Shiprocket's format
     const srPayload = {
-      order_id: order._id.toString(),
+      order_id: order._id.toString() + "-" + Date.now().toString().slice(-4), // Add timestamp to prevent duplicate ID errors on retries
       order_date: new Date(order.createdAt).toISOString().split('T')[0],
       pickup_location: process.env.SHIPROCKET_PICKUP_LOCATION || "Primary",
       billing_customer_name: order.shippingAddress.fullName,
-      billing_last_name: "", 
+      billing_last_name: ".", // Fallback so Shiprocket doesn't reject missing last names
       billing_address: order.shippingAddress.address,
       billing_city: order.shippingAddress.city,
       billing_pincode: order.shippingAddress.pincode,
@@ -2380,23 +2382,39 @@ exports.fulfillShiprocket = async (req, res) => {
       order_items: order.orderItems.map(item => ({
         name: item.name, sku: item.product?._id?.toString() || 'SKU-1', units: item.quantity || 1, selling_price: item.price, discount: 0, tax: 0, hsn: 441122
       })),
-      payment_method: order.paymentMethod === 'Cash on Delivery' ? 'COD' : 'Prepaid',
+      payment_method: order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD' ? 'COD' : 'Prepaid',
       shipping_charges: order.shippingPrice || 0,
       total_discount: order.discountAmount || 0,
       sub_total: order.totalPrice,
       length: 10, breadth: 10, height: 10, weight: 0.5 
     };
 
+    // C. Create Order in Shiprocket
     const createOrderRes = await axios.post('https://apiv2.shiprocket.in/v1/external/orders/create/adhoc', srPayload, { headers: { Authorization: `Bearer ${token}` } });
-    const { order_id: srOrderId, shipment_id: srShipmentId } = createOrderRes.data;
+    
+    // Safely extract the IDs regardless of how Shiprocket formats the response
+    const srOrderId = createOrderRes.data.order_id;
+    const srShipmentId = createOrderRes.data.shipment_id;
 
-    const awbRes = await axios.post('https://apiv2.shiprocket.in/v1/external/courier/assign/awb', { shipment_id: srShipmentId, courier_id: "" }, { headers: { Authorization: `Bearer ${token}` } });
+    if (!srOrderId && !srShipmentId) {
+        return res.status(500).json({ message: "Shiprocket did not return an Order ID.", details: createOrderRes.data });
+    }
+
+    // D. Generate AWB (Tracking Number)
+    // 🚀 FIXED: We now dynamically construct this to prevent "Missing Field" errors
+    const awbPayload = {};
+    if (srShipmentId) awbPayload.shipment_id = srShipmentId;
+    if (srOrderId) awbPayload.order_id = srOrderId;
+
+    const awbRes = await axios.post('https://apiv2.shiprocket.in/v1/external/courier/assign/awb', awbPayload, { headers: { Authorization: `Bearer ${token}` } });
     const awbData = awbRes.data.response.data;
 
+    // E. Save to Database
     order.shippingDetails = { provider: 'Shiprocket', carrierName: awbData.courier_name, trackingId: awbData.awb_code, shiprocketOrderId: srOrderId, shiprocketShipmentId: srShipmentId };
     order.status = 'Shipped';
     await order.save();
 
+    // F. Email Customer with automated tracking
     const email = getBrandedEmailTemplate(order, "Your Order Has Shipped!", `Good news! Your order has been automated via Shiprocket and handed to <b>${awbData.courier_name}</b>. Your AWB Tracking ID is: <br/><br/><b style="font-size:20px; color:#007185;">${awbData.awb_code}</b>.`);
     try { await sendEmail({ email: order.shippingAddress.email || order.user.email, subject: `Shipped: Order #${order._id.toString().slice(-6).toUpperCase()}`, message: email }); } catch (err) { console.log("Email failed"); }
 
