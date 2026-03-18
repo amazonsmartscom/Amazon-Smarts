@@ -8856,6 +8856,7 @@ export default function AdminDashboard() {
           )}
 
           {/* 🚀 ORDERS TAB WITH FULFILLMENT UI */}
+          {/* 🚀 ORDERS TAB WITH NEW BADGES */}
           {activeTab === 'orders' && (
             <div className="max-w-[1600px] mx-auto">
                <h2 className="text-[22px] font-bold mb-6">Order Fulfillment</h2>
@@ -8867,7 +8868,21 @@ export default function AdminDashboard() {
                     <tbody className="divide-y divide-[#EEE]">
                       {orders.map(o => (
                         <tr key={o._id} className="hover:bg-[#F9F9F9] align-top">
-                          <td className="p-3 border-r border-[#DDD]"><p className="font-mono font-bold text-[#111]">#{o._id.slice(-6).toUpperCase()}</p><p className="text-[11px] text-[#565959] mt-1">{formatDateTime(o.createdAt)}</p></td>
+                          
+                          {/* 🚀 BADGES ADDED HERE */}
+                          <td className="p-3 border-r border-[#DDD]">
+                            <p className="font-mono font-bold text-[#111]">#{o._id.slice(-6).toUpperCase()}</p>
+                            <p className="text-[11px] text-[#565959] mt-1 mb-2">{formatDateTime(o.createdAt)}</p>
+                            <div className="flex flex-wrap gap-1">
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${o.paymentMethod === 'COD' || o.paymentMethod === 'Cash on Delivery' ? 'bg-[#FFF3E0] text-[#C45500] border border-[#FBD8B4]' : 'bg-[#E7F4E4] text-[#007600] border border-[#A5DCA0]'}`}>
+                                {o.paymentMethod === 'COD' || o.paymentMethod === 'Cash on Delivery' ? 'COD' : 'PREPAID'}
+                              </span>
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${o.shippingDetails?.trackingId ? 'bg-[#E7F4E4] text-[#007600] border border-[#A5DCA0]' : 'bg-[#FCE8E6] text-[#B12704] border border-[#F4AFA7]'}`}>
+                                {o.shippingDetails?.trackingId ? 'FULFILLED' : 'UNFULFILLED'}
+                              </span>
+                            </div>
+                          </td>
+
                           <td className="p-3 border-r border-[#DDD]">
                              <p className="font-bold text-[#007185]">{o.shippingAddress?.fullName}</p>
                              {o.shippingAddress && (
@@ -8891,33 +8906,32 @@ export default function AdminDashboard() {
                           <td className="p-3 border-r border-[#DDD] font-bold text-[#B12704]">₹{o.totalPrice?.toLocaleString('en-IN')}{o.discountAmount > 0 && <div className="text-[10px] text-[#007600] font-normal mt-0.5">Includes ₹{o.discountAmount} discount</div>}</td>
                           
                           <td className="p-3">
-                             <select value={o.status} onChange={(e) => handleUpdateOrderStatus(o._id, e.target.value)} className={`w-full p-1.5 rounded-[4px] text-[11px] font-bold uppercase tracking-tight border-2 outline-none mb-3 cursor-pointer ${o.status === 'Delivered' ? 'bg-[#F7FCF7] border-[#007600] text-[#007600]' : 'bg-[#FFF8F2] border-[#e77600] text-[#e77600]'}`}>
-                                <option value="Processing">Processing</option><option value="Shipped">Shipped</option><option value="Delivered">Delivered</option><option value="Cancelled">Cancelled</option>
-                             </select>
-                             
-                             {/* 🚀 FULFILLMENT BOX */}
-                             <div className="bg-[#f9f9f9] border border-[#ddd] p-2 rounded mb-3">
-                                <p className="text-[10px] font-bold text-[#111] mb-2 uppercase">Fulfillment</p>
-                                
-                                {o.shippingDetails?.trackingId ? (
-                                  <div className="text-[11px] text-[#007600]">
-                                    <span className="font-bold">✓ {o.shippingDetails.provider}</span><br/>
-                                    Carrier: {o.shippingDetails.carrierName}<br/>
-                                    AWB: <span className="font-mono text-[#111]">{o.shippingDetails.trackingId}</span>
-                                  </div>
-                                ) : (
-                                  <div className="space-y-2">
-                                    <form onSubmit={(e) => handleManualFulfill(o._id, e)}>
-                                      <input name="carrier" type="text" placeholder="Carrier (e.g. FedEx)" className="w-full border p-1 text-[10px] mb-1" />
-                                      <input name="tracking" type="text" placeholder="Tracking ID" className="w-full border p-1 text-[10px] mb-1" required />
-                                      <button type="submit" className="w-full bg-white border border-[#ddd] text-[#111] text-[10px] py-1 hover:bg-gray-50">Manual Ship</button>
-                                    </form>
-                                    <button onClick={() => handleShiprocketFulfill(o._id)} className="w-full bg-[#131921] text-white font-bold text-[10px] py-1.5 rounded-[3px] hover:bg-[#232f3e]">
-                                      🚀 Auto Shiprocket
-                                    </button>
-                                  </div>
-                                )}
-                             </div>
+  <div className="relative">
+    {/* 🚀 Visual Indicator if order is synced with Shiprocket */}
+    {o.shippingDetails?.provider === 'Shiprocket' && (
+      <div className="absolute -top-4 right-0 flex items-center gap-1">
+        <span className="animate-pulse w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+        <span className="text-[9px] font-bold text-green-600 uppercase tracking-tighter">Live Sync</span>
+      </div>
+    )}
+    
+    <select 
+      value={o.status} 
+      onChange={(e) => handleUpdateOrderStatus(o._id, e.target.value)} 
+      // 🚀 Disable dropdown if Shiprocket is handling it (Optional, prevents human error)
+      disabled={o.shippingDetails?.provider === 'Shiprocket'}
+      className={`w-full p-1.5 rounded-[4px] text-[11px] font-bold uppercase tracking-tight border-2 outline-none mb-3 cursor-pointer 
+        ${o.shippingDetails?.provider === 'Shiprocket' ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed' : 
+          o.status === 'Delivered' ? 'bg-[#F7FCF7] border-[#007600] text-[#007600]' : 'bg-[#FFF8F2] border-[#e77600] text-[#e77600]'}`}
+    >
+      <option value="Processing">Processing</option>
+      <option value="Shipped">Shipped</option>
+      <option value="Delivered">Delivered</option>
+      <option value="Cancelled">Cancelled</option>
+    </select>
+  </div>
+  
+
 
                              <div className="border-t border-[#EEE] pt-2">
                                <p className="text-[10px] font-bold text-[#565959] mb-1">TAX INVOICE (PDF)</p>

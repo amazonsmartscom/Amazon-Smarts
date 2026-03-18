@@ -180,7 +180,6 @@
 
 // module.exports = router;
 
-
 // routes/orderRoutes.js
 const express = require('express');
 const router = express.Router();
@@ -195,14 +194,21 @@ const upload = multer({ storage: storage });
 
 const { 
   createOrder, simulatePayment, getUserOrders, getAllOrders, updateOrderStatus, cancelOrder, uploadInvoice,
-  fulfillManual, fulfillShiprocket, getLiveTracking // 🚀 ADDED getLiveTracking IMPORT
+  fulfillManual, fulfillShiprocket, getLiveTracking,
+  handleShiprocketWebhook // 🚀 IMPORTED THE WEBHOOK HANDLER
 } = require('../controllers/orderController');
 
 const { createRazorpayOrder, verifyRazorpayPayment } = require('../controllers/paymentController');
 
+// 🚀 SHIPROCKET WEBHOOK (Must be POST and public)
+// URL for Shiprocket Dashboard: https://amazon-smarts.onrender.com/api/orders/webhook/shiprocket
+router.post('/webhook/shiprocket', handleShiprocketWebhook);
+
+// RAZORPAY ROUTES
 router.post('/razorpay/create', createRazorpayOrder);
 router.post('/razorpay/verify', verifyRazorpayPayment);
 
+// STANDARD ORDER ROUTES
 router.post('/', createOrder);
 router.put('/:id/pay', simulatePayment);
 router.get('/user/:userId', getUserOrders); 
@@ -211,11 +217,11 @@ router.get('/admin/all', getAllOrders);
 router.put('/admin/:id/status', updateOrderStatus);
 router.put('/admin/:id/invoice', upload.single('invoice'), uploadInvoice);
 
-// 🚀 FULFILLMENT ROUTES
+// FULFILLMENT ROUTES
 router.put('/admin/:id/fulfill/manual', fulfillManual);
 router.put('/admin/:id/fulfill/shiprocket', fulfillShiprocket);
 
-// 🚀 NEW: LIVE TRACKING ROUTE
+// LIVE TRACKING ROUTE
 router.get('/:id/tracking', getLiveTracking);
 
 module.exports = router;
