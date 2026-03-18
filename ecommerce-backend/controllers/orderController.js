@@ -2511,8 +2511,30 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ message: 'No order items provided' });
     }
 
-    // 🚀 GUEST CHECKOUT FIX: Only attach user ID if it exists
+    // ==========================================
+    // 🚀 GUEST CHECKOUT FIX: Link ID & Update Name
+    // ==========================================
+    let finalUserId = userId || user;
+    const guestEmail = shippingAddress?.email || req.body.email;
+
+    // If no user ID was sent from frontend, check the database for the guest email
+    if (!finalUserId && guestEmail) {
+      const existingUser = await User.findOne({ email: guestEmail });
+      
+      if (existingUser) {
+        finalUserId = existingUser._id; // ✅ Link the Order to the User ID
+
+        // ✅ If the name is still the dummy name, update it to their real checkout name!
+        if (existingUser.name === 'Guest Customer' && shippingAddress?.fullName) {
+          existingUser.name = shippingAddress.fullName;
+          await existingUser.save();
+        }
+      }
+    }
+    // ==========================================
+
     const orderData = {
+      user: finalUserId || undefined, // This is now perfectly attached!
       orderItems, 
       shippingAddress: shippingAddress || {}, 
       paymentMethod: paymentMethod || 'Cash on Delivery', 
@@ -2527,14 +2549,10 @@ exports.createOrder = async (req, res) => {
       status: 'Processing' 
     };
 
-    const finalUserId = userId || user;
-    if (finalUserId) {
-      orderData.user = finalUserId;
-    }
-
     const order = new Order(orderData);
     const createdOrder = await order.save();
 
+    // Build the Email HTML
     let discountHtml = discountAmount > 0 
       ? `<tr><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">Discount applied:</td><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">-₹${Number(discountAmount).toLocaleString('en-IN')}</td></tr>` 
       : '';
@@ -2564,9 +2582,9 @@ exports.createOrder = async (req, res) => {
       </table>
     `;
 
-    const emailToSend = shippingAddress?.email || req.body.email || null;
+    const emailToSend = shippingAddress?.email || guestEmail;
 
-    if (emailToSend) {
+    if (emailToSend && typeof sendStatusEmailsToBoth === 'function') {
       try {
         await sendStatusEmailsToBoth(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready.", itemsHtml);
       } catch (err) { console.log("Confirmation email failed to send"); }
