@@ -2536,8 +2536,11 @@ exports.createOrder = async (req, res) => {
 
     const emailToSend = shippingAddress?.email || guestEmail;
     if (emailToSend) {
-      try { await sendStatusEmailsToBoth(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready.", itemsHtml, emailToSend); } catch (err) {}
-    }
+      try { 
+  await sendStatusEmailsToBoth(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready.", itemsHtml, emailToSend); 
+} catch (err) { 
+  console.error("🚨 EMAIL FAILED TO SEND:", err); 
+}
 
     res.status(201).json({ message: 'Order created successfully', order: createdOrder });
   } catch (error) { 
