@@ -8526,15 +8526,27 @@ export default function AdminDashboard() {
   };
 
   // 🚀 SHIPROCKET HANDLER
+  // const handleShiprocketFulfill = async (orderId) => {
+  //   if(!window.confirm("Automate AWB via Shiprocket?")) return;
+  //   try {
+  //     await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${orderId}/fulfill/shiprocket?adminId=${adminId}`);
+  //     alert("Shiprocket AWB Generated! Email sent to customer.");
+  //     fetchDashboardData();
+  //   } catch(err) { alert("Shiprocket Error: Check console or .env keys"); console.error(err); }
+  // };
+// 🚀 SHIPROCKET HANDLER
   const handleShiprocketFulfill = async (orderId) => {
     if(!window.confirm("Automate AWB via Shiprocket?")) return;
     try {
       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${orderId}/fulfill/shiprocket?adminId=${adminId}`);
       alert("Shiprocket AWB Generated! Email sent to customer.");
       fetchDashboardData();
-    } catch(err) { alert("Shiprocket Error: Check console or .env keys"); console.error(err); }
+    } catch(err) { 
+      // 🚀 NEW: Show the exact error to the admin
+      alert(`Shiprocket Error: ${err.response?.data?.details || err.message}`); 
+      console.error(err); 
+    }
   };
-
   const handleProductCheckbox = (productId) => {
     setNewCoupon(prev => {
       const current = [...prev.applicableProducts];

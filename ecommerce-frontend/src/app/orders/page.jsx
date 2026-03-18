@@ -2200,10 +2200,19 @@ export default function MyOrdersPage() {
                   <p className="text-[13px] text-[#111]">{viewingDetails.shippingAddress?.city}, {viewingDetails.shippingAddress?.pincode}</p>
                   <p className="text-[13px] text-[#111] mt-1">Phone: {viewingDetails.shippingAddress?.phone}</p>
                 </div>
-                <div className="border border-[#ddd] rounded-[4px] p-4">
+                {/* <div className="border border-[#ddd] rounded-[4px] p-4">
                   <h3 className="font-bold text-[14px] mb-2">Payment Method</h3>
                   <p className="text-[13px] text-[#111] font-medium">
                     {viewingDetails.paymentMethod?.toUpperCase().includes('COD') || viewingDetails.paymentMethod?.toUpperCase().includes('CASH') ? 'Pay on Delivery (Cash/UPI)' : viewingDetails.paymentMethod?.toUpperCase().includes('RAZORPAY') || viewingDetails.paymentMethod?.toUpperCase().includes('ONLINE') ? 'Online Payment (Razorpay)' : viewingDetails.paymentMethod || 'Online Payment'}
+                  </p>
+                </div> */}
+                <div className="border border-[#ddd] rounded-[4px] p-4">
+                  <h3 className="font-bold text-[14px] mb-2">Payment Method</h3>
+                  <p className="text-[13px] text-[#111] font-medium">
+                    {/* 🚀 BULLETPROOF PAYMENT LOGIC BASED ON 'isPaid' FLAG */}
+                    {viewingDetails.isPaid === false || viewingDetails.paymentMethod?.toUpperCase().includes('COD')
+                      ? 'Pay on Delivery (Cash/UPI)' 
+                      : 'Online Payment (Razorpay)'}
                   </p>
                 </div>
               </div>

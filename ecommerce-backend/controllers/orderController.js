@@ -2420,7 +2420,13 @@ exports.fulfillShiprocket = async (req, res) => {
 
     res.status(200).json({ message: 'Shiprocket automated successfully', order });
   } catch (error) { 
-    console.error("Shiprocket Error:", error.response?.data || error.message);
-    res.status(500).json({ message: 'Error fulfilling via Shiprocket', details: error.response?.data || error.message }); 
+    // 🚀 NEW: Send the exact Shiprocket error back to the frontend so we can debug it
+    const shiprocketErrorMsg = error.response?.data?.message || JSON.stringify(error.response?.data?.errors) || error.message;
+    console.error("Shiprocket Detailed Error:", shiprocketErrorMsg);
+    
+    res.status(500).json({ 
+      message: 'Shiprocket Error', 
+      details: shiprocketErrorMsg 
+    }); 
   }
 };
