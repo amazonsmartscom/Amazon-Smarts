@@ -8856,96 +8856,163 @@ export default function AdminDashboard() {
           )}
 
           {/* 🚀 ORDERS TAB WITH FULFILLMENT UI */}
-          {/* 🚀 ORDERS TAB WITH NEW BADGES */}
-          {activeTab === 'orders' && (
-            <div className="max-w-[1600px] mx-auto">
-               <h2 className="text-[22px] font-bold mb-6">Order Fulfillment</h2>
-               <div className="bg-white border border-[#DDD] rounded-[4px] overflow-hidden shadow-sm">
-                  <table className="w-full text-left text-[13px]">
-                    <thead className="bg-[#F0F2F2] border-b border-[#DDD] font-bold text-[#565959]">
-                      <tr><th className="p-3 border-r border-[#DDD]">Order ID / Date</th><th className="p-3 border-r border-[#DDD]">Customer & Shipping</th><th className="p-3 border-r border-[#DDD]">Items</th><th className="p-3 border-r border-[#DDD]">Total</th><th className="p-3">Fulfillment Status</th></tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#EEE]">
-                      {orders.map(o => (
-                        <tr key={o._id} className="hover:bg-[#F9F9F9] align-top">
-                          
-                          {/* 🚀 BADGES ADDED HERE */}
-                          <td className="p-3 border-r border-[#DDD]">
-                            <p className="font-mono font-bold text-[#111]">#{o._id.slice(-6).toUpperCase()}</p>
-                            <p className="text-[11px] text-[#565959] mt-1 mb-2">{formatDateTime(o.createdAt)}</p>
-                            <div className="flex flex-wrap gap-1">
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${o.paymentMethod === 'COD' || o.paymentMethod === 'Cash on Delivery' ? 'bg-[#FFF3E0] text-[#C45500] border border-[#FBD8B4]' : 'bg-[#E7F4E4] text-[#007600] border border-[#A5DCA0]'}`}>
-                                {o.paymentMethod === 'COD' || o.paymentMethod === 'Cash on Delivery' ? 'COD' : 'PREPAID'}
-                              </span>
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${o.shippingDetails?.trackingId ? 'bg-[#E7F4E4] text-[#007600] border border-[#A5DCA0]' : 'bg-[#FCE8E6] text-[#B12704] border border-[#F4AFA7]'}`}>
-                                {o.shippingDetails?.trackingId ? 'FULFILLED' : 'UNFULFILLED'}
-                              </span>
-                            </div>
-                          </td>
+          {/* 🚀 ORDERS TAB WITH LIVE SYNC & AUTOMATION */}
+{/* 🚀 ORDERS TAB WITH ENHANCED AUTOMATION & VISUALS */}
+{activeTab === 'orders' && (
+  <div className="max-w-[1600px] mx-auto">
+    <h2 className="text-[22px] font-bold mb-6">Order Fulfillment</h2>
+    <div className="bg-white border border-[#DDD] rounded-[4px] overflow-hidden shadow-sm">
+      <table className="w-full text-left text-[13px]">
+        <thead className="bg-[#F0F2F2] border-b border-[#DDD] font-bold text-[#565959]">
+          <tr>
+            <th className="p-3 border-r border-[#DDD]">Order ID / Date</th>
+            <th className="p-3 border-r border-[#DDD]">Customer & Shipping</th>
+            <th className="p-3 border-r border-[#DDD]">Items</th>
+            <th className="p-3 border-r border-[#DDD]">Total</th>
+            <th className="p-3">Fulfillment Status</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#EEE]">
+          {orders.map(o => (
+            <tr key={o._id} className="hover:bg-[#F9F9F9] align-top">
+              
+              <td className="p-3 border-r border-[#DDD]">
+                <p className="font-mono font-bold text-[#111]">#{o._id.slice(-6).toUpperCase()}</p>
+                <p className="text-[11px] text-[#565959] mt-1 mb-2">{formatDateTime(o.createdAt)}</p>
+                <div className="flex flex-wrap gap-1">
+                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${o.paymentMethod === 'COD' || o.paymentMethod === 'Cash on Delivery' ? 'bg-[#FFF3E0] text-[#C45500] border border-[#FBD8B4]' : 'bg-[#E7F4E4] text-[#007600] border border-[#A5DCA0]'}`}>
+                    {o.paymentMethod === 'COD' || o.paymentMethod === 'Cash on Delivery' ? 'COD' : 'PREPAID'}
+                  </span>
+                  {/* 🚀 DYNAMIC FULFILLMENT TYPE BADGE */}
+                  {o.shippingDetails?.provider === 'Shiprocket' ? (
+                    <span className="bg-blue-100 text-blue-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-blue-200 uppercase">🚀 Shiprocket</span>
+                  ) : o.shippingDetails?.provider === 'Manual' ? (
+                    <span className="bg-purple-100 text-purple-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-purple-200 uppercase">🏠 Internal</span>
+                  ) : (
+                    <span className="bg-gray-100 text-gray-500 text-[9px] font-bold px-1.5 py-0.5 rounded border border-gray-200 uppercase">⌛ Unfulfilled</span>
+                  )}
+                </div>
+              </td>
 
-                          <td className="p-3 border-r border-[#DDD]">
-                             <p className="font-bold text-[#007185]">{o.shippingAddress?.fullName}</p>
-                             {o.shippingAddress && (
-                               <div className="text-[11px] text-[#565959] mt-1">
-                                 <p className="font-bold text-[#111]">📍 {o.shippingAddress.city}</p><p className="line-clamp-1">{o.shippingAddress.address}</p><p className="font-bold text-blue-700 mt-1">📞 {o.shippingAddress.phone}</p>
-                               </div>
-                             )}
-                          </td>
-                          <td className="p-4 border-r border-[#DDD]">
-                            <div className="space-y-3">
-                              {o.orderItems?.map((i, idx) => (
-                                <div key={idx} className="text-[11px] flex flex-col">
-                                  <div className="flex gap-2 items-start"><span className="font-bold text-[#111] bg-[#F0F2F2] border border-[#DDD] px-1.5 py-0.5 rounded mt-0.5 shrink-0">{i.quantity || i.qty}x</span><span className="font-bold text-[#007185] leading-snug">{i.name}</span></div>
-                                  {i.selectedOptions && Object.keys(i.selectedOptions).length > 0 && (
-                                    <div className="flex flex-wrap gap-1 mt-1 ml-[30px]">{Object.entries(i.selectedOptions).map(([key, val]) => <span key={key} className="bg-[#F7FAFA] border border-[#D5D9D9] text-[#565959] px-1.5 py-0.5 rounded-[3px] text-[10px]">{key}: <span className="font-bold text-[#111]">{val}</span></span>)}</div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="p-3 border-r border-[#DDD] font-bold text-[#B12704]">₹{o.totalPrice?.toLocaleString('en-IN')}{o.discountAmount > 0 && <div className="text-[10px] text-[#007600] font-normal mt-0.5">Includes ₹{o.discountAmount} discount</div>}</td>
-                          
-                          <td className="p-3">
-  <div className="relative">
-    {/* 🚀 Visual Indicator if order is synced with Shiprocket */}
-    {o.shippingDetails?.provider === 'Shiprocket' && (
-      <div className="absolute -top-4 right-0 flex items-center gap-1">
-        <span className="animate-pulse w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-        <span className="text-[9px] font-bold text-green-600 uppercase tracking-tighter">Live Sync</span>
-      </div>
-    )}
-    
-    <select 
-      value={o.status} 
-      onChange={(e) => handleUpdateOrderStatus(o._id, e.target.value)} 
-      // 🚀 Disable dropdown if Shiprocket is handling it (Optional, prevents human error)
-      disabled={o.shippingDetails?.provider === 'Shiprocket'}
-      className={`w-full p-1.5 rounded-[4px] text-[11px] font-bold uppercase tracking-tight border-2 outline-none mb-3 cursor-pointer 
-        ${o.shippingDetails?.provider === 'Shiprocket' ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed' : 
-          o.status === 'Delivered' ? 'bg-[#F7FCF7] border-[#007600] text-[#007600]' : 'bg-[#FFF8F2] border-[#e77600] text-[#e77600]'}`}
-    >
-      <option value="Processing">Processing</option>
-      <option value="Shipped">Shipped</option>
-      <option value="Delivered">Delivered</option>
-      <option value="Cancelled">Cancelled</option>
-    </select>
+              <td className="p-3 border-r border-[#DDD]">
+                <p className="font-bold text-[#007185]">{o.shippingAddress?.fullName}</p>
+                {o.shippingAddress && (
+                  <div className="text-[11px] text-[#565959] mt-1">
+                    <p className="font-bold text-[#111]">📍 {o.shippingAddress.city}</p>
+                    <p className="line-clamp-1">{o.shippingAddress.address}</p>
+                    <p className="font-bold text-blue-700 mt-1">📞 {o.shippingAddress.phone}</p>
+                  </div>
+                )}
+              </td>
+
+              <td className="p-4 border-r border-[#DDD]">
+                <div className="space-y-3">
+                  {o.orderItems?.map((i, idx) => (
+                    <div key={idx} className="text-[11px] flex flex-col">
+                      <div className="flex gap-2 items-start">
+                        <span className="font-bold text-[#111] bg-[#F0F2F2] border border-[#DDD] px-1.5 py-0.5 rounded mt-0.5 shrink-0">{i.quantity || i.qty}x</span>
+                        <span className="font-bold text-[#007185] leading-snug">{i.name}</span>
+                      </div>
+                      {i.selectedOptions && Object.keys(i.selectedOptions).length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1 ml-[30px]">
+                          {Object.entries(i.selectedOptions).map(([key, val]) => (
+                            <span key={key} className="bg-[#F7FAFA] border border-[#D5D9D9] text-[#565959] px-1.5 py-0.5 rounded-[3px] text-[10px]">{key}: <span className="font-bold text-[#111]">{val}</span></span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </td>
+
+              <td className="p-3 border-r border-[#DDD] font-bold text-[#B12704]">
+                ₹{o.totalPrice?.toLocaleString('en-IN')}
+                {o.discountAmount > 0 && <div className="text-[10px] text-[#007600] font-normal mt-0.5">Includes ₹{o.discountAmount} discount</div>}
+              </td>
+              
+              <td className="p-3">
+                <div className="relative">
+                  {/* 🚀 LIVE SYNC INDICATOR FOR SHIPROCKET */}
+                  {o.shippingDetails?.provider === 'Shiprocket' && (
+                    <div className="absolute -top-4 right-0 flex items-center gap-1">
+                      <span className="animate-pulse w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                      <span className="text-[9px] font-bold text-green-600 uppercase tracking-tighter">Live Syncing</span>
+                    </div>
+                  )}
+                  
+                  <select 
+                    value={o.status} 
+                    onChange={(e) => handleUpdateOrderStatus(o._id, e.target.value)} 
+                    disabled={o.shippingDetails?.provider === 'Shiprocket'}
+                    className={`w-full p-1.5 rounded-[4px] text-[11px] font-bold uppercase tracking-tight border-2 outline-none mb-3 cursor-pointer 
+                      ${o.shippingDetails?.provider === 'Shiprocket' ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed' : 
+                        o.status === 'Delivered' ? 'bg-[#F7FCF7] border-[#007600] text-[#007600]' : 'bg-[#FFF8F2] border-[#e77600] text-[#e77600]'}`}
+                  >
+                    <option value="Processing">Processing</option>
+                    <option value="Shipped">Shipped</option>
+                    <option value="Delivered">Delivered</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+                 
+                <div className="bg-[#f9f9f9] border border-[#ddd] p-2 rounded mb-3">
+                  <p className="text-[10px] font-bold text-[#111] mb-2 uppercase">Fulfillment Details</p>
+                  
+                  {o.shippingDetails?.trackingId ? (
+                    <div className="text-[11px] text-[#007600]">
+                      <div className="flex justify-between items-center mb-1">
+                         <span className="font-bold">✓ {o.shippingDetails.provider}</span>
+                         {o.shippingDetails.provider === 'Manual' && <span className="text-[8px] bg-purple-100 px-1 rounded">INTERNAL</span>}
+                      </div>
+                      <span className="text-gray-500">Carrier:</span> {o.shippingDetails.carrierName}<br/>
+                      <span className="text-gray-500">AWB:</span> <span className="font-mono text-[#111] font-bold">{o.shippingDetails.trackingId}</span>
+                      
+                      {o.shippingDetails.provider === 'Shiprocket' && (
+                        <button 
+                          onClick={async () => {
+                            try {
+                              const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/orders/${o._id}/tracking`);
+                              if(data.shiprocketInvoiceUrl) window.open(data.shiprocketInvoiceUrl, '_blank');
+                              else alert("Label is being generated. Please wait 2-3 minutes.");
+                            } catch(e) { alert("Error fetching Shiprocket label."); }
+                          }}
+                          className="w-full mt-2 bg-white border border-blue-400 text-blue-600 text-[10px] font-bold py-1 rounded hover:bg-blue-50 transition-colors shadow-sm"
+                        >
+                          🖨️ Print Label (Auto)
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <form onSubmit={(e) => handleManualFulfill(o._id, e)} className="bg-white p-1.5 border border-gray-200 rounded">
+                        <input name="carrier" type="text" placeholder="Internal Courier Name" className="w-full border border-gray-300 p-1 text-[10px] mb-1 rounded-[2px] outline-none focus:border-purple-400" />
+                        <input name="tracking" type="text" placeholder="Manual Tracking ID" className="w-full border border-gray-300 p-1 text-[10px] mb-1 rounded-[2px] outline-none focus:border-purple-400" required />
+                        <button type="submit" className="w-full bg-purple-50 border border-purple-200 text-purple-700 text-[9px] font-bold py-1 hover:bg-purple-100 rounded-[3px] uppercase">Submit Manual Tracking</button>
+                      </form>
+                      <button onClick={() => handleShiprocketFulfill(o._id)} className="w-full bg-[#131921] text-white font-bold text-[10px] py-1.5 rounded-[3px] hover:bg-[#232f3e] transition-colors shadow-md border border-black">
+                        🚀 Automate Shiprocket
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-[#EEE] pt-2">
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-[10px] font-bold text-[#565959]">TAX INVOICE</p>
+                    {o.invoiceUrl && <span className="text-[8px] text-green-600 font-bold">READY</span>}
+                  </div>
+                  <input type="file" accept=".pdf" onChange={(e) => handleUploadInvoice(o._id, e)} className="text-[10px] w-full file:bg-white file:border file:border-[#DDD] file:rounded file:px-2 cursor-pointer mb-1" />
+                  {o.invoiceUrl && <a href={getImageUrl(o.invoiceUrl)} target="_blank" className="text-[10px] text-[#007185] font-bold flex items-center gap-1 hover:underline"><span className="text-xs">📄</span> DOWNLOAD INVOICE</a>}
+                </div>
+              </td>
+
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   </div>
-  
-
-
-                             <div className="border-t border-[#EEE] pt-2">
-                               <p className="text-[10px] font-bold text-[#565959] mb-1">TAX INVOICE (PDF)</p>
-                               <input type="file" accept=".pdf" onChange={(e) => handleUploadInvoice(o._id, e)} className="text-[10px] w-full file:bg-white file:border file:border-[#DDD] file:rounded file:px-2 cursor-pointer" />
-                               {o.invoiceUrl && <a href={getImageUrl(o.invoiceUrl)} target="_blank" className="text-[10px] text-[#007185] font-bold block mt-1 hover:underline">📄 DOWNLOAD</a>}
-                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-               </div>
-            </div>
-          )}
+)}
 
           {/* PAYOUTS TAB */}
           {activeTab === 'payouts' && (

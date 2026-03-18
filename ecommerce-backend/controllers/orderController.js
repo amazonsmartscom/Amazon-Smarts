@@ -2503,28 +2503,61 @@ exports.simulatePayment = async (req, res) => {
   } catch (error) { res.status(500).json({ message: 'Payment error' }); }
 };
 
+// 🚀 UPDATED: Professional Status Update with Dynamic Email Details
 exports.updateOrderStatus = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id).populate('user', 'email');
     if (!order) return res.status(404).json({ message: 'Not found' });
-    order.status = req.body.status; await order.save();
+    
+    order.status = req.body.status;
+    await order.save();
 
+    // Logic for unlocking commission on delivery
     if (order.status === 'Delivered') {
-      const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
+      const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending' });
       if (pendingTx) {
         pendingTx.status = 'completed'; await pendingTx.save();
         const referrer = await User.findById(pendingTx.userId);
         if (referrer) {
-          referrer.wallet.availableBalance += pendingTx.amount; referrer.wallet.totalEarnings += pendingTx.amount; await referrer.save();
-          await createNotification(referrer._id, "Commission Unlocked! 💰", `Order delivered! ₹${pendingTx.amount} added.`, "success", "/wallet");
+          referrer.wallet.availableBalance += pendingTx.amount;
+          await referrer.save();
+          await createNotification(referrer._id, "Commission Unlocked!", `₹${pendingTx.amount} added.`, "success", "/wallet");
         }
       }
     }
 
-    let msg = `Your order status has been updated to ${order.status}.`;
-    const email = getBrandedEmailTemplate(order, `Order Update: ${order.status}`, msg);
-    try { await sendEmail({ email: order.shippingAddress.email || order.user.email, subject: `Update: Order #${order._id.toString().slice(-6).toUpperCase()} is ${order.status}`, message: email }); } catch (err) { console.log("Email failed"); }
-    await createNotification(order.user, "Order Updated", `Order #${order._id.toString().slice(-6).toUpperCase()} is ${order.status}.`, "alert", "/orders");
+    // 🚀 DYNAMIC EMAIL CONTENT BASED ON STATUS
+    let statusTitle = `Order Update: ${order.status}`;
+    let statusMsg = `Your order status has been updated to ${order.status}.`;
+    
+    if(order.status === 'Processing') statusMsg = "We are currently preparing your items for dispatch.";
+    if(order.status === 'Shipped') statusMsg = "Your package is on its way!";
+    if(order.status === 'Delivered') statusMsg = "Your package has been delivered. Enjoy your purchase!";
+    if(order.status === 'Cancelled') statusMsg = "Your order has been cancelled. If paid, your refund is being processed.";
+
+    // Include Tracking ID in email ONLY if it exists
+    let trackingHtml = "";
+    if (order.shippingDetails?.trackingId) {
+        trackingHtml = `
+            <div style="margin-top: 20px; padding: 15px; border: 1px dashed #febd69; border-radius: 4px; background-color: #fffaf5;">
+                <p style="margin: 0; font-size: 13px; color: #666;">TRACKING ID (${order.shippingDetails.provider})</p>
+                <p style="margin: 5px 0; font-size: 18px; font-weight: bold; color: #007185;">${order.shippingDetails.trackingId}</p>
+                <p style="margin: 0; font-size: 12px; color: #565959;">Carrier: ${order.shippingDetails.carrierName}</p>
+            </div>
+        `;
+    }
+
+    const emailBody = getBrandedEmailTemplate(order, statusTitle, statusMsg, trackingHtml);
+
+    try {
+      await sendEmail({ 
+        email: order.shippingAddress.email || order.user.email, 
+        subject: `${order.status}: Amazon Smarts Order #${order._id.toString().slice(-6).toUpperCase()}`, 
+        message: emailBody 
+      });
+    } catch (err) { console.log("Email failed to send"); }
+    
+    await createNotification(order.user, "Order Update", `Your order is now ${order.status}.`, "info", "/orders");
     res.status(200).json({ message: 'Updated', order });
   } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
