@@ -1792,7 +1792,327 @@
 // };
 
 
+// // controllers/orderController.js
+// const Order = require('../models/Order');
+// const User = require('../models/User');
+// const WalletTransaction = require('../models/WalletTransaction');
+// const Product = require('../models/Product');
+// const { createNotification } = require('./notificationController');
+// const sendEmail = require('../utils/sendEmail'); 
+
+// // 🚀 UNIFIED BRANDED EMAIL TEMPLATE (Consistent Colors: Navy & Gold)
+// const getBrandedEmailTemplate = (order, statusTitle, statusMessage, itemsTableHtml = "") => {
+//   const brandColor = "#232f3e"; 
+//   const accentColor = "#febd69"; 
+//   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+//   return `
+//     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; background-color: #fff;">
+//       <div style="background-color: ${brandColor}; padding: 20px; text-align: center;">
+//         <h1 style="color: ${accentColor}; margin: 0; font-size: 26px; letter-spacing: -1px;">amazon<span style="color: #fff; font-weight: bold;">smarts</span></h1>
+//       </div>
+      
+//       <div style="padding: 30px; line-height: 1.6;">
+//         <h2 style="color: #111; font-size: 20px; margin-top: 0; border-bottom: 2px solid ${accentColor}; padding-bottom: 10px; display: inline-block;">${statusTitle}</h2>
+//         <p style="font-size: 15px; color: #333; margin-top: 20px;">${statusMessage}</p>
+        
+//         <div style="margin: 25px 0; padding: 20px; background-color: #f9f9f9; border: 1px solid #eee; border-radius: 4px;">
+//            <p style="margin: 0; font-size: 13px; color: #666; text-transform: uppercase; font-weight: bold;">Order ID</p>
+//            <p style="margin: 5px 0; font-size: 16px; font-weight: bold; color: #111;">#${order._id.toString().toUpperCase()}</p>
+//         </div>
+
+//         ${itemsTableHtml}
+
+//         <div style="text-align: center; margin-top: 30px;">
+//           <a href="${frontendUrl}/orders" style="background-color: #FFD814; border: 1px solid #FCD200; color: #111; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">View Your Order</a>
+//         </div>
+//       </div>
+
+//       <div style="background-color: #f0f2f2; padding: 20px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd;">
+//         <p style="margin: 0 0 10px 0;">This email was sent from a notification-only address. Please do not reply to this message.</p>
+//         <p style="margin: 0;">© ${new Date().getFullYear()} AmazonSmarts.com, Inc. or its affiliates</p>
+//       </div>
+//     </div>
+//   `;
+// };
+
+// // 1. Create Order
+// exports.createOrder = async (req, res) => {
+//   try {
+//     // 🚀 FIXED: Now extracting ALL the new fields sent by the frontend
+//     const { 
+//       userId, 
+//       orderItems, 
+//       shippingAddress, 
+//       paymentMethod, 
+//       itemsPrice, 
+//       shippingPrice, 
+//       discountAmount, 
+//       couponCode, 
+//       totalPrice,
+//       isPaid,
+//       paidAt,
+//       paymentResult
+//     } = req.body;
+    
+//     if (orderItems && orderItems.length === 0) return res.status(400).json({ message: 'No items' });
+
+//     // 🚀 FIXED: Saving the new fields to the database properly
+//     const order = new Order({
+//       user: userId, 
+//       orderItems, 
+//       shippingAddress,
+//       paymentMethod: paymentMethod || 'Cash on Delivery', 
+//       itemsPrice: itemsPrice || totalPrice,
+//       shippingPrice: shippingPrice || 0,
+//       discountAmount: discountAmount || 0,
+//       couponCode: couponCode || null,
+//       totalPrice,
+//       isPaid: isPaid || false,
+//       paidAt: paidAt || null,
+//       paymentResult,
+//       status: 'Processing' 
+//     });
+    
+//     const createdOrder = await order.save();
+
+//     let discountHtml = discountAmount > 0 
+//       ? `<tr><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">Discount applied:</td><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">-₹${discountAmount.toLocaleString('en-IN')}</td></tr>`
+//       : '';
+
+//     const itemsHtml = `
+//       <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px;">
+//         <tr style="background-color: #f3f3f3;"><th style="padding: 10px; text-align: left;">Item</th><th style="padding: 10px; text-align: right;">Total</th></tr>
+//         ${orderItems.map(item => `
+//           <tr>
+//             <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.name} <strong>(x${item.quantity || 1})</strong></td>
+//             <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">₹${item.price.toLocaleString('en-IN')}</td>
+//           </tr>
+//         `).join('')}
+//         ${discountHtml}
+//         <tr><td colspan="2" style="padding: 10px; text-align: right; font-weight: bold; color: #B12704;">Grand Total: ₹${totalPrice.toLocaleString('en-IN')}</td></tr>
+//       </table>
+//     `;
+
+//     const email = getBrandedEmailTemplate(
+//       createdOrder, 
+//       "Order Confirmed", 
+//       "Thank you for your purchase! We've received your order and are getting it ready. You'll receive another update when your items ship.",
+//       itemsHtml
+//     );
+
+//     try {
+//       await sendEmail({ email: shippingAddress.email, subject: `Confirmed: Amazon Smarts Order #${createdOrder._id.toString().slice(-6).toUpperCase()}`, message: email });
+//     } catch (err) { console.log("Email failed"); }
+
+//     res.status(201).json({ message: 'Order created', order: createdOrder });
+//   } catch (error) { res.status(500).json({ message: 'Error', error: error.message }); }
+// };
+
+// // 2. Simulate Payment Success & CREATE PENDING COMMISSION 🚀
+// exports.simulatePayment = async (req, res) => {
+//   try {
+//     const order = await Order.findById(req.params.id).populate('orderItems.product');
+    
+//     if (order) {
+//       order.isPaid = true;
+//       order.paidAt = Date.now();
+//       const updatedOrder = await order.save();
+      
+//       try {
+//         const buyingUser = await User.findById(order.user);
+        
+//         if (buyingUser && buyingUser.referredBy) {
+//           const referrer = await User.findById(buyingUser.referredBy);
+//           if (referrer) {
+            
+//             let totalCommissionAmount = 0;
+//             order.orderItems.forEach(item => {
+//               if (item.product && item.product.affiliateCommission > 0) {
+//                 const itemTotal = item.price * (item.quantity || 1);
+//                 const itemCommission = itemTotal * (item.product.affiliateCommission / 100);
+//                 totalCommissionAmount += itemCommission;
+//               }
+//             });
+
+//             totalCommissionAmount = Math.round(totalCommissionAmount);
+
+//             // 🚀 ONLY CREATE A PENDING TRANSACTION (Do not add to wallet yet!)
+//             if (totalCommissionAmount > 0) {
+//               await WalletTransaction.create({ 
+//                 userId: referrer._id, 
+//                 amount: totalCommissionAmount, 
+//                 type: 'credit', 
+//                 source: 'referral_commission', 
+//                 status: 'pending', // ⬅️ Stays pending until delivery
+//                 relatedOrderId: order._id 
+//               });
+              
+//               await createNotification(referrer._id, "Pending Commission ⏳", `A referral order was placed! ₹${totalCommissionAmount} will be credited to your wallet once the order is delivered.`, "info", "/wallet");
+//             }
+//           }
+//         }
+//       } catch (err) { console.error("Commission Error:", err); }
+//       res.json(updatedOrder);
+//     } else {
+//       res.status(404).json({ message: 'Order not found' });
+//     }
+//   } catch (error) { res.status(500).json({ message: 'Payment simulation error' }); }
+// };
+
+// // 3. ADMIN: Update Status & UNLOCK COMMISSION ON DELIVERY 🚀
+// exports.updateOrderStatus = async (req, res) => {
+//   try {
+//     const order = await Order.findById(req.params.id).populate('user', 'email');
+//     if (!order) return res.status(404).json({ message: 'Not found' });
+    
+//     order.status = req.body.status;
+//     await order.save();
+
+//     // ====================================================
+//     // 🚀 NEW: UNLOCK OR VOID PENDING COMMISSION
+//     // ====================================================
+//     if (order.status === 'Delivered') {
+//       // Find any pending commission for this specific order
+//       const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
+      
+//       if (pendingTx) {
+//         pendingTx.status = 'completed'; // Mark it complete
+//         await pendingTx.save();
+
+//         const referrer = await User.findById(pendingTx.userId);
+//         if (referrer) {
+//           // NOW we actually give them the money
+//           referrer.wallet.availableBalance += pendingTx.amount;
+//           referrer.wallet.totalEarnings += pendingTx.amount;
+//           await referrer.save();
+
+//           await createNotification(referrer._id, "Commission Unlocked! 💰", `The order was delivered! ₹${pendingTx.amount} has been added to your withdrawable balance.`, "success", "/wallet");
+//         }
+//       }
+//     } else if (order.status === 'Cancelled' || order.status === 'Returned') {
+//       // If it gets cancelled/returned, void the pending commission so they can't get it
+//       const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
+//       if (pendingTx) {
+//         pendingTx.status = 'cancelled';
+//         await pendingTx.save();
+//         await createNotification(pendingTx.userId, "Commission Voided ❌", `A referred order was cancelled. The pending ₹${pendingTx.amount} commission has been removed.`, "alert", "/wallet");
+//       }
+//     }
+//     // ====================================================
+
+//     let msg = `Your order status has been updated to ${order.status}.`;
+//     if(order.status === 'Shipped') msg = "Great news! Your package is on its way. Use the button below to track its progress.";
+//     if(order.status === 'Delivered') msg = "Your package has been delivered! We hope you love your new gadget.";
+
+//     const email = getBrandedEmailTemplate(order, `Order Update: ${order.status}`, msg);
+
+//     try {
+//       await sendEmail({ email: order.shippingAddress.email || order.user.email, subject: `Update: Order #${order._id.toString().slice(-6).toUpperCase()} is ${order.status}`, message: email });
+//     } catch (err) { console.log("Email failed"); }
+    
+//     await createNotification(order.user, "Order Updated", `Order #${order._id.toString().slice(-6).toUpperCase()} is ${order.status}.`, "alert", "/orders");
+//     res.status(200).json({ message: 'Updated', order });
+//   } catch (error) { res.status(500).json({ message: 'Error' }); }
+// };
+
+// // 4. Cancel Order & VOID COMMISSION 🚀
+// exports.cancelOrder = async (req, res) => {
+//   try {
+//     const { itemId } = req.body; 
+
+//     const order = await Order.findById(req.params.id)
+//       .populate('user', 'email')
+//       .populate('orderItems.product');
+
+//     if (!order) return res.status(404).json({ message: 'Not found' });
+
+//     if (order.status === 'Shipped' || order.status === 'Delivered') {
+//       return res.status(400).json({ message: 'Orders that have already been shipped cannot be cancelled.' });
+//     }
+
+//     if (itemId) {
+//       const itemToCancel = order.orderItems.find(i => i._id.toString() === itemId);
+//       if (itemToCancel && itemToCancel.product && itemToCancel.product.isCancellable === false) {
+//         return res.status(400).json({ message: 'This specific product is non-cancellable.' });
+//       }
+//     }
+
+//     order.status = 'Cancelled';
+//     await order.save();
+
+//     // 🚀 NEW: VOID PENDING COMMISSION IF CUSTOMER CANCELS
+//     const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
+//     if (pendingTx) {
+//       pendingTx.status = 'cancelled';
+//       await pendingTx.save();
+//       await createNotification(pendingTx.userId, "Commission Voided ❌", `A referred order was cancelled by the customer. The pending ₹${pendingTx.amount} commission has been removed.`, "alert", "/wallet");
+//     }
+
+//     const email = getBrandedEmailTemplate(
+//       order, 
+//       "Order Cancelled", 
+//       "Your order has been successfully cancelled. If you have already been charged, a refund will be processed to your original payment method within 5-7 business days."
+//     );
+
+//     try {
+//       await sendEmail({ email: order.shippingAddress.email || order.user.email, subject: `Cancelled: Order #${order._id.toString().slice(-6).toUpperCase()}`, message: email });
+//     } catch (err) { console.log("Email failed"); }
+
+//     await createNotification(order.user, "Order Cancelled", `Order #${order._id.toString().slice(-6).toUpperCase()} cancelled.`, "cancel", "/orders");
+//     res.status(200).json({ message: 'Cancelled', order });
+//   } catch (error) { res.status(500).json({ message: 'Error' }); }
+// };
+
+// // 5. Fetching & Invoice Logic
+// exports.getUserOrders = async (req, res) => {
+//   try {
+//     const orders = await Order.find({ user: req.params.userId })
+//                               .populate('orderItems.product') 
+//                               .sort({ createdAt: -1 });
+//     res.status(200).json(orders);
+//   } catch (error) { 
+//     res.status(500).json({ message: 'Error fetching orders' }); 
+//   }
+// };
+
+// exports.getAllOrders = async (req, res) => {
+//   try {
+//     const orders = await Order.find({})
+//                               .populate('user', 'name email')
+//                               .populate('orderItems.product')
+//                               .sort({ createdAt: -1 });
+//     res.status(200).json(orders);
+//   } catch (error) { 
+//     res.status(500).json({ message: 'Error' }); 
+//   }
+// };
+
+// exports.uploadInvoice = async (req, res) => {
+//   try {
+//     const order = await Order.findById(req.params.id).populate('user', 'email');
+//     if (!order) return res.status(404).json({ message: 'Not found' });
+//     if (!req.file) return res.status(400).json({ message: 'No file' });
+
+//     order.invoiceUrl = req.file.path.replace(/\\/g, "/"); 
+//     await order.save();
+
+//     const email = getBrandedEmailTemplate(order, "Invoice Available", "The invoice for your recent order is now available for download. You can find it in your order history.");
+
+//     try {
+//       await sendEmail({ email: order.shippingAddress.email || order.user.email, subject: `Invoice Ready: Order #${order._id.toString().slice(-6).toUpperCase()}`, message: email });
+//     } catch (err) { console.log("Email failed"); }
+
+//     await createNotification(order.user, "Invoice Uploaded", `Invoice for #${order._id.toString().slice(-6).toUpperCase()} is ready.`, "invoice", "/orders");
+//     res.status(200).json({ message: 'Invoice uploaded', invoiceUrl: order.invoiceUrl });
+//   } catch (error) { res.status(500).json({ message: 'Invoice error' }); }
+// };
+
+
+
+
 // controllers/orderController.js
+const axios = require('axios'); // 🚀 REQUIRED FOR SHIPROCKET API
 const Order = require('../models/Order');
 const User = require('../models/User');
 const WalletTransaction = require('../models/WalletTransaction');
@@ -1839,46 +2159,27 @@ const getBrandedEmailTemplate = (order, statusTitle, statusMessage, itemsTableHt
 // 1. Create Order
 exports.createOrder = async (req, res) => {
   try {
-    // 🚀 FIXED: Now extracting ALL the new fields sent by the frontend
     const { 
-      userId, 
-      orderItems, 
-      shippingAddress, 
-      paymentMethod, 
-      itemsPrice, 
-      shippingPrice, 
-      discountAmount, 
-      couponCode, 
-      totalPrice,
-      isPaid,
-      paidAt,
-      paymentResult
+      userId, orderItems, shippingAddress, paymentMethod, itemsPrice, 
+      shippingPrice, discountAmount, couponCode, totalPrice, isPaid, paidAt, paymentResult
     } = req.body;
     
     if (orderItems && orderItems.length === 0) return res.status(400).json({ message: 'No items' });
 
-    // 🚀 FIXED: Saving the new fields to the database properly
     const order = new Order({
-      user: userId, 
-      orderItems, 
-      shippingAddress,
+      user: userId, orderItems, shippingAddress,
       paymentMethod: paymentMethod || 'Cash on Delivery', 
       itemsPrice: itemsPrice || totalPrice,
       shippingPrice: shippingPrice || 0,
       discountAmount: discountAmount || 0,
       couponCode: couponCode || null,
-      totalPrice,
-      isPaid: isPaid || false,
-      paidAt: paidAt || null,
-      paymentResult,
-      status: 'Processing' 
+      totalPrice, isPaid: isPaid || false, paidAt: paidAt || null, paymentResult, status: 'Processing' 
     });
     
     const createdOrder = await order.save();
 
     let discountHtml = discountAmount > 0 
-      ? `<tr><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">Discount applied:</td><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">-₹${discountAmount.toLocaleString('en-IN')}</td></tr>`
-      : '';
+      ? `<tr><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">Discount applied:</td><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">-₹${discountAmount.toLocaleString('en-IN')}</td></tr>` : '';
 
     const itemsHtml = `
       <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px;">
@@ -1894,198 +2195,127 @@ exports.createOrder = async (req, res) => {
       </table>
     `;
 
-    const email = getBrandedEmailTemplate(
-      createdOrder, 
-      "Order Confirmed", 
-      "Thank you for your purchase! We've received your order and are getting it ready. You'll receive another update when your items ship.",
-      itemsHtml
-    );
+    const email = getBrandedEmailTemplate(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready. You'll receive another update when your items ship.", itemsHtml);
 
-    try {
-      await sendEmail({ email: shippingAddress.email, subject: `Confirmed: Amazon Smarts Order #${createdOrder._id.toString().slice(-6).toUpperCase()}`, message: email });
-    } catch (err) { console.log("Email failed"); }
+    try { await sendEmail({ email: shippingAddress.email, subject: `Confirmed: Amazon Smarts Order #${createdOrder._id.toString().slice(-6).toUpperCase()}`, message: email }); } catch (err) { console.log("Email failed"); }
 
     res.status(201).json({ message: 'Order created', order: createdOrder });
   } catch (error) { res.status(500).json({ message: 'Error', error: error.message }); }
 };
 
-// 2. Simulate Payment Success & CREATE PENDING COMMISSION 🚀
+// 2. Simulate Payment Success & CREATE PENDING COMMISSION
 exports.simulatePayment = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id).populate('orderItems.product');
-    
     if (order) {
-      order.isPaid = true;
-      order.paidAt = Date.now();
+      order.isPaid = true; order.paidAt = Date.now();
       const updatedOrder = await order.save();
-      
       try {
         const buyingUser = await User.findById(order.user);
-        
         if (buyingUser && buyingUser.referredBy) {
           const referrer = await User.findById(buyingUser.referredBy);
           if (referrer) {
-            
             let totalCommissionAmount = 0;
             order.orderItems.forEach(item => {
               if (item.product && item.product.affiliateCommission > 0) {
                 const itemTotal = item.price * (item.quantity || 1);
-                const itemCommission = itemTotal * (item.product.affiliateCommission / 100);
-                totalCommissionAmount += itemCommission;
+                totalCommissionAmount += itemTotal * (item.product.affiliateCommission / 100);
               }
             });
-
             totalCommissionAmount = Math.round(totalCommissionAmount);
 
-            // 🚀 ONLY CREATE A PENDING TRANSACTION (Do not add to wallet yet!)
             if (totalCommissionAmount > 0) {
-              await WalletTransaction.create({ 
-                userId: referrer._id, 
-                amount: totalCommissionAmount, 
-                type: 'credit', 
-                source: 'referral_commission', 
-                status: 'pending', // ⬅️ Stays pending until delivery
-                relatedOrderId: order._id 
-              });
-              
+              await WalletTransaction.create({ userId: referrer._id, amount: totalCommissionAmount, type: 'credit', source: 'referral_commission', status: 'pending', relatedOrderId: order._id });
               await createNotification(referrer._id, "Pending Commission ⏳", `A referral order was placed! ₹${totalCommissionAmount} will be credited to your wallet once the order is delivered.`, "info", "/wallet");
             }
           }
         }
       } catch (err) { console.error("Commission Error:", err); }
       res.json(updatedOrder);
-    } else {
-      res.status(404).json({ message: 'Order not found' });
-    }
+    } else { res.status(404).json({ message: 'Order not found' }); }
   } catch (error) { res.status(500).json({ message: 'Payment simulation error' }); }
 };
 
-// 3. ADMIN: Update Status & UNLOCK COMMISSION ON DELIVERY 🚀
+// 3. ADMIN: Update Status & UNLOCK COMMISSION
 exports.updateOrderStatus = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id).populate('user', 'email');
     if (!order) return res.status(404).json({ message: 'Not found' });
-    
     order.status = req.body.status;
     await order.save();
 
-    // ====================================================
-    // 🚀 NEW: UNLOCK OR VOID PENDING COMMISSION
-    // ====================================================
     if (order.status === 'Delivered') {
-      // Find any pending commission for this specific order
       const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
-      
       if (pendingTx) {
-        pendingTx.status = 'completed'; // Mark it complete
-        await pendingTx.save();
-
+        pendingTx.status = 'completed'; await pendingTx.save();
         const referrer = await User.findById(pendingTx.userId);
         if (referrer) {
-          // NOW we actually give them the money
-          referrer.wallet.availableBalance += pendingTx.amount;
-          referrer.wallet.totalEarnings += pendingTx.amount;
-          await referrer.save();
-
+          referrer.wallet.availableBalance += pendingTx.amount; referrer.wallet.totalEarnings += pendingTx.amount; await referrer.save();
           await createNotification(referrer._id, "Commission Unlocked! 💰", `The order was delivered! ₹${pendingTx.amount} has been added to your withdrawable balance.`, "success", "/wallet");
         }
       }
     } else if (order.status === 'Cancelled' || order.status === 'Returned') {
-      // If it gets cancelled/returned, void the pending commission so they can't get it
       const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
       if (pendingTx) {
-        pendingTx.status = 'cancelled';
-        await pendingTx.save();
+        pendingTx.status = 'cancelled'; await pendingTx.save();
         await createNotification(pendingTx.userId, "Commission Voided ❌", `A referred order was cancelled. The pending ₹${pendingTx.amount} commission has been removed.`, "alert", "/wallet");
       }
     }
-    // ====================================================
 
     let msg = `Your order status has been updated to ${order.status}.`;
     if(order.status === 'Shipped') msg = "Great news! Your package is on its way. Use the button below to track its progress.";
     if(order.status === 'Delivered') msg = "Your package has been delivered! We hope you love your new gadget.";
 
     const email = getBrandedEmailTemplate(order, `Order Update: ${order.status}`, msg);
-
-    try {
-      await sendEmail({ email: order.shippingAddress.email || order.user.email, subject: `Update: Order #${order._id.toString().slice(-6).toUpperCase()} is ${order.status}`, message: email });
-    } catch (err) { console.log("Email failed"); }
+    try { await sendEmail({ email: order.shippingAddress.email || order.user.email, subject: `Update: Order #${order._id.toString().slice(-6).toUpperCase()} is ${order.status}`, message: email }); } catch (err) { console.log("Email failed"); }
     
     await createNotification(order.user, "Order Updated", `Order #${order._id.toString().slice(-6).toUpperCase()} is ${order.status}.`, "alert", "/orders");
     res.status(200).json({ message: 'Updated', order });
   } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
 
-// 4. Cancel Order & VOID COMMISSION 🚀
+// 4. Cancel Order
 exports.cancelOrder = async (req, res) => {
   try {
     const { itemId } = req.body; 
-
-    const order = await Order.findById(req.params.id)
-      .populate('user', 'email')
-      .populate('orderItems.product');
-
+    const order = await Order.findById(req.params.id).populate('user', 'email').populate('orderItems.product');
     if (!order) return res.status(404).json({ message: 'Not found' });
-
-    if (order.status === 'Shipped' || order.status === 'Delivered') {
-      return res.status(400).json({ message: 'Orders that have already been shipped cannot be cancelled.' });
-    }
+    if (order.status === 'Shipped' || order.status === 'Delivered') return res.status(400).json({ message: 'Orders that have already been shipped cannot be cancelled.' });
 
     if (itemId) {
       const itemToCancel = order.orderItems.find(i => i._id.toString() === itemId);
-      if (itemToCancel && itemToCancel.product && itemToCancel.product.isCancellable === false) {
-        return res.status(400).json({ message: 'This specific product is non-cancellable.' });
-      }
+      if (itemToCancel && itemToCancel.product && itemToCancel.product.isCancellable === false) return res.status(400).json({ message: 'This specific product is non-cancellable.' });
     }
 
-    order.status = 'Cancelled';
-    await order.save();
+    order.status = 'Cancelled'; await order.save();
 
-    // 🚀 NEW: VOID PENDING COMMISSION IF CUSTOMER CANCELS
     const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
     if (pendingTx) {
-      pendingTx.status = 'cancelled';
-      await pendingTx.save();
+      pendingTx.status = 'cancelled'; await pendingTx.save();
       await createNotification(pendingTx.userId, "Commission Voided ❌", `A referred order was cancelled by the customer. The pending ₹${pendingTx.amount} commission has been removed.`, "alert", "/wallet");
     }
 
-    const email = getBrandedEmailTemplate(
-      order, 
-      "Order Cancelled", 
-      "Your order has been successfully cancelled. If you have already been charged, a refund will be processed to your original payment method within 5-7 business days."
-    );
-
-    try {
-      await sendEmail({ email: order.shippingAddress.email || order.user.email, subject: `Cancelled: Order #${order._id.toString().slice(-6).toUpperCase()}`, message: email });
-    } catch (err) { console.log("Email failed"); }
+    const email = getBrandedEmailTemplate(order, "Order Cancelled", "Your order has been successfully cancelled. If you have already been charged, a refund will be processed to your original payment method within 5-7 business days.");
+    try { await sendEmail({ email: order.shippingAddress.email || order.user.email, subject: `Cancelled: Order #${order._id.toString().slice(-6).toUpperCase()}`, message: email }); } catch (err) { console.log("Email failed"); }
 
     await createNotification(order.user, "Order Cancelled", `Order #${order._id.toString().slice(-6).toUpperCase()} cancelled.`, "cancel", "/orders");
     res.status(200).json({ message: 'Cancelled', order });
   } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
 
-// 5. Fetching & Invoice Logic
+// 5. Fetching & Invoice
 exports.getUserOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.params.userId })
-                              .populate('orderItems.product') 
-                              .sort({ createdAt: -1 });
+    const orders = await Order.find({ user: req.params.userId }).populate('orderItems.product').sort({ createdAt: -1 });
     res.status(200).json(orders);
-  } catch (error) { 
-    res.status(500).json({ message: 'Error fetching orders' }); 
-  }
+  } catch (error) { res.status(500).json({ message: 'Error fetching orders' }); }
 };
 
 exports.getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find({})
-                              .populate('user', 'name email')
-                              .populate('orderItems.product')
-                              .sort({ createdAt: -1 });
+    const orders = await Order.find({}).populate('user', 'name email').populate('orderItems.product').sort({ createdAt: -1 });
     res.status(200).json(orders);
-  } catch (error) { 
-    res.status(500).json({ message: 'Error' }); 
-  }
+  } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
 
 exports.uploadInvoice = async (req, res) => {
@@ -2094,16 +2324,85 @@ exports.uploadInvoice = async (req, res) => {
     if (!order) return res.status(404).json({ message: 'Not found' });
     if (!req.file) return res.status(400).json({ message: 'No file' });
 
-    order.invoiceUrl = req.file.path.replace(/\\/g, "/"); 
-    await order.save();
-
+    order.invoiceUrl = req.file.path.replace(/\\/g, "/"); await order.save();
     const email = getBrandedEmailTemplate(order, "Invoice Available", "The invoice for your recent order is now available for download. You can find it in your order history.");
-
-    try {
-      await sendEmail({ email: order.shippingAddress.email || order.user.email, subject: `Invoice Ready: Order #${order._id.toString().slice(-6).toUpperCase()}`, message: email });
-    } catch (err) { console.log("Email failed"); }
-
+    try { await sendEmail({ email: order.shippingAddress.email || order.user.email, subject: `Invoice Ready: Order #${order._id.toString().slice(-6).toUpperCase()}`, message: email }); } catch (err) { console.log("Email failed"); }
     await createNotification(order.user, "Invoice Uploaded", `Invoice for #${order._id.toString().slice(-6).toUpperCase()} is ready.`, "invoice", "/orders");
     res.status(200).json({ message: 'Invoice uploaded', invoiceUrl: order.invoiceUrl });
   } catch (error) { res.status(500).json({ message: 'Invoice error' }); }
+};
+
+// ==========================================
+// 🚀 6. MANUAL FULFILLMENT
+// ==========================================
+exports.fulfillManual = async (req, res) => {
+  try {
+    const { carrierName, trackingId } = req.body;
+    const order = await Order.findById(req.params.id).populate('user', 'email');
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    order.shippingDetails = { provider: 'Manual', carrierName: carrierName || 'Standard Courier', trackingId: trackingId };
+    order.status = 'Shipped';
+    await order.save();
+
+    const email = getBrandedEmailTemplate(order, "Your Order Has Shipped!", `Great news! Your order has been handed over to ${carrierName || 'our courier partner'}. Your tracking number is: <br/><br/><b style="font-size:20px; color:#007185;">${trackingId}</b>.`);
+    try { await sendEmail({ email: order.shippingAddress.email || order.user.email, subject: `Shipped: Order #${order._id.toString().slice(-6).toUpperCase()}`, message: email }); } catch (err) { console.log("Email failed"); }
+
+    res.status(200).json({ message: 'Order fulfilled manually', order });
+  } catch (error) { res.status(500).json({ message: 'Error fulfilling order manually', error: error.message }); }
+};
+
+// ==========================================
+// 🚀 7. AUTOMATED SHIPROCKET FULFILLMENT
+// ==========================================
+exports.fulfillShiprocket = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id).populate('user', 'email').populate('orderItems.product');
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const authRes = await axios.post('https://apiv2.shiprocket.in/v1/external/auth/login', { email: process.env.SHIPROCKET_EMAIL, password: process.env.SHIPROCKET_PASSWORD });
+    const token = authRes.data.token;
+
+    const srPayload = {
+      order_id: order._id.toString(),
+      order_date: new Date(order.createdAt).toISOString().split('T')[0],
+      pickup_location: process.env.SHIPROCKET_PICKUP_LOCATION || "Primary",
+      billing_customer_name: order.shippingAddress.fullName,
+      billing_last_name: "", 
+      billing_address: order.shippingAddress.address,
+      billing_city: order.shippingAddress.city,
+      billing_pincode: order.shippingAddress.pincode,
+      billing_state: "Punjab", 
+      billing_country: "India",
+      billing_email: order.shippingAddress.email || order.user.email,
+      billing_phone: order.shippingAddress.phone,
+      shipping_is_billing: true,
+      order_items: order.orderItems.map(item => ({
+        name: item.name, sku: item.product?._id?.toString() || 'SKU-1', units: item.quantity || 1, selling_price: item.price, discount: 0, tax: 0, hsn: 441122
+      })),
+      payment_method: order.paymentMethod === 'Cash on Delivery' ? 'COD' : 'Prepaid',
+      shipping_charges: order.shippingPrice || 0,
+      total_discount: order.discountAmount || 0,
+      sub_total: order.totalPrice,
+      length: 10, breadth: 10, height: 10, weight: 0.5 
+    };
+
+    const createOrderRes = await axios.post('https://apiv2.shiprocket.in/v1/external/orders/create/adhoc', srPayload, { headers: { Authorization: `Bearer ${token}` } });
+    const { order_id: srOrderId, shipment_id: srShipmentId } = createOrderRes.data;
+
+    const awbRes = await axios.post('https://apiv2.shiprocket.in/v1/external/courier/assign/awb', { shipment_id: srShipmentId, courier_id: "" }, { headers: { Authorization: `Bearer ${token}` } });
+    const awbData = awbRes.data.response.data;
+
+    order.shippingDetails = { provider: 'Shiprocket', carrierName: awbData.courier_name, trackingId: awbData.awb_code, shiprocketOrderId: srOrderId, shiprocketShipmentId: srShipmentId };
+    order.status = 'Shipped';
+    await order.save();
+
+    const email = getBrandedEmailTemplate(order, "Your Order Has Shipped!", `Good news! Your order has been automated via Shiprocket and handed to <b>${awbData.courier_name}</b>. Your AWB Tracking ID is: <br/><br/><b style="font-size:20px; color:#007185;">${awbData.awb_code}</b>.`);
+    try { await sendEmail({ email: order.shippingAddress.email || order.user.email, subject: `Shipped: Order #${order._id.toString().slice(-6).toUpperCase()}`, message: email }); } catch (err) { console.log("Email failed"); }
+
+    res.status(200).json({ message: 'Shiprocket automated successfully', order });
+  } catch (error) { 
+    console.error("Shiprocket Error:", error.response?.data || error.message);
+    res.status(500).json({ message: 'Error fulfilling via Shiprocket', details: error.response?.data || error.message }); 
+  }
 };
