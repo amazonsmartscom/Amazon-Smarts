@@ -2457,8 +2457,8 @@ const getBrandedEmailTemplate = (order, statusTitle, statusMessage, itemsTableHt
   `;
 };
 
-// 🚀 DUAL-EMAIL HELPER (Sends to Customer AND Admin)
-const sendStatusEmailsToBoth = async (order, statusTitle, statusMessage) => {
+// 🚀 UPDATED DUAL-EMAIL HELPER (Handles custom HTML for receipts and guest emails)
+const sendStatusEmailsToBoth = async (order, statusTitle, statusMessage, customHtml = "", explicitEmail = null) => {
   let trackingHtml = "";
   if (order.shippingDetails?.trackingId) {
     trackingHtml = `
@@ -2470,14 +2470,19 @@ const sendStatusEmailsToBoth = async (order, statusTitle, statusMessage) => {
     `;
   }
 
-  const emailBody = getBrandedEmailTemplate(order, statusTitle, statusMessage, trackingHtml);
+  const finalHtml = customHtml + trackingHtml;
+  const emailBody = getBrandedEmailTemplate(order, statusTitle, statusMessage, finalHtml);
   const subject = `${order.status}: Amazon Smarts Order #${order._id.toString().slice(-6).toUpperCase()}`;
-  const customerEmail = order.shippingAddress?.email || order.user?.email;
+  
+  // Safely grab email (uses explicit email if passed, otherwise falls back to order data)
+  const customerEmail = explicitEmail || order.shippingAddress?.email || (order.user && order.user.email) || null;
 
   // 1. Email the CUSTOMER
-  try { 
-    if (customerEmail) await sendEmail({ email: customerEmail, subject, message: emailBody }); 
-  } catch (err) { console.log("Customer email failed"); }
+  if (customerEmail) {
+    try { 
+      await sendEmail({ email: customerEmail, subject, message: emailBody }); 
+    } catch (err) { console.log("Customer email failed"); }
+  }
 
   // 2. Email all ADMINS
   try {
@@ -2490,7 +2495,7 @@ const sendStatusEmailsToBoth = async (order, statusTitle, statusMessage) => {
       order, 
       `[ADMIN ALERT] Order ${order.status}`, 
       `Customer (${customerEmail || 'Guest User'}) order status is now ${order.status}.`, 
-      trackingHtml
+      finalHtml
     );
     
     for (const adminEmail of finalEmails) {
@@ -2522,9 +2527,8 @@ exports.createOrder = async (req, res) => {
       const existingUser = await User.findOne({ email: guestEmail });
       
       if (existingUser) {
-        finalUserId = existingUser._id; // ✅ Link the Order to the User ID
+        finalUserId = existingUser._id;
 
-        // ✅ If the name is still the dummy name, update it to their real checkout name!
         if (existingUser.name === 'Guest Customer' && shippingAddress?.fullName) {
           existingUser.name = shippingAddress.fullName;
           await existingUser.save();
@@ -2534,7 +2538,7 @@ exports.createOrder = async (req, res) => {
     // ==========================================
 
     const orderData = {
-      user: finalUserId || undefined, // This is now perfectly attached!
+      user: finalUserId || undefined, 
       orderItems, 
       shippingAddress: shippingAddress || {}, 
       paymentMethod: paymentMethod || 'Cash on Delivery', 
@@ -2552,7 +2556,7 @@ exports.createOrder = async (req, res) => {
     const order = new Order(orderData);
     const createdOrder = await order.save();
 
-    // Build the Email HTML
+    // Build the Email HTML Receipt
     let discountHtml = discountAmount > 0 
       ? `<tr><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">Discount applied:</td><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">-₹${Number(discountAmount).toLocaleString('en-IN')}</td></tr>` 
       : '';
@@ -2582,11 +2586,12 @@ exports.createOrder = async (req, res) => {
       </table>
     `;
 
+    // 🚀 FIX: Explicitly send the email and the HTML to the helper
     const emailToSend = shippingAddress?.email || guestEmail;
 
-    if (emailToSend && typeof sendStatusEmailsToBoth === 'function') {
+    if (emailToSend) {
       try {
-        await sendStatusEmailsToBoth(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready.", itemsHtml);
+        await sendStatusEmailsToBoth(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready.", itemsHtml, emailToSend);
       } catch (err) { console.log("Confirmation email failed to send"); }
     }
 
@@ -2604,7 +2609,6 @@ exports.simulatePayment = async (req, res) => {
     if (order) {
       order.isPaid = true; order.paidAt = Date.now(); const updatedOrder = await order.save();
       
-      // Referral Logic (Only if it's a logged-in user)
       if (order.user) {
         try {
           const buyingUser = await User.findById(order.user);
@@ -2653,10 +2657,8 @@ exports.updateOrderStatus = async (req, res) => {
     if(order.status === 'Delivered') statusMsg = "Your package has been delivered. Enjoy your purchase!";
     if(order.status === 'Cancelled') statusMsg = "Your order has been cancelled.";
 
-    // 🚀 DUAL EMAIL TRIGGER
     await sendStatusEmailsToBoth(order, `Order Update: ${order.status}`, statusMsg);
     
-    // 🚀 GUEST FIX: Only send in-app notification if the user actually exists
     if (order.user) {
       await createNotification(order.user._id || order.user, "Order Updated", `Order #${order._id.toString().slice(-6).toUpperCase()} is ${order.status}.`, "alert", "/orders");
     }
@@ -2683,7 +2685,6 @@ exports.cancelOrder = async (req, res) => {
     const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
     if (pendingTx) { pendingTx.status = 'cancelled'; await pendingTx.save(); }
 
-    // 🚀 DUAL EMAIL TRIGGER
     await sendStatusEmailsToBoth(order, "Order Cancelled", "Your order has been successfully cancelled.");
     res.status(200).json({ message: 'Cancelled', order });
   } catch (error) { res.status(500).json({ message: 'Error' }); }
@@ -2713,7 +2714,6 @@ exports.fulfillManual = async (req, res) => {
     order.shippingDetails = { provider: 'Manual', carrierName: carrierName || 'Courier', trackingId: trackingId };
     order.status = 'Shipped'; await order.save();
 
-    // 🚀 DUAL EMAIL TRIGGER
     await sendStatusEmailsToBoth(order, "Order Shipped!", `Your order shipped via ${carrierName}.`);
     
     if (order.user) {
@@ -2750,7 +2750,6 @@ exports.fulfillShiprocket = async (req, res) => {
     order.shippingDetails = { provider: 'Shiprocket', carrierName: awbData.courier_name, trackingId: awbData.awb_code, shiprocketOrderId: srOrderId, shiprocketShipmentId: srShipmentId };
     order.status = 'Shipped'; await order.save();
 
-    // 🚀 DUAL EMAIL TRIGGER
     await sendStatusEmailsToBoth(order, "Order Shipped!", `Your order shipped via <b>${awbData.courier_name}</b>.`);
 
     if (order.user) {
@@ -2808,10 +2807,8 @@ exports.handleShiprocketWebhook = async (req, res) => {
       if(newStatus === 'Delivered') statusMsg = "Your package has been delivered. Enjoy your purchase!";
       if(newStatus === 'Cancelled') statusMsg = "Your shipment was cancelled by the carrier.";
 
-      // 🚀 DUAL EMAIL TRIGGER (Automated by Shiprocket Webhook)
       await sendStatusEmailsToBoth(order, `Order Update: ${newStatus}`, statusMsg);
       
-      // 🚀 GUEST FIX: Only notify if it's a registered user
       if (order.user) {
         await createNotification(order.user._id || order.user, "Delivery Update", `Your order is now ${newStatus}!`, "info", "/orders");
       }

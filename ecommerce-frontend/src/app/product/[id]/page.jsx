@@ -3079,7 +3079,6 @@ import { useAuth } from '../../../context/AuthContext';
 import axios from 'axios';
 import Link from 'next/link';
 
-
 export default function ProductDetailPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -3094,21 +3093,30 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
 
+  // 🚀 Text Expand States
+  const [isExpandedDesc, setIsExpandedDesc] = useState(false);
+  const [isExpandedFeatures, setIsExpandedFeatures] = useState(false);
+
   // 🚀 Pincode & Delivery States
   const [pincode, setPincode] = useState('');
-  const [pincodeStatus, setPincodeStatus] = useState(null); // null, 'loading', 'success', 'error'
+  const [pincodeStatus, setPincodeStatus] = useState(null);
   const [deliveryLocation, setDeliveryLocation] = useState(''); 
   const [dynamicDeliveryDate, setDynamicDeliveryDate] = useState(
     new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })
   );
 
-  // 🚀 Review States
+  // 🚀 Review & Eligibility States
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [reviewSubmitLoading, setReviewSubmitLoading] = useState(false);
   const [showReviewSuccess, setShowReviewSuccess] = useState(false);
   const [reviewSort, setReviewSort] = useState('top');
-  const [showReviewModal, setShowReviewModal] = useState(false); // 🚀 NEW: Controls the Popup
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  
+  // Strict Review Checks
+  const [eligibleToReview, setEligibleToReview] = useState(false);
+  const [reviewEligibilityMsg, setReviewEligibilityMsg] = useState('');
+  const [hasReviewed, setHasReviewed] = useState(false);
 
   const getImageUrl = (imagePath) => {
     if (!imagePath) return 'https://placehold.co/500x500?text=No+Image';
@@ -3117,6 +3125,7 @@ export default function ProductDetailPage() {
     return `${baseUrl}/${imagePath}`;
   };
 
+  // 1. Fetch Product
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -3141,7 +3150,52 @@ export default function ProductDetailPage() {
     fetchProduct();
   }, [id]);
 
-  
+  // 2. 🚀 CHECK REVIEW ELIGIBILITY (Needs Product & User)
+  useEffect(() => {
+    const checkReviewEligibility = async () => {
+      if (!user || !product) return;
+      const userId = user?._id || user?.user?._id;
+
+      // Check if already reviewed
+      const alreadyReviewed = product.reviews?.some(r => r.userId === userId);
+      if (alreadyReviewed) {
+         setHasReviewed(true);
+         setReviewEligibilityMsg("You have already submitted a review for this product.");
+         return;
+      }
+
+      // Fetch user's orders to check for purchase and delivery
+      try {
+         const { data: orders } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/orders/user/${userId}`);
+         
+         const hasDeliveredOrder = orders.some(order => 
+           order.status === 'Delivered' && 
+           order.orderItems.some(item => (item.product?._id || item.product) === id)
+         );
+
+         const hasPendingOrder = orders.some(order => 
+           order.status !== 'Delivered' && order.status !== 'Cancelled' &&
+           order.orderItems.some(item => (item.product?._id || item.product) === id)
+         );
+
+         if (hasDeliveredOrder) {
+           setEligibleToReview(true);
+         } else if (hasPendingOrder) {
+           setEligibleToReview(false);
+           setReviewEligibilityMsg("You can review this product after it has been delivered.");
+         } else {
+           setEligibleToReview(false);
+           setReviewEligibilityMsg("You must purchase this product to write a review.");
+         }
+      } catch (err) {
+         console.error("Error checking orders", err);
+      }
+    };
+
+    checkReviewEligibility();
+  }, [user, product, id]);
+
+  // Delivery Timer
   useEffect(() => {
     const calculateTimeLeft = () => {
       const now = new Date();
@@ -3162,9 +3216,7 @@ export default function ProductDetailPage() {
     const R = 6371; 
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
@@ -3174,56 +3226,37 @@ export default function ProductDetailPage() {
       setPincodeStatus('error');
       return;
     }
-    
     setPincodeStatus('loading');
     
     try {
       const { data } = await axios.get(`https://api.zippopotam.us/in/${pincode}`);
       const place = data.places[0];
-      const city = place['place name'];
       const targetLat = parseFloat(place.latitude);
       const targetLon = parseFloat(place.longitude);
       
-      setDeliveryLocation(city);
+      setDeliveryLocation(place['place name']);
       setPincodeStatus('success');
 
       const WAREHOUSE_LAT = 30.704649; 
       const WAREHOUSE_LON = 76.717873;
-
       const distanceInKm = calculateDistanceKm(WAREHOUSE_LAT, WAREHOUSE_LON, targetLat, targetLon);
 
-      let daysToDeliver = 4; 
-      if (distanceInKm < 100) daysToDeliver = 1;       
-      else if (distanceInKm < 500) daysToDeliver = 3;  
-      else if (distanceInKm < 1500) daysToDeliver = 5; 
-      else daysToDeliver = 7;                          
-
+      let daysToDeliver = distanceInKm < 100 ? 1 : distanceInKm < 500 ? 3 : distanceInKm < 1500 ? 5 : 7; 
       setDynamicDeliveryDate(new Date(Date.now() + daysToDeliver * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' }));
-      
     } catch (err) {
       setPincodeStatus('error');
     }
   };
 
-  if (loading) return (
-    <div className="min-h-screen bg-white flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-[#e7e7e7] border-t-[#e77600] rounded-full animate-spin"></div>
-    </div>
-  );
-  
+  if (loading) return <div className="min-h-screen bg-white flex items-center justify-center"><div className="w-10 h-10 border-4 border-[#e7e7e7] border-t-[#e77600] rounded-full animate-spin"></div></div>;
   if (!product) return <div className="min-h-screen flex items-center justify-center font-bold bg-white text-2xl text-[#111]">Product not found.</div>;
 
-  const renderStars = (ratingValue) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <span key={i} className={i < Math.round(ratingValue) ? "text-[#FFA41C]" : "text-[#e77600]"}>★</span>
-    ));
-  };
+  const renderStars = (ratingValue) => Array.from({ length: 5 }, (_, i) => <span key={i} className={i < Math.round(ratingValue) ? "text-[#FFA41C]" : "text-[#e77600]"}>★</span>);
 
   let extraPrice = 0;
   if (product.variants) {
     product.variants.forEach(v => {
-      const selectedOptName = selectedVariants[v.name];
-      const optObj = v.options.find(o => o.name === selectedOptName);
+      const optObj = v.options.find(o => o.name === selectedVariants[v.name]);
       if (optObj && optObj.priceModifier) extraPrice += optObj.priceModifier;
     });
   }
@@ -3235,22 +3268,18 @@ export default function ProductDetailPage() {
 
   const handleVariantSelect = (variantName, optionName) => {
     setSelectedVariants(prev => ({ ...prev, [variantName]: optionName }));
-    const isColorVariant = variantName.toLowerCase().includes('color') || variantName.toLowerCase().includes('colour');
-    if (isColorVariant) {
+    if (variantName.toLowerCase().includes('color') || variantName.toLowerCase().includes('colour')) {
       const variant = product.variants.find(v => v.name === variantName);
       if (variant) {
         const optionIndex = variant.options.findIndex(o => o.name === optionName);
-        if (optionIndex !== -1 && product.images[optionIndex]) {
-          setMainImage(product.images[optionIndex]);
-        }
+        if (optionIndex !== -1 && product.images[optionIndex]) setMainImage(product.images[optionIndex]);
       }
     }
   };
   
   const handleAddToCart = () => { 
     addToCart({ ...product, price: finalPrice, discountPrice: finalDiscountPrice, selectedOptions: selectedVariants, quantity }); 
-    setIsAdded(true);
-    setTimeout(() => setIsAdded(false), 3000);
+    setIsAdded(true); setTimeout(() => setIsAdded(false), 3000);
   };
 
   const handleBuyNow = () => {
@@ -3258,7 +3287,6 @@ export default function ProductDetailPage() {
     router.push('/cart');
   };
 
-  // 🚀 Popup Review Submit Logic
   const submitReview = async (e) => {
     e.preventDefault();
     if (!user) return; 
@@ -3273,23 +3301,15 @@ export default function ProductDetailPage() {
       setComment(''); 
       setRating(5);
       
-      // Auto close modal after showing success
-      setTimeout(() => {
-        setShowReviewSuccess(false);
-        setShowReviewModal(false);
-      }, 3500);
-
-    } catch (error) { 
-      alert("Error submitting review. Please try again."); 
-    } finally { 
-      setReviewSubmitLoading(false); 
-    }
+      // 🚀 Instantly update UI restrictions
+      setHasReviewed(true);
+      setReviewEligibilityMsg("You have already submitted a review for this product.");
+      
+      setTimeout(() => { setShowReviewSuccess(false); setShowReviewModal(false); }, 3500);
+    } catch (error) { alert("Error submitting review. Please try again."); } finally { setReviewSubmitLoading(false); }
   };
 
-  const sortedReviews = [...(product.reviews?.filter(r => r.isApproved) || [])].sort((a, b) => {
-    if (reviewSort === 'recent') return new Date(b.createdAt) - new Date(a.createdAt);
-    return b.rating - a.rating; 
-  });
+  const sortedReviews = [...(product.reviews?.filter(r => r.isApproved) || [])].sort((a, b) => reviewSort === 'recent' ? new Date(b.createdAt) - new Date(a.createdAt) : b.rating - a.rating);
 
   const amzLink = "text-[#007185] hover:text-[#C45500] hover:underline cursor-pointer transition-colors";
   const amzButtonYellow = "w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-full py-2 text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-colors cursor-pointer font-medium";
@@ -3301,31 +3321,15 @@ export default function ProductDetailPage() {
         <span className="text-[16px] mt-0.5">📍</span>
         <div className="flex flex-col">
           {pincodeStatus === 'success' ? (
-            <div 
-              className="text-[12px] text-[#007185] font-bold cursor-pointer hover:text-[#C45500] hover:underline" 
-              onClick={() => setPincodeStatus(null)}
-            >
+            <div className="text-[12px] text-[#007185] font-bold cursor-pointer hover:text-[#C45500] hover:underline" onClick={() => setPincodeStatus(null)}>
               Delivering to {deliveryLocation} {pincode} - Update location
             </div>
-          ) : (
-            <span className="text-[12px] text-[#007185] font-bold">Select delivery location</span>
-          )}
+          ) : <span className="text-[12px] text-[#007185] font-bold">Select delivery location</span>}
           
           {pincodeStatus !== 'success' && (
             <div className="flex mt-2 gap-2">
-              <input 
-                type="text" 
-                maxLength="6" 
-                placeholder="Enter Pincode" 
-                className="border border-[#888C8C] rounded-[4px] px-2 py-1 text-[13px] w-24 outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600]" 
-                value={pincode} 
-                onChange={e => setPincode(e.target.value.replace(/\D/g, ''))} 
-              />
-              <button 
-                onClick={handlePincodeCheck} 
-                disabled={pincodeStatus === 'loading'}
-                className={`border border-[#D5D9D9] px-3 py-1 rounded-[4px] text-[12px] shadow-sm font-medium transition-colors ${pincodeStatus === 'loading' ? 'bg-gray-100 text-gray-400' : 'bg-white hover:bg-[#F7FAFA]'}`}
-              >
+              <input type="text" maxLength="6" placeholder="Enter Pincode" className="border border-[#888C8C] rounded-[4px] px-2 py-1 text-[13px] w-24 outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600]" value={pincode} onChange={e => setPincode(e.target.value.replace(/\D/g, ''))} />
+              <button onClick={handlePincodeCheck} disabled={pincodeStatus === 'loading'} className={`border border-[#D5D9D9] px-3 py-1 rounded-[4px] text-[12px] shadow-sm font-medium transition-colors ${pincodeStatus === 'loading' ? 'bg-gray-100 text-gray-400' : 'bg-white hover:bg-[#F7FAFA]'}`}>
                 {pincodeStatus === 'loading' ? 'Checking...' : 'Apply'}
               </button>
             </div>
@@ -3354,36 +3358,22 @@ export default function ProductDetailPage() {
         
         {/* ================= COLUMN 1: GALLERY ================= */}
         <div className="w-full lg:w-[40%] flex flex-col-reverse lg:flex-row gap-4 h-fit lg:sticky lg:top-24">
-          
-          {/* Desktop Thumbnail List */}
           {product.images?.length > 1 && (
             <div className="hidden lg:flex flex-col gap-2 w-auto">
               {product.images.map((img, index) => (
-                <div 
-                  key={index} 
-                  onMouseEnter={() => setMainImage(img)} 
-                  className={`h-12 w-12 border rounded-[3px] cursor-pointer flex-shrink-0 p-1 flex items-center justify-center ${mainImage === img ? 'border-[#e77600] shadow-[0_0_3px_#e77600]' : 'border-[#DDD] hover:border-[#e77600]'}`}
-                >
+                <div key={index} onMouseEnter={() => setMainImage(img)} className={`h-12 w-12 border rounded-[3px] cursor-pointer flex-shrink-0 p-1 flex items-center justify-center ${mainImage === img ? 'border-[#e77600] shadow-[0_0_3px_#e77600]' : 'border-[#DDD] hover:border-[#e77600]'}`}>
                   <img src={getImageUrl(img)} alt="thumb" className="max-h-full max-w-full object-contain mix-blend-multiply" />
                 </div>
               ))}
             </div>
           )}
-
-          {/* Main Image View */}
           <div className="flex-1 bg-white flex items-center justify-center min-h-[300px] lg:min-h-[500px] p-4 relative">
             <img src={getImageUrl(mainImage)} alt={product.name} className="max-h-[350px] lg:max-h-[500px] w-full object-contain cursor-zoom-in" />
           </div>
-
-          {/* Mobile Swipeable Gallery */}
           {product.images?.length > 1 && (
             <div className="flex lg:hidden overflow-x-auto snap-x snap-mandatory gap-2 pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
               {product.images.map((img, index) => (
-                <div 
-                  key={index} 
-                  onClick={() => setMainImage(img)} 
-                  className={`snap-center shrink-0 w-[60px] h-[60px] border rounded-[3px] p-1 flex items-center justify-center ${mainImage === img ? 'border-[#e77600] shadow-[0_0_3px_#e77600]' : 'border-[#DDD]'}`}
-                >
+                <div key={index} onClick={() => setMainImage(img)} className={`snap-center shrink-0 w-[60px] h-[60px] border rounded-[3px] p-1 flex items-center justify-center ${mainImage === img ? 'border-[#e77600] shadow-[0_0_3px_#e77600]' : 'border-[#DDD]'}`}>
                   <img src={getImageUrl(img)} alt="thumb" className="max-h-full max-w-full object-contain mix-blend-multiply" />
                 </div>
               ))}
@@ -3424,10 +3414,7 @@ export default function ProductDetailPage() {
              <p className="text-[14px] font-bold mt-2">Inclusive of all taxes</p>
           </div>
 
-          {/* 🚀 Mobile Pincode Widget */}
-          <div className="block lg:hidden mt-2">
-            {renderDeliveryWidget()}
-          </div>
+          <div className="block lg:hidden mt-2">{renderDeliveryWidget()}</div>
 
           {/* Variants */}
           {product.variants?.map((v, i) => (
@@ -3436,8 +3423,7 @@ export default function ProductDetailPage() {
                <div className="flex flex-wrap gap-2">
                   {v.options.map((opt, idx) => (
                     <button 
-                      key={idx} 
-                      onClick={() => handleVariantSelect(v.name, opt.name)}
+                      key={idx} onClick={() => handleVariantSelect(v.name, opt.name)}
                       className={`px-3 py-1.5 text-[13px] border rounded-[4px] transition-all whitespace-nowrap ${selectedVariants[v.name] === opt.name ? 'border-[#e77600] bg-[#FEF8F2] shadow-[0_0_0_1px_#e77600]' : 'border-[#D5D9D9] bg-white hover:bg-gray-50'}`}
                     >
                       {opt.name}
@@ -3447,37 +3433,52 @@ export default function ProductDetailPage() {
             </div>
           ))}
 
-          {/* Technical Specs Grid */}
+          {/* Technical Specs */}
           {product.specs && product.specs.length > 0 && (
             <div className="mt-4 pt-4 border-t border-[#EEE]">
                <table className="w-full text-[14px] text-left">
-                  <tbody>
+                 <tbody>
                     {product.specs.map((spec, i) => (
                       <tr key={i}>
                         <td className="py-1 pr-4 font-bold text-[#111] w-1/3 align-top">{spec.name}</td>
                         <td className="py-1 text-[#111] align-top">{spec.value}</td>
                       </tr>
                     ))}
-                  </tbody>
+                 </tbody>
                </table>
             </div>
           )}
 
-          {/* About this item */}
-          <div className="mt-4 pt-4 border-t border-[#EEE]">
-             <h3 className="font-bold text-[16px] mb-2">About this item</h3>
-             <ul className="list-disc pl-5 space-y-1.5 text-[14px] leading-relaxed text-[#111]">
-               {product.features?.map((f, i) => <li key={i}>{f}</li>)}
-             </ul>
-          </div>
+          {/* 🚀 Feature Highlights (About this item) with Read More */}
+          {product.features && product.features.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-[#EEE]">
+               <h3 className="font-bold text-[16px] mb-2">About this item</h3>
+               <ul className="list-disc pl-5 space-y-1.5 text-[14px] leading-relaxed text-[#111]">
+                 {(isExpandedFeatures ? product.features : product.features.slice(0, 3)).map((f, i) => (
+                   <li key={i}>{f}</li>
+                 ))}
+               </ul>
+               {product.features.length > 3 && (
+                 <button
+                   onClick={() => setIsExpandedFeatures(!isExpandedFeatures)}
+                   className="text-[#007185] hover:text-[#C45500] hover:underline text-[14px] font-bold mt-2 flex items-center gap-1 focus:outline-none"
+                 >
+                   {isExpandedFeatures ? (
+                     <><span>Show less</span><span className="text-[10px]">▲</span></>
+                   ) : (
+                     <><span>Show more</span><span className="text-[10px]">▼</span></>
+                   )}
+                 </button>
+               )}
+            </div>
+          )}
         </div>
 
-        {/* ================= COLUMN 3: BUY BOX (Desktop) ================= */}
+        {/* ================= COLUMN 3: BUY BOX ================= */}
         <div className="w-full lg:w-[20%] hidden lg:block">
           <div className="border border-[#D5D9D9] rounded-[8px] p-5 lg:sticky lg:top-24 bg-white">
              <div className="flex items-start text-[24px] font-normal mb-2">
-                <span className="text-[13px] mt-1 mr-0.5">₹</span>
-                {currentActivePrice.toLocaleString('en-IN')}
+                <span className="text-[13px] mt-1 mr-0.5">₹</span>{currentActivePrice.toLocaleString('en-IN')}
              </div>
              
              <div className="text-[14px] space-y-1 mb-4">
@@ -3485,7 +3486,6 @@ export default function ProductDetailPage() {
                 <p>Order within <span className="text-[#007600] font-medium">{timeLeft}</span></p>
              </div>
 
-             {/* 🚀 Desktop Pincode Widget */}
              {renderDeliveryWidget()}
 
              <p className={`text-[18px] mb-4 ${product.stock > 0 ? 'text-[#007600]' : 'text-[#B12704]'}`}>
@@ -3494,14 +3494,9 @@ export default function ProductDetailPage() {
 
              {product.stock > 0 && (
                <div className="space-y-3">
-                  <select 
-                    value={quantity} 
-                    onChange={(e) => setQuantity(Number(e.target.value))}
-                    className="bg-[#F0F2F2] border border-[#D5D9D9] rounded-[7px] text-[13px] px-2 py-1 shadow-sm focus:border-[#e77600] outline-none cursor-pointer w-full hover:bg-[#E3E6E6]"
-                  >
+                  <select value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} className="bg-[#F0F2F2] border border-[#D5D9D9] rounded-[7px] text-[13px] px-2 py-1 shadow-sm focus:border-[#e77600] outline-none cursor-pointer w-full hover:bg-[#E3E6E6]">
                     {[...Array(Math.min(10, product.stock)).keys()].map(n => <option key={n+1} value={n+1}>Qty: {n+1}</option>)}
                   </select>
-
                   <button onClick={handleAddToCart} className={amzButtonYellow}>Add to Cart</button>
                   <button onClick={handleBuyNow} className={amzButtonOrange}>Buy Now</button>
                </div>
@@ -3518,28 +3513,43 @@ export default function ProductDetailPage() {
       {/* ================= LOWER SECTIONS ================= */}
       <div className="max-w-[1500px] mx-auto px-4 border-t border-[#EEE] pt-10">
           
-          {/* A+ Content */}
           {product.banners?.length > 0 && (
             <div className="mb-12">
                <h2 className="text-[22px] font-bold text-[#C60] mb-4">From the manufacturer</h2>
                <div className="space-y-6">
                   {product.banners.map((b, i) => (
-                    <div key={i} className="border-b border-[#EEE] pb-6 last:border-0">
-                        <img src={getImageUrl(b)} alt="Manufacturer Info" className="w-full h-auto rounded-[4px] shadow-sm" />
-                    </div>
+                    <div key={i} className="border-b border-[#EEE] pb-6 last:border-0"><img src={getImageUrl(b)} alt="Manufacturer Info" className="w-full h-auto rounded-[4px] shadow-sm" /></div>
                   ))}
                </div>
             </div>
           )}
 
+          {/* Product Description with Read More */}
           <div className="mb-12">
              <h2 className="text-[20px] lg:text-[22px] font-bold text-[#C60] mb-4">Product Description</h2>
-             <p className="text-[14px] leading-relaxed whitespace-pre-wrap max-w-4xl text-[#333]">{product.description}</p>
+             {(() => {
+               if (!product.description) return null;
+               const words = product.description.split(/\s+/);
+               const limit = 50;
+
+               if (words.length <= limit) return <p className="text-[14px] leading-relaxed whitespace-pre-wrap max-w-4xl text-[#333]">{product.description}</p>;
+
+               const displayedText = isExpandedDesc ? product.description : words.slice(0, limit).join(' ') + '...';
+
+               return (
+                 <div>
+                   <p className="text-[14px] leading-relaxed whitespace-pre-wrap max-w-4xl text-[#333]">{displayedText}</p>
+                   <button onClick={() => setIsExpandedDesc(!isExpandedDesc)} className="text-[#007185] hover:text-[#C45500] hover:underline text-[14px] font-bold mt-2 flex items-center gap-1 focus:outline-none">
+                     {isExpandedDesc ? <><span>Read less</span><span className="text-[10px]">▲</span></> : <><span>Read more</span><span className="text-[10px]">▼</span></>}
+                   </button>
+                 </div>
+               );
+             })()}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mt-12 border-t border-[#EEE] pt-10 pb-20">
              
-             {/* Review Trigger Card */}
+             {/* 🚀 Review Trigger Card with Restrictions */}
              <div>
                 <h2 className="text-[20px] font-bold mb-2">Customer reviews</h2>
                 <div className="flex items-center gap-2 mb-4">
@@ -3551,26 +3561,34 @@ export default function ProductDetailPage() {
                    <h3 className="font-bold text-[14px] mb-1">Review this product</h3>
                    <p className="text-[13px] mb-4 text-[#565959]">Share your thoughts with other customers</p>
                    
-                   {/* 🚀 Updated: Triggers Login OR Modal */}
-                   <button 
-                     onClick={() => {
-                       if (user) setShowReviewModal(true);
-                       else router.push(`/login?redirect=/product/${id}`);
-                     }}
-                     className="w-full bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-2 rounded-[8px] text-[13px] shadow-sm font-bold text-[#111] transition-colors"
-                   >
-                     Write a customer review
-                   </button>
+                   {!user ? (
+                     <button 
+                       onClick={() => router.push(`/login?redirect=/product/${id}`)}
+                       className="w-full bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-2 rounded-[8px] text-[13px] shadow-sm font-bold text-[#111] transition-colors"
+                     >
+                       Sign in to write a review
+                     </button>
+                   ) : hasReviewed || !eligibleToReview ? (
+                     <div className="bg-white border border-[#ddd] p-3 rounded-[4px] flex gap-2 items-start shadow-sm">
+                        <span className="text-[#007185] font-bold text-lg leading-none">ℹ</span>
+                        <p className="text-[12px] text-[#565959]">{reviewEligibilityMsg}</p>
+                     </div>
+                   ) : (
+                     <button 
+                       onClick={() => setShowReviewModal(true)}
+                       className="w-full bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-2 rounded-[8px] text-[13px] shadow-sm font-bold text-[#111] transition-colors"
+                     >
+                       Write a customer review
+                     </button>
+                   )}
                 </div>
              </div>
              
-             {/* Reviews List with Sorting */}
              <div className="lg:col-span-2">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-[20px] font-bold">Top reviews from India</h2>
                   <select 
-                    value={reviewSort} 
-                    onChange={(e) => setReviewSort(e.target.value)} 
+                    value={reviewSort} onChange={(e) => setReviewSort(e.target.value)} 
                     className="border border-[#D5D9D9] rounded-[8px] bg-[#F0F2F2] text-[13px] px-3 py-1.5 outline-none focus:border-[#e77600] shadow-sm cursor-pointer hover:bg-[#E3E6E6]"
                   >
                     <option value="top">Top reviews</option>
@@ -3602,25 +3620,18 @@ export default function ProductDetailPage() {
           </div>
       </div>
 
-      {/* STICKY BOTTOM BAR FOR MOBILE */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#D5D9D9] p-3 z-50 lg:hidden shadow-[0_-2px_10px_rgba(0,0,0,0.05)] flex gap-3">
         <button onClick={handleAddToCart} className={amzButtonYellow + " flex-1 !py-3 !text-[14px]"}>Add to Cart</button>
         <button onClick={handleBuyNow} className={amzButtonOrange + " flex-1 !py-3 !text-[14px]"}>Buy Now</button>
       </div>
 
-      {/* ================= 🚀 REVIEW MODAL (POPUP) ================= */}
       {showReviewModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[300]">
           <div className="bg-white rounded-[8px] w-full max-w-[500px] shadow-xl border border-[#ddd] overflow-hidden animate-in fade-in zoom-in duration-200">
             
             <div className="bg-[#f3f3f3] border-b border-[#ddd] p-4 flex justify-between items-center">
               <h2 className="text-[18px] font-bold text-[#111]">Write a Review</h2>
-              <button 
-                onClick={() => { setShowReviewModal(false); setShowReviewSuccess(false); }} 
-                className="text-[#555] hover:text-[#c40000] text-2xl leading-none"
-              >
-                ✕
-              </button>
+              <button onClick={() => { setShowReviewModal(false); setShowReviewSuccess(false); }} className="text-[#555] hover:text-[#c40000] text-2xl leading-none">✕</button>
             </div>
             
             <div className="p-6">
@@ -3632,7 +3643,6 @@ export default function ProductDetailPage() {
                 </div>
               ) : (
                 <form onSubmit={submitReview} className="space-y-4">
-                  {/* Product Mini Header */}
                   <div className="flex items-center gap-4 mb-4">
                     <img src={getImageUrl(mainImage)} alt="product" className="w-12 h-12 object-contain mix-blend-multiply border border-[#ddd] rounded p-1" />
                     <p className="text-[14px] font-bold text-[#111] line-clamp-2 leading-tight">{product.name}</p>
@@ -3640,11 +3650,7 @@ export default function ProductDetailPage() {
 
                   <div>
                     <label className="block text-[13px] font-bold text-[#111] mb-1">Overall rating</label>
-                    <select 
-                      className="w-full p-2.5 border border-[#888C8C] rounded-[4px] text-[14px] bg-white outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] cursor-pointer" 
-                      value={rating} 
-                      onChange={(e) => setRating(e.target.value)}
-                    >
+                    <select className="w-full p-2.5 border border-[#888C8C] rounded-[4px] text-[14px] bg-white outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] cursor-pointer" value={rating} onChange={(e) => setRating(e.target.value)}>
                       <option value="5">5 Stars - Excellent</option>
                       <option value="4">4 Stars - Good</option>
                       <option value="3">3 Stars - Average</option>
@@ -3655,20 +3661,10 @@ export default function ProductDetailPage() {
                   
                   <div>
                     <label className="block text-[13px] font-bold text-[#111] mb-1">Add a written review</label>
-                    <textarea 
-                      className="w-full p-2.5 border border-[#888C8C] rounded-[4px] text-[14px] h-32 outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] resize-none" 
-                      placeholder="What did you like or dislike? What did you use this product for?" 
-                      value={comment} 
-                      onChange={(e) => setComment(e.target.value)} 
-                      required 
-                    />
+                    <textarea className="w-full p-2.5 border border-[#888C8C] rounded-[4px] text-[14px] h-32 outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600] resize-none" placeholder="What did you like or dislike? What did you use this product for?" value={comment} onChange={(e) => setComment(e.target.value)} required />
                   </div>
                   
-                  <button 
-                    type="submit" 
-                    disabled={reviewSubmitLoading} 
-                    className="w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] py-2.5 rounded-[8px] text-[14px] shadow-sm font-bold text-[#111] transition-colors mt-2"
-                  >
+                  <button type="submit" disabled={reviewSubmitLoading} className="w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] py-2.5 rounded-[8px] text-[14px] shadow-sm font-bold text-[#111] transition-colors mt-2">
                     {reviewSubmitLoading ? 'Submitting...' : 'Submit'}
                   </button>
                 </form>
