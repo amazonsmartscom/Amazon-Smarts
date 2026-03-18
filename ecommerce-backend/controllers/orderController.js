@@ -2458,6 +2458,48 @@ const getBrandedEmailTemplate = (order, statusTitle, statusMessage, itemsTableHt
   `;
 };
 
+// 🚀 DUAL-EMAIL HELPER (Sends to Customer AND Admin)
+const sendStatusEmailsToBoth = async (order, statusTitle, statusMessage) => {
+  let trackingHtml = "";
+  if (order.shippingDetails?.trackingId) {
+    trackingHtml = `
+      <div style="margin-top: 20px; padding: 15px; border: 1px dashed #febd69; border-radius: 4px; background-color: #fffaf5;">
+        <p style="margin: 0; font-size: 13px; color: #666;">TRACKING ID (${order.shippingDetails.provider})</p>
+        <p style="margin: 5px 0; font-size: 18px; font-weight: bold; color: #007185;">${order.shippingDetails.trackingId}</p>
+        <p style="margin: 0; font-size: 12px; color: #565959;">Carrier: ${order.shippingDetails.carrierName}</p>
+      </div>
+    `;
+  }
+
+  const emailBody = getBrandedEmailTemplate(order, statusTitle, statusMessage, trackingHtml);
+  const subject = `${order.status}: Amazon Smarts Order #${order._id.toString().slice(-6).toUpperCase()}`;
+  const customerEmail = order.shippingAddress?.email || order.user?.email;
+
+  // 1. Email the CUSTOMER
+  try { 
+    if (customerEmail) await sendEmail({ email: customerEmail, subject, message: emailBody }); 
+  } catch (err) { console.log("Customer email failed"); }
+
+  // 2. Email all ADMINS
+  try {
+    const admins = await User.find({ role: 'admin' }).select('email');
+    const adminEmails = admins.map(a => a.email).filter(e => e);
+    const fallbackEmail = process.env.EMAIL_USER; 
+    const finalEmails = adminEmails.length > 0 ? adminEmails : (fallbackEmail ? [fallbackEmail] : []);
+
+    const adminBody = getBrandedEmailTemplate(
+      order, 
+      `[ADMIN ALERT] Order ${order.status}`, 
+      `Customer (${customerEmail || 'Unknown'}) order status is now ${order.status}.`, 
+      trackingHtml
+    );
+    
+    for (const adminEmail of finalEmails) {
+      await sendEmail({ email: adminEmail, subject: `[ADMIN] ${subject}`, message: adminBody });
+    }
+  } catch (err) { console.log("Admin email failed"); }
+};
+
 exports.createOrder = async (req, res) => {
   try {
     const { userId, orderItems, shippingAddress, paymentMethod, itemsPrice, shippingPrice, discountAmount, couponCode, totalPrice, isPaid, paidAt, paymentResult } = req.body;
@@ -2503,7 +2545,6 @@ exports.simulatePayment = async (req, res) => {
   } catch (error) { res.status(500).json({ message: 'Payment error' }); }
 };
 
-// 🚀 UPDATED: Professional Status Update with Dynamic Email Details
 exports.updateOrderStatus = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id).populate('user', 'email');
@@ -2512,52 +2553,28 @@ exports.updateOrderStatus = async (req, res) => {
     order.status = req.body.status;
     await order.save();
 
-    // Logic for unlocking commission on delivery
     if (order.status === 'Delivered') {
-      const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending' });
+      const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
       if (pendingTx) {
         pendingTx.status = 'completed'; await pendingTx.save();
         const referrer = await User.findById(pendingTx.userId);
         if (referrer) {
-          referrer.wallet.availableBalance += pendingTx.amount;
-          await referrer.save();
-          await createNotification(referrer._id, "Commission Unlocked!", `₹${pendingTx.amount} added.`, "success", "/wallet");
+          referrer.wallet.availableBalance += pendingTx.amount; referrer.wallet.totalEarnings += pendingTx.amount; await referrer.save();
+          await createNotification(referrer._id, "Commission Unlocked! 💰", `Order delivered! ₹${pendingTx.amount} added.`, "success", "/wallet");
         }
       }
     }
 
-    // 🚀 DYNAMIC EMAIL CONTENT BASED ON STATUS
-    let statusTitle = `Order Update: ${order.status}`;
     let statusMsg = `Your order status has been updated to ${order.status}.`;
-    
     if(order.status === 'Processing') statusMsg = "We are currently preparing your items for dispatch.";
     if(order.status === 'Shipped') statusMsg = "Your package is on its way!";
     if(order.status === 'Delivered') statusMsg = "Your package has been delivered. Enjoy your purchase!";
-    if(order.status === 'Cancelled') statusMsg = "Your order has been cancelled. If paid, your refund is being processed.";
+    if(order.status === 'Cancelled') statusMsg = "Your order has been cancelled.";
 
-    // Include Tracking ID in email ONLY if it exists
-    let trackingHtml = "";
-    if (order.shippingDetails?.trackingId) {
-        trackingHtml = `
-            <div style="margin-top: 20px; padding: 15px; border: 1px dashed #febd69; border-radius: 4px; background-color: #fffaf5;">
-                <p style="margin: 0; font-size: 13px; color: #666;">TRACKING ID (${order.shippingDetails.provider})</p>
-                <p style="margin: 5px 0; font-size: 18px; font-weight: bold; color: #007185;">${order.shippingDetails.trackingId}</p>
-                <p style="margin: 0; font-size: 12px; color: #565959;">Carrier: ${order.shippingDetails.carrierName}</p>
-            </div>
-        `;
-    }
-
-    const emailBody = getBrandedEmailTemplate(order, statusTitle, statusMsg, trackingHtml);
-
-    try {
-      await sendEmail({ 
-        email: order.shippingAddress.email || order.user.email, 
-        subject: `${order.status}: Amazon Smarts Order #${order._id.toString().slice(-6).toUpperCase()}`, 
-        message: emailBody 
-      });
-    } catch (err) { console.log("Email failed to send"); }
+    // 🚀 DUAL EMAIL TRIGGER
+    await sendStatusEmailsToBoth(order, `Order Update: ${order.status}`, statusMsg);
     
-    await createNotification(order.user, "Order Update", `Your order is now ${order.status}.`, "info", "/orders");
+    await createNotification(order.user, "Order Updated", `Order #${order._id.toString().slice(-6).toUpperCase()} is ${order.status}.`, "alert", "/orders");
     res.status(200).json({ message: 'Updated', order });
   } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
@@ -2570,20 +2587,18 @@ exports.cancelOrder = async (req, res) => {
 
     order.status = 'Cancelled'; await order.save();
 
-    // 🚀 NEW: AUTO CANCEL IN SHIPROCKET
     if (order.shippingDetails?.provider === 'Shiprocket' && order.shippingDetails?.shiprocketOrderId) {
       try {
         const authRes = await axios.post('https://apiv2.shiprocket.in/v1/external/auth/login', { email: process.env.SHIPROCKET_EMAIL, password: process.env.SHIPROCKET_PASSWORD });
         await axios.post('https://apiv2.shiprocket.in/v1/external/orders/cancel', { ids: [order.shippingDetails.shiprocketOrderId] }, { headers: { Authorization: `Bearer ${authRes.data.token}` } });
-        console.log(`Shiprocket Order ${order.shippingDetails.shiprocketOrderId} cancelled successfully.`);
       } catch (srErr) { console.error("Shiprocket cancel failed", srErr.response?.data); }
     }
 
     const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
     if (pendingTx) { pendingTx.status = 'cancelled'; await pendingTx.save(); }
 
-    const email = getBrandedEmailTemplate(order, "Order Cancelled", "Your order has been successfully cancelled.");
-    try { await sendEmail({ email: order.shippingAddress.email || order.user.email, subject: `Cancelled: Order #${order._id.toString().slice(-6).toUpperCase()}`, message: email }); } catch (err) {}
+    // 🚀 DUAL EMAIL TRIGGER
+    await sendStatusEmailsToBoth(order, "Order Cancelled", "Your order has been successfully cancelled.");
     res.status(200).json({ message: 'Cancelled', order });
   } catch (error) { res.status(500).json({ message: 'Error' }); }
 };
@@ -2611,8 +2626,10 @@ exports.fulfillManual = async (req, res) => {
     const order = await Order.findById(req.params.id).populate('user', 'email');
     order.shippingDetails = { provider: 'Manual', carrierName: carrierName || 'Courier', trackingId: trackingId };
     order.status = 'Shipped'; await order.save();
-    const email = getBrandedEmailTemplate(order, "Order Shipped!", `Your order shipped via ${carrierName}. Tracking: <b>${trackingId}</b>.`);
-    try { await sendEmail({ email: order.shippingAddress.email || order.user.email, subject: `Shipped`, message: email }); } catch (err) {}
+
+    // 🚀 DUAL EMAIL TRIGGER
+    await sendStatusEmailsToBoth(order, "Order Shipped!", `Your order shipped via ${carrierName}.`);
+    
     res.status(200).json({ message: 'Fulfilled manually', order });
   } catch (error) { res.status(500).json({ message: 'Error', error: error.message }); }
 };
@@ -2643,8 +2660,8 @@ exports.fulfillShiprocket = async (req, res) => {
     order.shippingDetails = { provider: 'Shiprocket', carrierName: awbData.courier_name, trackingId: awbData.awb_code, shiprocketOrderId: srOrderId, shiprocketShipmentId: srShipmentId };
     order.status = 'Shipped'; await order.save();
 
-    const email = getBrandedEmailTemplate(order, "Order Shipped!", `Your order shipped via <b>${awbData.courier_name}</b>. Tracking ID: <br/><br/><b style="font-size:20px; color:#007185;">${awbData.awb_code}</b>.`);
-    try { await sendEmail({ email: order.shippingAddress.email || order.user.email, subject: `Shipped`, message: email }); } catch (err) {}
+    // 🚀 DUAL EMAIL TRIGGER
+    await sendStatusEmailsToBoth(order, "Order Shipped!", `Your order shipped via <b>${awbData.courier_name}</b>.`);
 
     res.status(200).json({ message: 'Shiprocket automated successfully', order });
   } catch (error) { 
@@ -2653,7 +2670,6 @@ exports.fulfillShiprocket = async (req, res) => {
   }
 };
 
-// 🚀 LIVE TRACKING API
 exports.getLiveTracking = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -2663,7 +2679,6 @@ exports.getLiveTracking = async (req, res) => {
       const authRes = await axios.post('https://apiv2.shiprocket.in/v1/external/auth/login', { email: process.env.SHIPROCKET_EMAIL, password: process.env.SHIPROCKET_PASSWORD });
       const trackRes = await axios.get(`https://apiv2.shiprocket.in/v1/external/courier/track/awb/${order.shippingDetails.trackingId}`, { headers: { Authorization: `Bearer ${authRes.data.token}` } });
       
-      // Also grab the auto-generated Shiprocket Invoice URL!
       let invoiceUrl = null;
       if(order.shippingDetails.shiprocketOrderId) {
          try {
@@ -2679,23 +2694,13 @@ exports.getLiveTracking = async (req, res) => {
   } catch (error) { res.status(500).json({ message: 'Tracking Error', error: error.message }); }
 };
 
-// ==========================================
-// 🚀 9. SHIPROCKET WEBHOOK (AUTO-UPDATE STATUS)
-// ==========================================
 exports.handleShiprocketWebhook = async (req, res) => {
   try {
-    // Shiprocket sends data in req.body
-    const { awb, status, shipment_id } = req.body;
-    
-    // Find the order that matches this AWB
-    const order = await Order.findOne({ "shippingDetails.trackingId": awb });
+    const { awb, status } = req.body;
+    const order = await Order.findOne({ "shippingDetails.trackingId": awb }).populate('user', 'email');
 
-    if (!order) {
-      return res.status(404).json({ message: "Order not found for this AWB" });
-    }
+    if (!order) return res.status(404).json({ message: "Order not found for this AWB" });
 
-    // Map Shiprocket Statuses to your App Statuses
-    // Shiprocket codes: 6 = Shipped, 7 = Delivered, 10 = Cancelled, 13 = Returned
     let newStatus = order.status;
     if (status === "shipped" || status == 6) newStatus = "Shipped";
     if (status === "delivered" || status == 7) newStatus = "Delivered";
@@ -2704,15 +2709,16 @@ exports.handleShiprocketWebhook = async (req, res) => {
     if (order.status !== newStatus) {
       order.status = newStatus;
       await order.save();
-      console.log(`✅ Order ${order._id} auto-updated to ${newStatus} via Webhook`);
       
-      // Trigger notification to user
+      let statusMsg = `Your order status has been updated to ${newStatus}.`;
+      if(newStatus === 'Delivered') statusMsg = "Your package has been delivered. Enjoy your purchase!";
+      if(newStatus === 'Cancelled') statusMsg = "Your shipment was cancelled by the carrier.";
+
+      // 🚀 DUAL EMAIL TRIGGER (Automated by Shiprocket Webhook)
+      await sendStatusEmailsToBoth(order, `Order Update: ${newStatus}`, statusMsg);
       await createNotification(order.user, "Delivery Update", `Your order is now ${newStatus}!`, "info", "/orders");
     }
 
     res.status(200).send("Webhook Received");
-  } catch (error) {
-    console.error("Webhook Error:", error);
-    res.status(500).send("Webhook Error");
-  }
+  } catch (error) { res.status(500).send("Webhook Error"); }
 };

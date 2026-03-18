@@ -1368,7 +1368,9 @@ export default function CheckoutPage() {
   }, [user]);
 
   const itemsPrice = cart.reduce((total, item) => total + ((item.discountPrice || item.price) * item.quantity), 0);
-  const shippingPrice = itemsPrice > 50000 ? 0 : 499; 
+  // const shippingPrice = itemsPrice > 50000 ? 0 : 499; 
+  const shippingPrice = itemsPrice > 50000 ? 0 : 0; 
+
   const grandTotal = Math.max(0, itemsPrice + (cart.length > 0 ? shippingPrice : 0) - appliedDiscount);
 
   const getImageUrl = (imagePath) => {
