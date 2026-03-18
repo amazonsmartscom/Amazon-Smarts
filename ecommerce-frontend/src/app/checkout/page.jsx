@@ -1304,6 +1304,7 @@
 // }
 
 // src/app/checkout/page.jsx
+// src/app/checkout/page.jsx
 'use client';
 import { useState, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
@@ -1430,7 +1431,7 @@ export default function CheckoutPage() {
     }
   };
 
-  // 🚀 REUSABLE FUNCTION: Handles Razorpay OR COD (Used by both Guests and Logged In users)
+  // 🚀 REUSABLE FUNCTION: Handles Razorpay OR COD
   const executeOrderPlacement = async () => {
     setIsProcessing(true);
     try {
@@ -1446,7 +1447,7 @@ export default function CheckoutPage() {
             rzpOrder = response.data;
           } catch (backendError) {
             console.error("Razorpay Backend Error:", backendError);
-            alert("Backend Error: Could not reach Razorpay.");
+            alert(`Backend Error: ${backendError.response?.data?.message || "Could not reach Razorpay."}`);
             setIsProcessing(false); setPaymentGatewayStatus(null);
             return; 
           }
@@ -1474,18 +1475,23 @@ export default function CheckoutPage() {
             },
             prefill: { name: shippingInfo.fullName, email: shippingInfo.email, contact: shippingInfo.phone },
             theme: { color: "#232F3E" },
-            modal: { ondismiss: function() { setIsProcessing(false); setPaymentGatewayStatus(null); } }
+            // 🚀 SECURE FIX: If user closes the popup, stop processing. Do not simulate!
+            modal: { 
+              ondismiss: function() { 
+                setIsProcessing(false); 
+                setPaymentGatewayStatus(null); 
+              } 
+            }
           };
 
           const paymentObject = new window.Razorpay(options);
           paymentObject.open();
 
         } else {
-          // Fallback if Razorpay fails to load
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          setPaymentGatewayStatus('success');
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          await placeOrderToDatabase('Razorpay', 'simulated_txn_' + Date.now());
+          // 🚀 SECURE FIX: If Razorpay fails to load or keys are missing, stop immediately.
+          alert("Error: Payment gateway could not be loaded. Please ensure your Razorpay keys are set.");
+          setIsProcessing(false); 
+          setPaymentGatewayStatus(null);
         }
 
       } else {
