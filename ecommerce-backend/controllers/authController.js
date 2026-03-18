@@ -1531,6 +1531,7 @@
 // controllers/authController.js
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const Order = require('../models/Order'); // 🚀 IMPORTED ORDER MODEL FOR AUTO-LINKING
 const WalletTransaction = require('../models/WalletTransaction');
 const jwt = require('jsonwebtoken');
 const sendEmail = require('../utils/sendEmail');
@@ -1582,6 +1583,23 @@ const generateUniqueReferralCode = async () => {
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'gadgetstore_super_secret_key_123', { expiresIn: '30d' });
+};
+
+// ==========================================
+// 🚀 THE MAGIC: AUTO-LINK GUEST ORDERS HELPER
+// ==========================================
+const linkGuestOrders = async (email, userId) => {
+  try {
+    const result = await Order.updateMany(
+      { "shippingAddress.email": email, user: { $exists: false } },
+      { $set: { user: userId } }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`Auto-linked ${result.modifiedCount} guest orders to user: ${email}`);
+    }
+  } catch (err) {
+    console.error("Failed to link guest orders:", err);
+  }
 };
 
 // 1. REGISTER
@@ -1651,6 +1669,9 @@ exports.verifyOTP = async (req, res) => {
       { new: true }
     );
 
+    // 🚀 AUTO-LINK ORDERS (Catches users creating an account or verifying for the first time)
+    await linkGuestOrders(updatedUser.email, updatedUser._id);
+
     // ==============================================
     // 🚀 SIGNUP BONUSES LOGIC (Referrer & New User)
     // ==============================================
@@ -1713,6 +1734,7 @@ exports.loginUser = async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
 
+    // Assuming matchPassword is a method on your User schema
     if (user && (await user.matchPassword(password))) {
       if (!user.isVerified) {
         return res.status(401).json({ message: 'Please verify your email.', requiresVerification: true });
@@ -1726,7 +1748,7 @@ exports.loginUser = async (req, res) => {
   }
 };
 
-// 4. SEND OTP ONLY
+// 4. SEND OTP ONLY (Guest Checkout)
 exports.sendOtpOnly = async (req, res) => {
   try {
     const { email } = req.body;
@@ -1737,6 +1759,7 @@ exports.sendOtpOnly = async (req, res) => {
 
     let user = await User.findOne({ email });
     if (!user) {
+      // 🚀 Create a dummy user. This allows guests to use "Forgot Password" later!
       user = await User.create({ name: 'Guest Customer', email: email, password: Math.random().toString(36).slice(-8) + 'A1@', myReferralCode: await generateUniqueReferralCode(), isVerified: false, otp, otpExpiry });
     } else {
       user.otp = otp; user.otpExpiry = otpExpiry; await user.save();
@@ -1775,7 +1798,15 @@ exports.resetPassword = async (req, res) => {
     if (Date.now() > user.otpExpiry) return res.status(400).json({ message: "OTP has expired. Please request a new one." });
     if (newPassword.length < 6) return res.status(400).json({ message: "Password must be at least 6 characters long." });
 
-    user.password = newPassword; user.otp = undefined; user.otpExpiry = undefined; await user.save();
+    user.password = newPassword; 
+    user.otp = undefined; 
+    user.otpExpiry = undefined; 
+    user.isVerified = true; // Ensure they are marked verified if they were a guest claiming an account
+    await user.save();
+
+    // 🚀 AUTO-LINK ORDERS (Catches guests claiming their account via Forgot Password)
+    await linkGuestOrders(user.email, user._id);
+
     res.status(200).json({ message: "Password reset successful! You can now log in." });
   } catch (error) { res.status(500).json({ message: "Server error resetting password." }); }
 };

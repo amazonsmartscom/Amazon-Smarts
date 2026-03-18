@@ -699,7 +699,7 @@
 // }
 
 
-// src/app/login/page.jsx
+/// src/app/login/page.jsx
 'use client';
 import { useState, Suspense } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -707,7 +707,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
 
-// 🚀 Extract the main logic into a sub-component so we can safely use useSearchParams
 function LoginContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -719,15 +718,15 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // 🚀 Catch the redirect URL (defaults to '/' if none is provided)
   const redirectUrl = searchParams.get('redirect') || '/';
 
   // Forgot Password States
   const [showForgotModal, setShowForgotModal] = useState(false);
-  const [forgotStep, setForgotStep] = useState(1); // 1: Email, 2: OTP & New Password
+  const [forgotStep, setForgotStep] = useState(1); 
   const [resetEmail, setResetEmail] = useState('');
   const [resetOtp, setResetOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false); // 🚀 FIXED: Separate state for modal
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState('');
   const [resetMessage, setResetMessage] = useState('');
@@ -741,7 +740,6 @@ function LoginContent() {
       const result = await login(email, password); 
       
       if (result.success) {
-        // 🚀 FORCE REDIRECT to the exact page they came from (or homepage)
         window.location.replace(redirectUrl); 
       } else {
         setError(result.message || 'Invalid email or password.');
@@ -753,7 +751,6 @@ function LoginContent() {
     }
   };
 
-  // Send OTP for Password Reset
   const handleSendResetOtp = async (e) => {
     e.preventDefault();
     setResetError('');
@@ -771,7 +768,6 @@ function LoginContent() {
     }
   };
 
-  // Verify OTP & Set New Password
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setResetError('');
@@ -785,6 +781,11 @@ function LoginContent() {
       });
       
       alert("Password reset successfully! You can now log in.");
+      
+      // 🚀 UX TWEAK: Pre-fill the email in the main login box so they don't have to retype it!
+      setEmail(resetEmail);
+      setPassword(''); // Clear old password just in case
+      
       setShowForgotModal(false);
       setForgotStep(1);
       setResetEmail('');
@@ -797,7 +798,6 @@ function LoginContent() {
     }
   };
 
-  // AMAZON-SPECIFIC TAILWIND STYLES
   const inputStyles = "w-full px-3 py-2 border border-[#a6a6a6] rounded-[3px] text-sm focus:outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_2px_rgba(228,121,17,0.5)] transition-shadow text-[#111]";
   const labelStyles = "block text-[13px] font-bold text-[#111] mb-1";
   const amzButton = "w-full bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-[6px] rounded-[8px] text-sm text-[#111] shadow-sm transition-colors cursor-pointer text-center font-normal mt-2 disabled:opacity-50";
@@ -806,7 +806,6 @@ function LoginContent() {
   return (
     <div className="min-h-screen bg-white flex flex-col items-center pt-4 font-sans selection:bg-orange-200 relative">
       
-      {/* Amazon Style Logo */}
       <div className="mb-4 mt-2">
         <Link href="/">
           <h1 className="text-3xl font-normal tracking-tighter text-[#111] cursor-pointer">
@@ -815,10 +814,8 @@ function LoginContent() {
         </Link>
       </div>
 
-      {/* Main Container Card */}
       <div className="w-full max-w-[350px] mx-auto px-4 sm:px-0 flex-1">
         
-        {/* Error Alert Box */}
         {error && (
           <div className="mb-4 p-4 border-l-4 border-l-[#c40000] border border-[#e3e3e3] rounded-[3px] flex gap-3 items-start shadow-sm">
             <span className="text-[#c40000] text-lg leading-none font-bold">!</span>
@@ -857,7 +854,6 @@ function LoginContent() {
                 </button>
               </div>
               
-              {/* PASSWORD INPUT WITH EYE ICON */}
               <div className="relative">
                 <input 
                   type={showPassword ? "text" : "password"} 
@@ -898,14 +894,11 @@ function LoginContent() {
           </form>
         </div>
 
-        {/* Divider */}
         <div className="flex items-center justify-center mt-6 mb-3 relative">
           <div className="w-full h-px bg-[#e7e7e7]"></div>
           <span className="absolute bg-white px-2 text-[12px] text-[#767676]">New to Amazon Smarts?</span>
         </div>
 
-        {/* Create Account Button */}
-        {/* 🚀 Pass the redirect URL to registration page as well, so if they create an account, they still go back to the product */}
         <Link href={redirectUrl === '/' ? "/register" : `/register?redirect=${redirectUrl}`} className="block w-full">
           <button type="button" className={amzSecondaryButton}>
             Create your Amazon account
@@ -913,7 +906,6 @@ function LoginContent() {
         </Link>
       </div>
 
-      {/* Amazon Style Footer Links */}
       <div className="w-full mt-10 border-t border-[#ddd] bg-[#fbfbfb] pt-6 pb-10 flex flex-col items-center shadow-[0_-2px_4px_rgba(0,0,0,0.02)]">
         <div className="flex flex-wrap justify-center gap-6 text-[11px] text-[#0066c0] mb-2">
           <Link href="/conditions" className="hover:underline">Conditions of Use</Link>
@@ -938,7 +930,6 @@ function LoginContent() {
             {resetError && <p className="text-[13px] text-[#c40000] font-bold mb-3">! {resetError}</p>}
             {resetMessage && <p className="text-[13px] text-[#007600] font-bold mb-3">✓ {resetMessage}</p>}
 
-            {/* STEP 1: Enter Email */}
             {forgotStep === 1 && (
               <form onSubmit={handleSendResetOtp} className="space-y-4">
                 <p className="text-[13px] text-[#111] leading-relaxed">
@@ -954,7 +945,6 @@ function LoginContent() {
               </form>
             )}
 
-            {/* STEP 2: Verify OTP & New Password */}
             {forgotStep === 2 && (
               <form onSubmit={handleResetPassword} className="space-y-4">
                 <p className="text-[13px] text-[#111] leading-relaxed">
@@ -969,9 +959,9 @@ function LoginContent() {
                 <div>
                   <label className={labelStyles}>New Password</label>
                   <div className="relative">
-                    <input type={showPassword ? "text" : "password"} required minLength="6" className={inputStyles} value={newPassword} onChange={e => setNewPassword(e.target.value)} />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 transition-colors">
-                      {showPassword ? '👁️' : '👁️‍🗨️'}
+                    <input type={showNewPassword ? "text" : "password"} required minLength="6" className={inputStyles} value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                    <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 transition-colors">
+                      {showNewPassword ? '👁️' : '👁️‍🗨️'}
                     </button>
                   </div>
                   <p className="text-[11px] text-[#555] mt-1">Passwords must be at least 6 characters.</p>
@@ -991,7 +981,6 @@ function LoginContent() {
   );
 }
 
-// 🚀 DEFAULT EXPORT WRAPPED IN SUSPENSE FOR NEXT.JS BUILD FIX
 export default function LoginPage() {
   return (
     <Suspense fallback={
