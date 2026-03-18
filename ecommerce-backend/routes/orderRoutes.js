@@ -192,19 +192,18 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+// 🚀 WE NOW IMPORT RAZORPAY FUNCTIONS DIRECTLY FROM ORDER CONTROLLER
 const { 
   createOrder, simulatePayment, getUserOrders, getAllOrders, updateOrderStatus, cancelOrder, uploadInvoice,
   fulfillManual, fulfillShiprocket, getLiveTracking,
-  handleShiprocketWebhook // 🚀 IMPORTED THE WEBHOOK HANDLER
+  handleShiprocketWebhook,
+  createRazorpayOrder, verifyRazorpayPayment 
 } = require('../controllers/orderController');
 
-const { createRazorpayOrder, verifyRazorpayPayment } = require('../controllers/paymentController');
-
-// 🚀 SHIPROCKET WEBHOOK (Must be POST and public)
-// URL for Shiprocket Dashboard: https://amazon-smarts.onrender.com/api/orders/webhook/shiprocket
+// 🚀 SHIPROCKET WEBHOOK
 router.post('/webhook/shiprocket', handleShiprocketWebhook);
 
-// RAZORPAY ROUTES
+// 🚀 RAZORPAY ROUTES
 router.post('/razorpay/create', createRazorpayOrder);
 router.post('/razorpay/verify', verifyRazorpayPayment);
 

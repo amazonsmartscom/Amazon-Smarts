@@ -2433,6 +2433,8 @@
 
 // controllers/orderController.js
 const axios = require('axios');
+const Razorpay = require('razorpay'); // 🚀 ADDED RAZORPAY
+const crypto = require('crypto');     // 🚀 ADDED CRYPTO
 const Order = require('../models/Order');
 const User = require('../models/User');
 const WalletTransaction = require('../models/WalletTransaction');
@@ -2457,7 +2459,7 @@ const getBrandedEmailTemplate = (order, statusTitle, statusMessage, itemsTableHt
   `;
 };
 
-// 🚀 UPDATED DUAL-EMAIL HELPER (Handles custom HTML for receipts and guest emails)
+// 🚀 DUAL-EMAIL HELPER (Handles custom HTML for receipts and guest emails)
 const sendStatusEmailsToBoth = async (order, statusTitle, statusMessage, customHtml = "", explicitEmail = null) => {
   let trackingHtml = "";
   if (order.shippingDetails?.trackingId) {
@@ -2474,132 +2476,116 @@ const sendStatusEmailsToBoth = async (order, statusTitle, statusMessage, customH
   const emailBody = getBrandedEmailTemplate(order, statusTitle, statusMessage, finalHtml);
   const subject = `${order.status}: Amazon Smarts Order #${order._id.toString().slice(-6).toUpperCase()}`;
   
-  // Safely grab email (uses explicit email if passed, otherwise falls back to order data)
   const customerEmail = explicitEmail || order.shippingAddress?.email || (order.user && order.user.email) || null;
 
-  // 1. Email the CUSTOMER
   if (customerEmail) {
-    try { 
-      await sendEmail({ email: customerEmail, subject, message: emailBody }); 
-    } catch (err) { console.log("Customer email failed"); }
+    try { await sendEmail({ email: customerEmail, subject, message: emailBody }); } catch (err) {}
   }
 
-  // 2. Email all ADMINS
   try {
     const admins = await User.find({ role: 'admin' }).select('email');
     const adminEmails = admins.map(a => a.email).filter(e => e);
     const fallbackEmail = process.env.EMAIL_USER; 
     const finalEmails = adminEmails.length > 0 ? adminEmails : (fallbackEmail ? [fallbackEmail] : []);
 
-    const adminBody = getBrandedEmailTemplate(
-      order, 
-      `[ADMIN ALERT] Order ${order.status}`, 
-      `Customer (${customerEmail || 'Guest User'}) order status is now ${order.status}.`, 
-      finalHtml
-    );
+    const adminBody = getBrandedEmailTemplate(order, `[ADMIN ALERT] Order ${order.status}`, `Customer (${customerEmail || 'Guest User'}) order status is now ${order.status}.`, finalHtml);
     
     for (const adminEmail of finalEmails) {
       await sendEmail({ email: adminEmail, subject: `[ADMIN] ${subject}`, message: adminBody });
     }
-  } catch (err) { console.log("Admin email failed"); }
+  } catch (err) {}
 };
 
 exports.createOrder = async (req, res) => {
   try {
-    const { 
-      userId, user, orderItems, shippingAddress, paymentMethod, 
-      itemsPrice, shippingPrice, discountAmount, couponCode, totalPrice, 
-      isPaid, paidAt, paymentResult 
-    } = req.body;
+    const { userId, user, orderItems, shippingAddress, paymentMethod, itemsPrice, shippingPrice, discountAmount, couponCode, totalPrice, isPaid, paidAt, paymentResult } = req.body;
 
-    if (!orderItems || orderItems.length === 0) {
-      return res.status(400).json({ message: 'No order items provided' });
-    }
+    if (!orderItems || orderItems.length === 0) return res.status(400).json({ message: 'No order items provided' });
 
-    // ==========================================
-    // 🚀 GUEST CHECKOUT FIX: Link ID & Update Name
-    // ==========================================
     let finalUserId = userId || user;
     const guestEmail = shippingAddress?.email || req.body.email;
 
-    // If no user ID was sent from frontend, check the database for the guest email
     if (!finalUserId && guestEmail) {
       const existingUser = await User.findOne({ email: guestEmail });
-      
       if (existingUser) {
         finalUserId = existingUser._id;
-
         if (existingUser.name === 'Guest Customer' && shippingAddress?.fullName) {
           existingUser.name = shippingAddress.fullName;
           await existingUser.save();
         }
       }
     }
-    // ==========================================
 
     const orderData = {
-      user: finalUserId || undefined, 
-      orderItems, 
-      shippingAddress: shippingAddress || {}, 
-      paymentMethod: paymentMethod || 'Cash on Delivery', 
-      itemsPrice: itemsPrice || totalPrice || 0, 
-      shippingPrice: shippingPrice || 0, 
-      discountAmount: discountAmount || 0, 
-      couponCode: couponCode || null, 
-      totalPrice: totalPrice || 0, 
-      isPaid: isPaid || false, 
-      paidAt: paidAt || null, 
-      paymentResult, 
-      status: 'Processing' 
+      user: finalUserId || undefined, orderItems, shippingAddress: shippingAddress || {}, paymentMethod: paymentMethod || 'Cash on Delivery', itemsPrice: itemsPrice || totalPrice || 0, shippingPrice: shippingPrice || 0, discountAmount: discountAmount || 0, couponCode: couponCode || null, totalPrice: totalPrice || 0, isPaid: isPaid || false, paidAt: paidAt || null, paymentResult, status: 'Processing' 
     };
 
     const order = new Order(orderData);
     const createdOrder = await order.save();
 
-    // Build the Email HTML Receipt
-    let discountHtml = discountAmount > 0 
-      ? `<tr><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">Discount applied:</td><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">-₹${Number(discountAmount).toLocaleString('en-IN')}</td></tr>` 
-      : '';
+    let discountHtml = discountAmount > 0 ? `<tr><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">Discount applied:</td><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">-₹${Number(discountAmount).toLocaleString('en-IN')}</td></tr>` : '';
       
     const itemsHtml = `
       <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px;">
-        <tr style="background-color: #f3f3f3;">
-          <th style="padding: 10px; text-align: left;">Item</th>
-          <th style="padding: 10px; text-align: right;">Total</th>
-        </tr>
-        ${orderItems.map(item => `
-          <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;">
-              ${item.name || 'Product'} <strong>(x${item.quantity || item.qty || 1})</strong>
-            </td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">
-              ₹${Number(item.price || 0).toLocaleString('en-IN')}
-            </td>
-          </tr>
-        `).join('')}
+        <tr style="background-color: #f3f3f3;"><th style="padding: 10px; text-align: left;">Item</th><th style="padding: 10px; text-align: right;">Total</th></tr>
+        ${orderItems.map(item => `<tr><td style="padding: 10px; border-bottom: 1px solid #eee;">${item.name || 'Product'} <strong>(x${item.quantity || item.qty || 1})</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">₹${Number(item.price || 0).toLocaleString('en-IN')}</td></tr>`).join('')}
         ${discountHtml}
-        <tr>
-          <td colspan="2" style="padding: 10px; text-align: right; font-weight: bold; color: #B12704;">
-            Grand Total: ₹${Number(totalPrice || 0).toLocaleString('en-IN')}
-          </td>
-        </tr>
+        <tr><td colspan="2" style="padding: 10px; text-align: right; font-weight: bold; color: #B12704;">Grand Total: ₹${Number(totalPrice || 0).toLocaleString('en-IN')}</td></tr>
       </table>
     `;
 
-    // 🚀 FIX: Explicitly send the email and the HTML to the helper
     const emailToSend = shippingAddress?.email || guestEmail;
-
     if (emailToSend) {
-      try {
-        await sendStatusEmailsToBoth(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready.", itemsHtml, emailToSend);
-      } catch (err) { console.log("Confirmation email failed to send"); }
+      try { await sendStatusEmailsToBoth(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready.", itemsHtml, emailToSend); } catch (err) {}
     }
 
     res.status(201).json({ message: 'Order created successfully', order: createdOrder });
-    
   } catch (error) { 
     console.error("BACKEND CREATE ORDER ERROR:", error);
     res.status(500).json({ message: 'Error saving order to database', error: error.message }); 
+  }
+};
+
+// ==========================================
+// 🚀 RAZORPAY CONTROLLERS ADDED HERE
+// ==========================================
+exports.createRazorpayOrder = async (req, res) => {
+  try {
+    const instance = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_SECRET,
+    });
+
+    const options = {
+      amount: Math.round(req.body.amount * 100),
+      currency: "INR",
+      receipt: "receipt_order_" + Date.now(),
+    };
+
+    const order = await instance.orders.create(options);
+    if (!order) return res.status(500).json({ message: "Some error occurred with Razorpay API" });
+
+    res.json(order);
+  } catch (error) {
+    console.error("Razorpay Create Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.verifyRazorpayPayment = async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const sign = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSign = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET).update(sign.toString()).digest("hex");
+
+    if (razorpay_signature === expectedSign) {
+      return res.status(200).json({ message: "Payment verified successfully" });
+    } else {
+      return res.status(400).json({ message: "Invalid signature sent!" });
+    }
+  } catch (error) {
+    console.error("Razorpay Verify Error:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -2608,7 +2594,6 @@ exports.simulatePayment = async (req, res) => {
     const order = await Order.findById(req.params.id).populate('orderItems.product');
     if (order) {
       order.isPaid = true; order.paidAt = Date.now(); const updatedOrder = await order.save();
-      
       if (order.user) {
         try {
           const buyingUser = await User.findById(order.user);
@@ -2679,7 +2664,7 @@ exports.cancelOrder = async (req, res) => {
       try {
         const authRes = await axios.post('https://apiv2.shiprocket.in/v1/external/auth/login', { email: process.env.SHIPROCKET_EMAIL, password: process.env.SHIPROCKET_PASSWORD });
         await axios.post('https://apiv2.shiprocket.in/v1/external/orders/cancel', { ids: [order.shippingDetails.shiprocketOrderId] }, { headers: { Authorization: `Bearer ${authRes.data.token}` } });
-      } catch (srErr) { console.error("Shiprocket cancel failed", srErr.response?.data); }
+      } catch (srErr) {}
     }
 
     const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
