@@ -2540,14 +2540,8 @@ exports.createOrder = async (req, res) => {
   await sendStatusEmailsToBoth(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready.", itemsHtml, emailToSend); 
 } catch (err) { 
   console.error("🚨 EMAIL FAILED TO SEND:", err); 
-}
-
-    res.status(201).json({ message: 'Order created successfully', order: createdOrder });
-  } catch (error) { 
-    console.error("BACKEND CREATE ORDER ERROR:", error);
-    res.status(500).json({ message: 'Error saving order to database', error: error.message }); 
-  }
-};
+}res.status(201).json({ message: 'Order created successfully', order: createdOrder });
+} 
 
 // ==========================================
 // 🚀 RAZORPAY CONTROLLERS ADDED HERE
