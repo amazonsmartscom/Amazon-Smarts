@@ -1792,7 +1792,6 @@
 // };
 
 
-
 // controllers/orderController.js
 const Order = require('../models/Order');
 const User = require('../models/User');
@@ -1840,20 +1839,46 @@ const getBrandedEmailTemplate = (order, statusTitle, statusMessage, itemsTableHt
 // 1. Create Order
 exports.createOrder = async (req, res) => {
   try {
-    const { userId, orderItems, shippingAddress, itemsPrice, shippingPrice, totalPrice } = req.body;
+    // 🚀 FIXED: Now extracting ALL the new fields sent by the frontend
+    const { 
+      userId, 
+      orderItems, 
+      shippingAddress, 
+      paymentMethod, 
+      itemsPrice, 
+      shippingPrice, 
+      discountAmount, 
+      couponCode, 
+      totalPrice,
+      isPaid,
+      paidAt,
+      paymentResult
+    } = req.body;
+    
     if (orderItems && orderItems.length === 0) return res.status(400).json({ message: 'No items' });
 
+    // 🚀 FIXED: Saving the new fields to the database properly
     const order = new Order({
       user: userId, 
       orderItems, 
       shippingAddress,
+      paymentMethod: paymentMethod || 'Cash on Delivery', 
       itemsPrice: itemsPrice || totalPrice,
       shippingPrice: shippingPrice || 0,
+      discountAmount: discountAmount || 0,
+      couponCode: couponCode || null,
       totalPrice,
+      isPaid: isPaid || false,
+      paidAt: paidAt || null,
+      paymentResult,
       status: 'Processing' 
     });
     
     const createdOrder = await order.save();
+
+    let discountHtml = discountAmount > 0 
+      ? `<tr><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">Discount applied:</td><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">-₹${discountAmount.toLocaleString('en-IN')}</td></tr>`
+      : '';
 
     const itemsHtml = `
       <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px;">
@@ -1864,6 +1889,7 @@ exports.createOrder = async (req, res) => {
             <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">₹${item.price.toLocaleString('en-IN')}</td>
           </tr>
         `).join('')}
+        ${discountHtml}
         <tr><td colspan="2" style="padding: 10px; text-align: right; font-weight: bold; color: #B12704;">Grand Total: ₹${totalPrice.toLocaleString('en-IN')}</td></tr>
       </table>
     `;

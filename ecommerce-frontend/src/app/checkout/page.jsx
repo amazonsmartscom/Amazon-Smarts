@@ -1312,7 +1312,6 @@ import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Link from 'next/link';
 
-// 🚀 Helper to load Razorpay script dynamically
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
     const script = document.createElement('script');
@@ -1345,7 +1344,6 @@ export default function CheckoutPage() {
   const [hasSavedAddress, setHasSavedAddress] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('ONLINE'); 
 
-  // COUPON STATES
   const [couponCode, setCouponCode] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState(0);
   const [couponMessage, setCouponMessage] = useState(null); 
@@ -1418,9 +1416,11 @@ export default function CheckoutPage() {
         })),
         itemsPrice, shippingPrice, discountAmount: appliedDiscount, couponCode: appliedDiscount > 0 ? couponCode : null,
         totalPrice: grandTotal, shippingAddress: shippingInfo,
+        
+        // 🚀 SEND STRICT STRINGS TO DATABASE
         paymentMethod: methodString,
-        isPaid: methodString !== 'Cash on Delivery',
-        paidAt: methodString !== 'Cash on Delivery' ? new Date() : null,
+        isPaid: methodString !== 'COD',
+        paidAt: methodString !== 'COD' ? new Date() : null,
         paymentResult: razorpayPaymentId ? { id: razorpayPaymentId, status: 'Completed' } : null
       };
 
@@ -1448,27 +1448,23 @@ export default function CheckoutPage() {
     setIsProcessing(true);
 
     try {
-      // 1. Verify OTP first
       await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/verify-otp`, { email: shippingInfo.email, otp });
 
-      // 2. Handle Payment Methods
       if (paymentMethod === 'ONLINE') {
         setPaymentGatewayStatus('redirecting');
         
         const res = await loadRazorpayScript();
         
         if (res && process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
-          // ================= REAL RAZORPAY FLOW =================
           let rzpOrder;
           try {
-            // 🚀 IMPROVED ERROR HANDLING FOR RAZORPAY BACKEND
             const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders/razorpay/create`, { amount: grandTotal });
             rzpOrder = response.data;
           } catch (backendError) {
             console.error("Razorpay Backend Error:", backendError);
-            alert("Backend Error: Could not reach Razorpay. Did you update orderRoutes.js and restart your backend server?");
+            alert("Backend Error: Could not reach Razorpay. Check orderRoutes.js and .env keys.");
             setIsProcessing(false); setPaymentGatewayStatus(null);
-            return; // Stop execution
+            return; 
           }
 
           const options = {
@@ -1486,7 +1482,7 @@ export default function CheckoutPage() {
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_signature: response.razorpay_signature
                 });
-                await placeOrderToDatabase('Online (Razorpay)', response.razorpay_payment_id);
+                await placeOrderToDatabase('Razorpay', response.razorpay_payment_id);
               } catch (err) {
                 alert("Payment verification failed! Please contact support.");
                 setIsProcessing(false); setPaymentGatewayStatus(null);
@@ -1494,27 +1490,22 @@ export default function CheckoutPage() {
             },
             prefill: { name: shippingInfo.fullName, email: shippingInfo.email, contact: shippingInfo.phone },
             theme: { color: "#232F3E" },
-            modal: {
-               ondismiss: function() {
-                 setIsProcessing(false); setPaymentGatewayStatus(null);
-               }
-            }
+            modal: { ondismiss: function() { setIsProcessing(false); setPaymentGatewayStatus(null); } }
           };
 
           const paymentObject = new window.Razorpay(options);
           paymentObject.open();
 
         } else {
-          // ================= SIMULATED RAZORPAY FLOW (Fallback if keys are missing) =================
           await new Promise(resolve => setTimeout(resolve, 2000));
           setPaymentGatewayStatus('success');
           await new Promise(resolve => setTimeout(resolve, 1000));
-          await placeOrderToDatabase('Online (Razorpay)', 'simulated_txn_' + Date.now());
+          await placeOrderToDatabase('Razorpay', 'simulated_txn_' + Date.now());
         }
 
       } else {
-        // ================= CASH ON DELIVERY FLOW =================
-        await placeOrderToDatabase('Cash on Delivery', null);
+        // 🚀 SUBMIT EXPLICIT 'COD' STRING
+        await placeOrderToDatabase('COD', null);
       }
 
     } catch (error) {
@@ -1607,7 +1598,7 @@ export default function CheckoutPage() {
           <div className="bg-[#f3f3f3] border border-[#ddd] rounded-[4px] p-5">
             <h3 className="font-bold text-[18px] mb-3">Order Details</h3>
             <p className="text-[14px] mb-1"><span className="font-bold">Order Number:</span> {placedOrder._id.toUpperCase()}</p>
-            <p className="text-[14px] mb-1"><span className="font-bold">Payment Method:</span> {placedOrder.paymentMethod}</p>
+            <p className="text-[14px] mb-1"><span className="font-bold">Payment Method:</span> {placedOrder.paymentMethod === 'COD' ? 'Cash on Delivery' : 'Online Payment'}</p>
             <p className="text-[14px] mb-4"><span className="font-bold">Order Total:</span> ₹{placedOrder.totalPrice.toLocaleString('en-IN')}</p>
             <Link href="/orders" className="text-[#007185] hover:text-[#C45500] hover:underline text-[14px]">Review or edit your recent orders</Link>
           </div>
