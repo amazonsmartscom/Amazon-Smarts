@@ -2560,31 +2560,31 @@ exports.createOrder = async (req, res) => {
 // ==========================================
 exports.createRazorpayOrder = async (req, res) => {
   try {
-    // Check both possible env names
+    // 🚀 Check for multiple naming possibilities to be safe
     const keyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_SECRET;
+    const secret = process.env.RAZORPAY_SECRET;
 
-    if (!keyId || !keySecret) {
-      console.error("CRITICAL: Razorpay Keys missing in Backend Environment Variables");
+    if (!keyId || !secret) {
+      console.error("Backend Error: RAZORPAY_KEY_ID or RAZORPAY_SECRET is missing.");
       return res.status(500).json({ message: "Payment configuration missing on server." });
     }
 
     const instance = new Razorpay({
       key_id: keyId,
-      key_secret: keySecret,
+      key_secret: secret,
     });
 
     const options = {
-      amount: Math.round(Number(req.body.amount) * 100),
+      amount: Math.round(Number(req.body.amount) * 100), // convert to paise
       currency: "INR",
-      receipt: `receipt_${Date.now()}`,
+      receipt: `order_rcpt_${Date.now()}`,
     };
 
     const rzpOrder = await instance.orders.create(options);
     res.status(200).json(rzpOrder);
   } catch (error) {
     console.error("Razorpay Order Creation Failed:", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: `Razorpay Error: ${error.message}` });
   }
 };
 
