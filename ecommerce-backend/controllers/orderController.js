@@ -2502,22 +2502,82 @@ const sendStatusEmailsToBoth = async (order, statusTitle, statusMessage) => {
 
 exports.createOrder = async (req, res) => {
   try {
-    const { userId, orderItems, shippingAddress, paymentMethod, itemsPrice, shippingPrice, discountAmount, couponCode, totalPrice, isPaid, paidAt, paymentResult } = req.body;
-    if (orderItems && orderItems.length === 0) return res.status(400).json({ message: 'No items' });
+    // 1. Safely extract all possible fields the frontend might send
+    const { 
+      userId, user, orderItems, shippingAddress, paymentMethod, 
+      itemsPrice, shippingPrice, discountAmount, couponCode, totalPrice, 
+      isPaid, paidAt, paymentResult 
+    } = req.body;
 
+    if (!orderItems || orderItems.length === 0) {
+      return res.status(400).json({ message: 'No order items provided' });
+    }
+
+    // 2. Create the Order (handling both 'userId' and 'user' safely)
     const order = new Order({
-      user: userId, orderItems, shippingAddress, paymentMethod: paymentMethod || 'Cash on Delivery', itemsPrice: itemsPrice || totalPrice, shippingPrice: shippingPrice || 0, discountAmount: discountAmount || 0, couponCode: couponCode || null, totalPrice, isPaid: isPaid || false, paidAt: paidAt || null, paymentResult, status: 'Processing' 
+      user: userId || user, 
+      orderItems, 
+      shippingAddress: shippingAddress || {}, 
+      paymentMethod: paymentMethod || 'Cash on Delivery', 
+      itemsPrice: itemsPrice || totalPrice || 0, 
+      shippingPrice: shippingPrice || 0, 
+      discountAmount: discountAmount || 0, 
+      couponCode: couponCode || null, 
+      totalPrice: totalPrice || 0, 
+      isPaid: isPaid || false, 
+      paidAt: paidAt || null, 
+      paymentResult, 
+      status: 'Processing' 
     });
+    
     const createdOrder = await order.save();
 
-    let discountHtml = discountAmount > 0 ? `<tr><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">Discount applied:</td><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">-₹${discountAmount.toLocaleString('en-IN')}</td></tr>` : '';
-    const itemsHtml = `<table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px;"><tr style="background-color: #f3f3f3;"><th style="padding: 10px; text-align: left;">Item</th><th style="padding: 10px; text-align: right;">Total</th></tr>${orderItems.map(item => `<tr><td style="padding: 10px; border-bottom: 1px solid #eee;">${item.name} <strong>(x${item.quantity || 1})</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">₹${item.price.toLocaleString('en-IN')}</td></tr>`).join('')}${discountHtml}<tr><td colspan="2" style="padding: 10px; text-align: right; font-weight: bold; color: #B12704;">Grand Total: ₹${totalPrice.toLocaleString('en-IN')}</td></tr></table>`;
+    // 3. Build the Email HTML Safely (Using Number() prevents undefined crashes)
+    let discountHtml = discountAmount > 0 
+      ? `<tr><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">Discount applied:</td><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">-₹${Number(discountAmount).toLocaleString('en-IN')}</td></tr>` 
+      : '';
+      
+    const itemsHtml = `
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px;">
+        <tr style="background-color: #f3f3f3;">
+          <th style="padding: 10px; text-align: left;">Item</th>
+          <th style="padding: 10px; text-align: right;">Total</th>
+        </tr>
+        ${orderItems.map(item => `
+          <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">
+              ${item.name || 'Product'} <strong>(x${item.quantity || item.qty || 1})</strong>
+            </td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">
+              ₹${Number(item.price || 0).toLocaleString('en-IN')}
+            </td>
+          </tr>
+        `).join('')}
+        ${discountHtml}
+        <tr>
+          <td colspan="2" style="padding: 10px; text-align: right; font-weight: bold; color: #B12704;">
+            Grand Total: ₹${Number(totalPrice || 0).toLocaleString('en-IN')}
+          </td>
+        </tr>
+      </table>
+    `;
 
-    const email = getBrandedEmailTemplate(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready.", itemsHtml);
-    try { await sendEmail({ email: shippingAddress.email, subject: `Confirmed: Amazon Smarts Order #${createdOrder._id.toString().slice(-6).toUpperCase()}`, message: email }); } catch (err) { console.log("Email failed"); }
+    // 4. Safely get the email to send to
+    const emailToSend = shippingAddress?.email || req.body.email || null;
 
-    res.status(201).json({ message: 'Order created', order: createdOrder });
-  } catch (error) { res.status(500).json({ message: 'Error', error: error.message }); }
+    // 5. Send Email using our robust dual-email helper (if you added it previously)
+    if (emailToSend && typeof sendStatusEmailsToBoth === 'function') {
+      try {
+        await sendStatusEmailsToBoth(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready.");
+      } catch (err) { console.log("Confirmation email failed to send"); }
+    }
+
+    res.status(201).json({ message: 'Order created successfully', order: createdOrder });
+    
+  } catch (error) { 
+    console.error("BACKEND CREATE ORDER ERROR:", error);
+    res.status(500).json({ message: 'Error saving order to database', error: error.message }); 
+  }
 };
 
 exports.simulatePayment = async (req, res) => {
