@@ -3150,13 +3150,12 @@ export default function ProductDetailPage() {
     fetchProduct();
   }, [id]);
 
-  // 2. 🚀 CHECK REVIEW ELIGIBILITY (Needs Product & User)
+  // 2. CHECK REVIEW ELIGIBILITY
   useEffect(() => {
     const checkReviewEligibility = async () => {
       if (!user || !product) return;
       const userId = user?._id || user?.user?._id;
 
-      // Check if already reviewed
       const alreadyReviewed = product.reviews?.some(r => r.userId === userId);
       if (alreadyReviewed) {
          setHasReviewed(true);
@@ -3164,7 +3163,6 @@ export default function ProductDetailPage() {
          return;
       }
 
-      // Fetch user's orders to check for purchase and delivery
       try {
          const { data: orders } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/orders/user/${userId}`);
          
@@ -3221,6 +3219,7 @@ export default function ProductDetailPage() {
     return R * c;
   };
 
+  // 🚀 DUAL-API PINCODE CHECKER
   const handlePincodeCheck = async () => {
     if (!pincode || pincode.length !== 6 || isNaN(pincode)) {
       setPincodeStatus('error');
@@ -3229,20 +3228,46 @@ export default function ProductDetailPage() {
     setPincodeStatus('loading');
     
     try {
-      const { data } = await axios.get(`https://api.zippopotam.us/in/${pincode}`);
-      const place = data.places[0];
-      const targetLat = parseFloat(place.latitude);
-      const targetLon = parseFloat(place.longitude);
+      // 🚀 ATTEMPT 1: Try Zippopotam for exact coordinates
+      try {
+        const { data } = await axios.get(`https://api.zippopotam.us/in/${pincode}`);
+        const place = data.places[0];
+        const targetLat = parseFloat(place.latitude);
+        const targetLon = parseFloat(place.longitude);
+        
+        setDeliveryLocation(place['place name']);
+        setPincodeStatus('success');
+
+        const WAREHOUSE_LAT = 30.704649; // Mohali
+        const WAREHOUSE_LON = 76.717873;
+        const distanceInKm = calculateDistanceKm(WAREHOUSE_LAT, WAREHOUSE_LON, targetLat, targetLon);
+
+        let daysToDeliver = distanceInKm < 100 ? 1 : distanceInKm < 500 ? 3 : distanceInKm < 1500 ? 5 : 7; 
+        setDynamicDeliveryDate(new Date(Date.now() + daysToDeliver * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' }));
+        return; // Success! Exit function.
+      } catch (zipError) {
+        console.log("Zippopotam failed, trying official Indian Post API...");
+      }
+
+      // 🚀 ATTEMPT 2: Fallback to Official Indian Postal API
+      const { data } = await axios.get(`https://api.postalpincode.in/pincode/${pincode}`);
       
-      setDeliveryLocation(place['place name']);
-      setPincodeStatus('success');
+      if (data && data[0].Status === 'Success') {
+        const postOffice = data[0].PostOffice[0];
+        // Set location name using District or Block
+        setDeliveryLocation(postOffice.District || postOffice.Block || postOffice.Name);
+        setPincodeStatus('success');
+        
+        // Since we don't have GPS coordinates, we estimate based on the State
+        const isLocal = postOffice.State === "Punjab" || postOffice.State === "Chandigarh" || postOffice.State === "Haryana" || postOffice.State === "Himachal Pradesh";
+        const daysToDeliver = isLocal ? 2 : 5; // 2 days for local north, 5 days for rest of India
+        
+        setDynamicDeliveryDate(new Date(Date.now() + daysToDeliver * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' }));
+      } else {
+        // If even the official API says it's fake, it's definitely a bad pincode.
+        throw new Error("Invalid Pincode");
+      }
 
-      const WAREHOUSE_LAT = 30.704649; 
-      const WAREHOUSE_LON = 76.717873;
-      const distanceInKm = calculateDistanceKm(WAREHOUSE_LAT, WAREHOUSE_LON, targetLat, targetLon);
-
-      let daysToDeliver = distanceInKm < 100 ? 1 : distanceInKm < 500 ? 3 : distanceInKm < 1500 ? 5 : 7; 
-      setDynamicDeliveryDate(new Date(Date.now() + daysToDeliver * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' }));
     } catch (err) {
       setPincodeStatus('error');
     }
@@ -3301,7 +3326,6 @@ export default function ProductDetailPage() {
       setComment(''); 
       setRating(5);
       
-      // 🚀 Instantly update UI restrictions
       setHasReviewed(true);
       setReviewEligibilityMsg("You have already submitted a review for this product.");
       
@@ -3449,7 +3473,7 @@ export default function ProductDetailPage() {
             </div>
           )}
 
-          {/* 🚀 Feature Highlights (About this item) with Read More */}
+          {/* Feature Highlights (About this item) with Read More */}
           {product.features && product.features.length > 0 && (
             <div className="mt-4 pt-4 border-t border-[#EEE]">
                <h3 className="font-bold text-[16px] mb-2">About this item</h3>
@@ -3549,7 +3573,7 @@ export default function ProductDetailPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mt-12 border-t border-[#EEE] pt-10 pb-20">
              
-             {/* 🚀 Review Trigger Card with Restrictions */}
+             {/* Review Trigger Card with Restrictions */}
              <div>
                 <h2 className="text-[20px] font-bold mb-2">Customer reviews</h2>
                 <div className="flex items-center gap-2 mb-4">
@@ -3611,7 +3635,7 @@ export default function ProductDetailPage() {
                            <p className="text-[12px] text-[#565959] mt-1">Reviewed in India on {new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                            <p className="text-[14px] mt-2 leading-relaxed text-[#111]">{r.comment}</p>
                         </div>
-                      ))
+                     ))
                    ) : (
                      <p className="text-[14px] text-gray-500 italic">No reviews yet. Be the first to review!</p>
                    )}
