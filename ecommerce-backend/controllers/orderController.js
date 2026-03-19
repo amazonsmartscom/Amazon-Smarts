@@ -2793,33 +2793,105 @@ exports.getLiveTracking = async (req, res) => {
   } catch (error) { res.status(500).json({ message: 'Tracking Error', error: error.message }); }
 };
 
+// exports.handleShiprocketWebhook = async (req, res) => {
+//   try {
+//     const { awb, status } = req.body;
+//     const order = await Order.findOne({ "shippingDetails.trackingId": awb }).populate('user', 'email');
+
+//     if (!order) return res.status(404).json({ message: "Order not found for this AWB" });
+
+//     let newStatus = order.status;
+//     if (status === "shipped" || status == 6) newStatus = "Shipped";
+//     if (status === "delivered" || status == 7) newStatus = "Delivered";
+//     if (status === "canceled" || status == 10) newStatus = "Cancelled";
+
+//     if (order.status !== newStatus) {
+//       order.status = newStatus;
+//       await order.save();
+      
+//       let statusMsg = `Your order status has been updated to ${newStatus}.`;
+//       if(newStatus === 'Delivered') statusMsg = "Your package has been delivered. Enjoy your purchase!";
+//       if(newStatus === 'Cancelled') statusMsg = "Your shipment was cancelled by the carrier.";
+
+//       await sendStatusEmailsToBoth(order, `Order Update: ${newStatus}`, statusMsg);
+      
+//       if (order.user) {
+//         await createNotification(order.user._id || order.user, "Delivery Update", `Your order is now ${newStatus}!`, "info", "/orders");
+//       }
+//     }
+
+//     res.status(200).send("Webhook Received");
+//   } catch (error) { res.status(500).send("Webhook Error"); }
+// };
 exports.handleShiprocketWebhook = async (req, res) => {
   try {
-    const { awb, status } = req.body;
-    const order = await Order.findOne({ "shippingDetails.trackingId": awb }).populate('user', 'email');
+    // 🚀 Shiprocket sends various fields depending on the status
+    const { awb, current_status, current_status_id, order_id, channel_order_id } = req.body;
+    
+    console.log("[SHIPROCKET WEBHOOK RECEIVED]:", current_status || "Unknown Status");
 
-    if (!order) return res.status(404).json({ message: "Order not found for this AWB" });
+    // 1. Try to find the exact order in our database
+    let order = null;
+    
+    if (awb) {
+      order = await Order.findOne({ "shippingDetails.trackingId": awb }).populate('user', 'email');
+    }
+    if (!order && order_id) {
+      order = await Order.findOne({ "shippingDetails.shiprocketOrderId": order_id }).populate('user', 'email');
+    }
+    if (!order && channel_order_id) {
+       // We sent our MongoDB ID as part of the channel_order_id during creation
+       const dbId = channel_order_id.split('-')[0];
+       if (dbId.length === 24) {
+          order = await Order.findById(dbId).populate('user', 'email');
+       }
+    }
+
+    if (!order) {
+       console.log("Webhook ignored: Could not match this Shiprocket order to our database.");
+       return res.status(200).send("Order not found, but webhook received.");
+    }
 
     let newStatus = order.status;
-    if (status === "shipped" || status == 6) newStatus = "Shipped";
-    if (status === "delivered" || status == 7) newStatus = "Delivered";
-    if (status === "canceled" || status == 10) newStatus = "Cancelled";
+    const statusStr = (current_status || "").toLowerCase();
+    const statusId = current_status_id || req.body.status;
 
+    // 2. Map Shiprocket Statuses to Our Statuses
+    if (statusStr === "shipped" || statusId == 6 || statusId == 17) newStatus = "Shipped";
+    if (statusStr === "delivered" || statusId == 7) newStatus = "Delivered";
+    // Status 15 is Cancelled in Shiprocket
+    if (statusStr === "canceled" || statusStr === "cancelled" || statusId == 15) newStatus = "Cancelled";
+
+    // 3. If Shiprocket changed the status, update our database!
     if (order.status !== newStatus) {
       order.status = newStatus;
       await order.save();
       
       let statusMsg = `Your order status has been updated to ${newStatus}.`;
       if(newStatus === 'Delivered') statusMsg = "Your package has been delivered. Enjoy your purchase!";
-      if(newStatus === 'Cancelled') statusMsg = "Your shipment was cancelled by the carrier.";
+      if(newStatus === 'Cancelled') statusMsg = "Your order was cancelled. If you prepaid, your refund will be processed shortly.";
 
+      // 🚀 If Shiprocket cancelled it, reverse the affiliate commission!
+      if (newStatus === 'Cancelled') {
+         const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
+         if (pendingTx) { 
+           pendingTx.status = 'cancelled'; 
+           await pendingTx.save(); 
+         }
+      }
+
+      // 4. Send Emails and In-App Notifications automatically!
       await sendStatusEmailsToBoth(order, `Order Update: ${newStatus}`, statusMsg);
       
       if (order.user) {
         await createNotification(order.user._id || order.user, "Delivery Update", `Your order is now ${newStatus}!`, "info", "/orders");
       }
+      console.log(`[WEBHOOK SUCCESS] Order ${order._id} updated to ${newStatus}`);
     }
 
-    res.status(200).send("Webhook Received");
-  } catch (error) { res.status(500).send("Webhook Error"); }
+    res.status(200).send("Webhook Processed Successfully");
+  } catch (error) { 
+    console.error("Webhook Processing Error:", error);
+    res.status(500).send("Webhook Error"); 
+  }
 };

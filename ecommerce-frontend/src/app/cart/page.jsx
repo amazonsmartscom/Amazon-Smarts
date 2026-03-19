@@ -432,221 +432,255 @@
 
 // src/app/cart/page.jsx
 'use client';
+import { useState, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
 import Link from 'next/link';
-import { useAuth } from '../../context/AuthContext';
-import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function CartPage() {
-  const { cart, cartCount, removeFromCart, updateQuantity } = useCart();
-  const { user } = useAuth(); 
-  
+  const { cart, savedItems, removeFromCart, updateQuantity, saveForLater, moveToCart, removeFromSaved } = useCart();
   const [isHydrated, setIsHydrated] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     setIsHydrated(true);
   }, []);
 
-  const subtotal = cart.reduce((total, item) => total + (item.discountPrice || item.price) * item.quantity, 0);
-  
-  // Free Shipping Threshold Logic
-  const freeShippingThreshold = 50000;
-  const shipping = subtotal > freeShippingThreshold ? 0 : 499; 
-  const grandTotal = subtotal + (cartCount > 0 ? shipping : 0);
-  const amountToFreeShipping = Math.max(0, freeShippingThreshold - subtotal);
-
-  // Helper to fix broken image URLs
   const getImageUrl = (imagePath) => {
     if (!imagePath) return 'https://placehold.co/400x400?text=No+Image';
-    if (imagePath.startsWith('http')) {
-        return imagePath.replace('http://localhost:5000', process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000');
-    }
     const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
-    return `${baseUrl}/${imagePath}`;
+    return imagePath.startsWith('http') ? imagePath : `${baseUrl}/${imagePath}`;
   };
 
-  const handleQuantityChange = (item, newQty) => {
-    if (newQty < 1) return;
-    updateQuantity(item._id, item.selectedOptions, newQty);
+  // 🚀 SHARE FUNCTIONALITY
+  const handleShare = async (productId) => {
+    const url = `${window.location.origin}/product/${productId}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Check out this product on Amazon Smarts',
+          url: url
+        });
+      } catch (err) {
+        console.log("Share cancelled.");
+      }
+    } else {
+      // Fallback for desktop browsers
+      navigator.clipboard.writeText(url);
+      alert("Product link copied to clipboard!");
+    }
   };
 
-  // 🚀 AMAZON-SPECIFIC TAILWIND STYLES
-  const amzLink = "text-[#007185] hover:text-[#C45500] hover:underline cursor-pointer";
-  const amzButton = "w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-full py-[6px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer text-center font-normal";
+  // 🚀 GIFT 'LEARN MORE' ALERT
+  const handleLearnMoreGift = (e) => {
+    e.preventDefault();
+    alert("Gift Options:\n\nChoosing this option will hide prices on the packing slip. You will be able to add a free personalized gift message during the checkout process.");
+  };
 
-  if (!isHydrated) return null; 
+  if (!isHydrated) return <div className="min-h-screen bg-[#EAEDED]"></div>;
+
+  const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
+  const totalPrice = cart.reduce((total, item) => total + ((item.discountPrice || item.price) * item.quantity), 0);
+  
+  // Free delivery threshold logic (matching the screenshot)
+  const freeDeliveryThreshold = 50000; 
+  const amountNeeded = Math.max(0, freeDeliveryThreshold - totalPrice);
+  const progressPercent = Math.min(100, (totalPrice / freeDeliveryThreshold) * 100);
+
+  const amzLink = "text-[#007185] hover:text-[#C45500] hover:underline cursor-pointer text-[12px]";
+
+  if (cart.length === 0 && savedItems.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#EAEDED] py-8 font-sans">
+        <div className="max-w-[1500px] mx-auto px-4">
+          <div className="bg-white p-8 mb-6 text-center border border-[#DDD] shadow-sm">
+            <h2 className="text-[24px] font-bold text-[#0F1111] mb-4">Your Amazon Cart is empty.</h2>
+            <p className="text-[14px] text-[#565959] mb-6">Check your Saved for later items below or continue shopping.</p>
+            <Link href="/">
+              <button className="bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-[8px] py-2 px-8 text-[14px] text-[#0F1111] shadow-sm transition-colors">
+                Continue shopping
+              </button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#EAEDED] font-sans text-[#0F1111] pb-20 selection:bg-orange-200">
-
-      <div className="max-w-[1500px] mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6 items-start">
+    <div className="min-h-screen bg-[#EAEDED] py-6 font-sans text-[#0F1111]">
+      <div className="max-w-[1500px] mx-auto px-4 flex flex-col lg:flex-row gap-6 items-start">
         
-        {/* ================= LEFT COLUMN: Cart Items ================= */}
-        <div className="flex-1 w-full">
+        {/* ================= LEFT COLUMN: MAIN CART & SAVED ITEMS ================= */}
+        <div className="flex-1 w-full space-y-6">
           
-          {cart.length === 0 ? (
-            <div className="bg-white p-6 sm:p-10 mb-4 border border-[#ddd] flex flex-col sm:flex-row items-center gap-8">
-              <div className="text-8xl opacity-30">🛒</div>
-              <div>
-                <h2 className="text-[24px] font-bold text-[#0F1111] mb-2">Your Amazon Smarts Cart is empty.</h2>
-                <Link href="/" className={amzLink + " text-[14px]"}>
-                  Shop today's deals
-                </Link>
-                {!user && (
-                  <div className="mt-4 flex gap-4 items-center">
-                    <Link href="/login">
-                      <button className={amzButton + " px-6 w-auto"}>Sign in to your account</button>
-                    </Link>
-                    <Link href="/signup">
-                      <button className="bg-white border border-[#d5d9d9] hover:bg-[#f7fafa] py-[6px] px-6 rounded-full text-[13px] text-[#111] shadow-[0_2px_5px_0_rgba(213,217,217,.5)] transition-colors cursor-pointer text-center">
-                        Sign up now
-                      </button>
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white p-4 sm:p-6 mb-4 border border-[#ddd]">
-              <div className="flex justify-between items-end border-b border-[#ddd] pb-2 mb-4">
-                <h2 className="text-[28px] font-normal text-[#0F1111]">Shopping Cart</h2>
-                <span className="text-[14px] text-[#565959] hidden sm:block">Price</span>
+          {/* ACTIVE CART */}
+          {cart.length > 0 && (
+            <div className="bg-white p-6 border border-[#DDD] shadow-sm">
+              <div className="flex justify-between items-end border-b border-[#DDD] pb-2 mb-4">
+                <h1 className="text-[28px] font-normal leading-none text-[#0F1111]">Shopping Cart</h1>
+                <span className="text-[14px] text-[#565959] font-normal hidden sm:block">Price</span>
               </div>
 
               <div className="space-y-4">
-                {cart.map((item) => (
-                  <div key={`${item._id}-${JSON.stringify(item.selectedOptions)}`} className="flex flex-col sm:flex-row gap-4 border-b border-[#ddd] pb-4 last:border-0 last:pb-0">
+                {cart.map((item, index) => (
+                  <div key={index} className="flex gap-4 border-b border-[#EEE] pb-4 relative group">
+                    {/* Checkbox (Visual only for Amazon look) */}
+                    <input type="checkbox" defaultChecked className="mt-1 w-4 h-4 accent-[#007185] cursor-pointer" />
                     
-                    {/* Checkbox & Image */}
-                    <div className="flex gap-4 shrink-0">
-                      <input type="checkbox" defaultChecked className="mt-2 w-4 h-4 accent-[#007185] cursor-pointer hidden sm:block" />
-                      <Link href={`/product/${item._id}`}>
-                        <div className="w-[120px] sm:w-[180px] h-[120px] sm:h-[180px] cursor-pointer mix-blend-multiply">
-                          <img src={getImageUrl(item.images && item.images.length > 0 ? item.images[0] : null)} alt={item.name} className="object-contain w-full h-full" />
-                        </div>
-                      </Link>
+                    {/* Image */}
+                    <div className="w-[120px] shrink-0 cursor-pointer" onClick={() => router.push(`/product/${item._id}`)}>
+                      <img src={getImageUrl(item.images?.[0])} alt={item.name} className="w-full object-contain mix-blend-multiply" />
                     </div>
 
-                    {/* Product Details */}
-                    <div className="flex-1 flex flex-col sm:flex-row justify-between">
-                      <div className="flex-1 pr-4">
-                        <Link href={`/product/${item._id}`}>
-                          <h3 className="text-[18px] font-medium text-[#007185] hover:text-[#C45500] hover:underline line-clamp-2 leading-tight mb-1 cursor-pointer">
-                            {item.name}
-                          </h3>
+                    {/* Details */}
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start">
+                        <Link href={`/product/${item._id}`} className="text-[18px] leading-tight font-medium text-[#007185] hover:text-[#C45500] hover:underline line-clamp-2 pr-4">
+                          {item.name}
                         </Link>
-                        
-                        <p className="text-[12px] text-[#007600] font-normal mb-1">In stock</p>
-                        <p className="text-[12px] text-[#565959] mb-1">Eligible for FREE Shipping</p>
-                        <p className="text-[12px] text-[#565959] flex items-center gap-1 mb-2">
-                          <input type="checkbox" className="accent-[#007185]" /> This will be a gift <span className={amzLink}>Learn more</span>
-                        </p>
-
-                        {/* Selected Variants */}
-                        {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
-                          <div className="text-[12px] text-[#111] font-bold mb-3 space-y-0.5">
-                            {Object.entries(item.selectedOptions).map(([key, val]) => (
-                              <div key={key}>{key}: <span className="font-normal">{val}</span></div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Quantity & Actions */}
-                        <div className="flex flex-wrap items-center gap-3 text-[12px] text-[#007185]">
-                          
-                          {/* Amazon Style Quantity Pill */}
-                          <div className="flex items-center bg-[#F0F2F2] border border-[#D5D9D9] rounded-[8px] shadow-[0_2px_5px_0_rgba(213,217,217,.5)] overflow-hidden h-[29px]">
-                            <button onClick={() => handleQuantityChange(item, item.quantity - 1)} className="w-8 h-full flex items-center justify-center hover:bg-[#e3e6e6] transition-colors text-[16px] text-[#0F1111] cursor-pointer pb-0.5">-</button>
-                            <span className="w-10 h-full bg-white flex items-center justify-center text-[14px] text-[#0F1111] font-medium border-l border-r border-[#D5D9D9]">{item.quantity}</span>
-                            <button onClick={() => handleQuantityChange(item, item.quantity + 1)} className="w-8 h-full flex items-center justify-center hover:bg-[#e3e6e6] transition-colors text-[16px] text-[#0F1111] cursor-pointer pb-0.5">+</button>
-                          </div>
-
-                          <span className="text-[#ddd]">|</span>
-                          <button onClick={() => removeFromCart(item._id, item.selectedOptions)} className={amzLink}>Delete</button>
-                          <span className="text-[#ddd]">|</span>
-                          <button className={amzLink}>Save for later</button>
-                          <span className="text-[#ddd]">|</span>
-                          <button className={amzLink}>Share</button>
-                        </div>
+                        <span className="font-bold text-[18px] text-[#0F1111] shrink-0">₹{(item.discountPrice || item.price).toLocaleString('en-IN')}</span>
                       </div>
 
-                      {/* Price column (Right aligned on desktop) */}
-                      <div className="mt-4 sm:mt-0 text-right shrink-0">
-                        <p className="text-[18px] font-bold text-[#0F1111]">
-                          ₹{((item.discountPrice || item.price) * item.quantity).toLocaleString('en-IN')}
-                        </p>
+                      <p className="text-[12px] text-[#007600] mt-1 mb-1">In stock</p>
+                      <p className="text-[12px] text-[#565959] mb-1">Eligible for FREE Shipping</p>
+
+                      {/* Gift Checkbox & Learn More */}
+                      <div className="flex items-center gap-1 mt-1 mb-3">
+                        <input type="checkbox" className="w-3 h-3 accent-[#007185]" />
+                        <span className="text-[12px] text-[#0F1111]">This will be a gift</span>
+                        <button onClick={handleLearnMoreGift} className="text-[#007185] hover:text-[#C45500] hover:underline text-[12px] ml-1 focus:outline-none">Learn more</button>
+                      </div>
+
+                      {/* Variant Options */}
+                      {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                        <div className="text-[12px] text-[#565959] mb-3 font-bold">
+                          {Object.entries(item.selectedOptions).map(([key, val]) => (
+                            <span key={key} className="mr-3">{key}: <span className="font-normal">{val}</span></span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Action Bar (Qty, Delete, Save, Share) */}
+                      <div className="flex items-center flex-wrap gap-2 mt-2">
+                        {/* Qty Dropdown */}
+                        <div className="bg-[#F0F2F2] border border-[#D5D9D9] rounded-[7px] shadow-sm hover:bg-[#E3E6E6] flex items-center px-2 py-0.5">
+                          <select 
+                            value={item.quantity} 
+                            onChange={(e) => updateQuantity(item._id, item.selectedOptions, Number(e.target.value))}
+                            className="bg-transparent text-[13px] font-normal outline-none cursor-pointer"
+                          >
+                            {[...Array(10).keys()].map(n => <option key={n+1} value={n+1}>{n+1}</option>)}
+                          </select>
+                        </div>
+                        
+                        <span className="text-[#DDD] px-1">|</span>
+                        <button onClick={() => removeFromCart(item._id, item.selectedOptions)} className={amzLink}>Delete</button>
+                        <span className="text-[#DDD] px-1">|</span>
+                        
+                        {/* 🚀 SAVE FOR LATER BUTTON */}
+                        <button onClick={() => saveForLater(item)} className={amzLink}>Save for later</button>
+                        <span className="text-[#DDD] px-1">|</span>
+                        
+                        {/* 🚀 SHARE BUTTON */}
+                        <button onClick={() => handleShare(item._id)} className={amzLink}>Share</button>
                       </div>
                     </div>
-
                   </div>
                 ))}
               </div>
 
-              {/* Subtotal bottom row */}
-              <div className="flex justify-end items-center mt-4 pt-2">
-                <span className="text-[18px] text-[#0F1111]">
-                  Subtotal ({cartCount} items): <span className="font-bold">₹{subtotal.toLocaleString('en-IN')}</span>
-                </span>
+              <div className="text-right pt-2">
+                <span className="text-[18px] font-normal">Subtotal ({totalItems} items): </span>
+                <span className="text-[18px] font-bold">₹{totalPrice.toLocaleString('en-IN')}</span>
               </div>
             </div>
           )}
 
-          <div className="text-[12px] text-[#565959] px-2">
-            The price and availability of items at Amazon Smarts are subject to change. The Cart is a temporary place to store a list of your items and reflects each item's most recent price.
-          </div>
+          {/* 🚀 SAVED FOR LATER SECTION */}
+          {savedItems.length > 0 && (
+            <div className="bg-white p-6 border border-[#DDD] shadow-sm">
+              <h2 className="text-[24px] font-bold text-[#0F1111] border-b border-[#DDD] pb-3 mb-4">
+                Saved for later ({savedItems.length} item{savedItems.length > 1 ? 's' : ''})
+              </h2>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {savedItems.map((item, index) => (
+                  <div key={index} className="flex flex-col">
+                    <Link href={`/product/${item._id}`} className="block h-[150px] mb-2 flex items-center justify-center p-2 bg-[#F8F8F8] rounded-sm">
+                      <img src={getImageUrl(item.images?.[0])} alt={item.name} className="max-h-full max-w-full object-contain mix-blend-multiply" />
+                    </Link>
+                    
+                    <Link href={`/product/${item._id}`}>
+                      <h3 className="text-[14px] text-[#007185] hover:text-[#C45500] hover:underline line-clamp-2 mb-1 leading-snug">
+                        {item.name}
+                      </h3>
+                    </Link>
+                    <p className="text-[16px] font-bold text-[#B12704] mb-1">₹{(item.discountPrice || item.price).toLocaleString('en-IN')}</p>
+                    <p className="text-[12px] text-[#007600] mb-2">In stock</p>
+                    
+                    {/* Move to Cart / Delete */}
+                    <div className="mt-auto space-y-2 pt-2">
+                      <button 
+                        onClick={() => moveToCart(item)}
+                        className="w-full text-[13px] py-1 border border-[#D5D9D9] rounded-[8px] bg-white hover:bg-[#F7FAFA] shadow-sm"
+                      >
+                        Move to cart
+                      </button>
+                      <button 
+                        onClick={() => removeFromSaved(item._id, item.selectedOptions)}
+                        className="w-full text-[12px] text-[#007185] hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* ================= RIGHT COLUMN: Checkout Box ================= */}
+        {/* ================= RIGHT COLUMN: CHECKOUT BOX ================= */}
         {cart.length > 0 && (
           <div className="w-full lg:w-[300px] shrink-0 space-y-4">
-            
-            <div className="bg-white p-5 border border-[#ddd] rounded-[4px]">
+            <div className="bg-white p-5 border border-[#DDD] shadow-sm">
               
-              {/* Amazon Free Shipping Banner */}
-              <div className="mb-4">
-                {amountToFreeShipping > 0 ? (
-                  <div className="text-[14px] text-[#0F1111]">
-                    <div className="w-full bg-[#f0f2f2] h-1.5 rounded-full overflow-hidden mb-1">
-                      <div className="bg-[#007600] h-full" style={{ width: `${Math.min(100, (subtotal / freeShippingThreshold) * 100)}%` }}></div>
-                    </div>
-                    Add <span className="text-[#B12704]">₹{amountToFreeShipping.toLocaleString('en-IN')}</span> of eligible items to your order to qualify for FREE Delivery.
-                  </div>
+              {/* Free Delivery Bar */}
+              <div className="mb-4 text-[12px] text-[#111]">
+                <div className="w-full bg-[#F0F2F2] h-2 rounded-full mb-2 overflow-hidden border border-[#DDD]">
+                  <div className="bg-[#007600] h-full" style={{ width: `${progressPercent}%` }}></div>
+                </div>
+                {amountNeeded > 0 ? (
+                  <>Add <span className="text-[#B12704] font-bold">₹{amountNeeded.toLocaleString('en-IN')}</span> of eligible items to your order to qualify for FREE Delivery.</>
                 ) : (
-                  <div className="text-[14px] text-[#007600] flex items-start gap-1">
-                    <span className="text-[16px] leading-none mt-0.5">✓</span>
-                    <span>
-                      Your order is eligible for FREE Delivery. <br/>
-                      <span className="text-[#0F1111]">Select this option at checkout.</span> <span className={amzLink}>Details</span>
-                    </span>
-                  </div>
+                  <span className="text-[#007600] font-bold">✓ Your order is eligible for FREE Delivery.</span>
                 )}
               </div>
 
-              <div className="text-[18px] text-[#0F1111] mb-2 leading-tight">
-                Subtotal ({cartCount} items): <br className="hidden lg:block"/>
-                <span className="font-bold">₹{subtotal.toLocaleString('en-IN')}</span>
+              <div className="text-[18px] mb-4">
+                <span className="font-normal">Subtotal ({totalItems} items): </span>
+                <span className="font-bold">₹{totalPrice.toLocaleString('en-IN')}</span>
               </div>
 
-              <div className="flex items-center gap-2 mb-4 text-[13px] text-[#0F1111]">
-                <input type="checkbox" className="accent-[#007185] cursor-pointer" />
-                <span>This order contains a gift</span>
+              <div className="flex items-center gap-2 mb-4">
+                <input type="checkbox" className="w-4 h-4 accent-[#007185]" />
+                <span className="text-[13px]">This order contains a gift</span>
               </div>
 
-              <Link href="/checkout">
-                <button className={amzButton}>
-                  Proceed to Checkout
-                </button>
-              </Link>
+              <button 
+                onClick={() => router.push('/checkout')}
+                className="w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-full py-[8px] text-[14px] text-[#0F1111] shadow-sm transition-colors cursor-pointer"
+              >
+                Proceed to Checkout
+              </button>
             </div>
 
-            {/* Recently Viewed or Ads placeholder (Common on Amazon right rail) */}
-            <div className="bg-white p-4 border border-[#ddd] rounded-[4px] text-center hidden lg:block">
-              <h3 className="text-[14px] font-bold text-[#0F1111] mb-2">Customers who bought items in your cart also bought</h3>
-              <div className="text-[12px] text-[#565959] italic mt-4">
-                Sponsored Recommendations
-              </div>
+            {/* Filler Recommendations Box */}
+            <div className="bg-white p-4 border border-[#DDD] shadow-sm">
+              <h3 className="text-[14px] font-bold text-[#111] text-center leading-tight mb-2">Customers who bought items in your cart also bought</h3>
+              <p className="text-[11px] text-[#565959] italic text-center">Sponsored Recommendations</p>
             </div>
-
           </div>
         )}
 
