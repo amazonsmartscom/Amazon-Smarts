@@ -3474,23 +3474,35 @@ export default function ProductDetailPage() {
           )}
 
           {/* Feature Highlights (About this item) with Read More */}
+          {/* Feature Highlights (About this item) with Read More */}
           {product.features && product.features.length > 0 && (
             <div className="mt-4 pt-4 border-t border-[#EEE]">
                <h3 className="font-bold text-[16px] mb-2">About this item</h3>
-               <ul className="list-disc pl-5 space-y-1.5 text-[14px] leading-relaxed text-[#111]">
-                 {(isExpandedFeatures ? product.features : product.features.slice(0, 3)).map((f, i) => (
-                   <li key={i}>{f}</li>
-                 ))}
-               </ul>
-               {product.features.length > 3 && (
+               
+               {/* Wrap the list in a div with a max-height to hide overflow when collapsed */}
+               <div className={`relative ${!isExpandedFeatures ? 'max-h-[110px] overflow-hidden' : ''}`}>
+                 <ul className="list-disc pl-5 space-y-1.5 text-[14px] leading-relaxed text-[#111]">
+                   {product.features.map((f, i) => (
+                     <li key={i}>{f}</li>
+                   ))}
+                 </ul>
+                 
+                 {/* Optional: Adds a white fade effect at the bottom when the text is collapsed */}
+                 {!isExpandedFeatures && product.features.join(' ').length > 150 && (
+                   <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                 )}
+               </div>
+
+               {/* Show the button based on text character count, not array length */}
+               {product.features.join(' ').length > 150 && (
                  <button
                    onClick={() => setIsExpandedFeatures(!isExpandedFeatures)}
                    className="text-[#007185] hover:text-[#C45500] hover:underline text-[14px] font-bold mt-2 flex items-center gap-1 focus:outline-none"
                  >
                    {isExpandedFeatures ? (
-                     <><span>Show less</span><span className="text-[10px]">▲</span></>
+                     <><span>Read less</span><span className="text-[10px]">▲</span></>
                    ) : (
-                     <><span>Show more</span><span className="text-[10px]">▼</span></>
+                     <><span>Read more</span><span className="text-[10px]">▼</span></>
                    )}
                  </button>
                )}
