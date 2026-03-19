@@ -8874,7 +8874,7 @@ export default function AdminDashboard() {
         </thead>
         <tbody className="divide-y divide-[#EEE]">
           {orders.map(o => (
-            <tr key={o._id} className="hover:bg-[#F9F9F9] align-top">
+            <tr key={o._id} className={`hover:bg-[#F9F9F9] align-top ${o.status === 'Cancelled' ? 'opacity-70 bg-gray-50' : ''}`}>
               
               <td className="p-3 border-r border-[#DDD]">
                 <p className="font-mono font-bold text-[#111]">#{o._id.slice(-6).toUpperCase()}</p>
@@ -8933,7 +8933,7 @@ export default function AdminDashboard() {
               <td className="p-3">
                 <div className="relative">
                   {/* 🚀 LIVE SYNC INDICATOR FOR SHIPROCKET */}
-                  {o.shippingDetails?.provider === 'Shiprocket' && (
+                  {o.shippingDetails?.provider === 'Shiprocket' && o.status !== 'Cancelled' && o.status !== 'Delivered' && (
                     <div className="absolute -top-4 right-0 flex items-center gap-1">
                       <span className="animate-pulse w-1.5 h-1.5 bg-green-500 rounded-full"></span>
                       <span className="text-[9px] font-bold text-green-600 uppercase tracking-tighter">Live Syncing</span>
@@ -8943,9 +8943,10 @@ export default function AdminDashboard() {
                   <select 
                     value={o.status} 
                     onChange={(e) => handleUpdateOrderStatus(o._id, e.target.value)} 
-                    disabled={o.shippingDetails?.provider === 'Shiprocket'}
+                    disabled={o.shippingDetails?.provider === 'Shiprocket' || o.status === 'Cancelled'}
                     className={`w-full p-1.5 rounded-[4px] text-[11px] font-bold uppercase tracking-tight border-2 outline-none mb-3 cursor-pointer 
-                      ${o.shippingDetails?.provider === 'Shiprocket' ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed' : 
+                      ${o.status === 'Cancelled' ? 'bg-red-50 border-red-200 text-red-500 cursor-not-allowed' :
+                        o.shippingDetails?.provider === 'Shiprocket' ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed' : 
                         o.status === 'Delivered' ? 'bg-[#F7FCF7] border-[#007600] text-[#007600]' : 'bg-[#FFF8F2] border-[#e77600] text-[#e77600]'}`}
                   >
                     <option value="Processing">Processing</option>
@@ -8968,21 +8969,41 @@ export default function AdminDashboard() {
                       <span className="text-gray-500">AWB:</span> <span className="font-mono text-[#111] font-bold">{o.shippingDetails.trackingId}</span>
                       
                       {o.shippingDetails.provider === 'Shiprocket' && (
-                        <button 
-                          onClick={async () => {
-                            try {
-                              const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/orders/${o._id}/tracking`);
-                              if(data.shiprocketInvoiceUrl) window.open(data.shiprocketInvoiceUrl, '_blank');
-                              else alert("Label is being generated. Please wait 2-3 minutes.");
-                            } catch(e) { alert("Error fetching Shiprocket label."); }
-                          }}
-                          className="w-full mt-2 bg-white border border-blue-400 text-blue-600 text-[10px] font-bold py-1 rounded hover:bg-blue-50 transition-colors shadow-sm"
-                        >
-                          🖨️ Print Label (Auto)
-                        </button>
+                        <div className="mt-2 space-y-1">
+                          <button 
+                            onClick={async () => {
+                              try {
+                                const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/orders/${o._id}/tracking`);
+                                if(data.shiprocketInvoiceUrl) window.open(data.shiprocketInvoiceUrl, '_blank');
+                                else alert("Label is being generated. Please wait 2-3 minutes.");
+                              } catch(e) { alert("Error fetching Shiprocket label."); }
+                            }}
+                            className="w-full bg-white border border-blue-400 text-blue-600 text-[10px] font-bold py-1 rounded hover:bg-blue-50 transition-colors shadow-sm"
+                          >
+                            🖨️ Print Label (Auto)
+                          </button>
+
+                          {/* 🚀 NEW SYNC BUTTON */}
+                          {o.status !== 'Delivered' && o.status !== 'Cancelled' && (
+                            <button 
+                              onClick={async () => {
+                                try {
+                                  await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/orders/${o._id}/tracking`);
+                                  alert("Successfully synced with Shiprocket!");
+                                  fetchDashboardData(); 
+                                } catch(e) { 
+                                  alert("Failed to sync status."); 
+                                }
+                              }}
+                              className="w-full bg-white border border-gray-400 text-gray-700 text-[9px] font-bold py-1 rounded hover:bg-gray-100 transition-colors shadow-sm uppercase tracking-wider"
+                            >
+                              ↻ Sync Live Status
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
-                  ) : (
+                  ) : o.status !== 'Cancelled' ? (
                     <div className="space-y-2">
                       <form onSubmit={(e) => handleManualFulfill(o._id, e)} className="bg-white p-1.5 border border-gray-200 rounded">
                         <input name="carrier" type="text" placeholder="Internal Courier Name" className="w-full border border-gray-300 p-1 text-[10px] mb-1 rounded-[2px] outline-none focus:border-purple-400" />
@@ -8992,7 +9013,25 @@ export default function AdminDashboard() {
                       <button onClick={() => handleShiprocketFulfill(o._id)} className="w-full bg-[#131921] text-white font-bold text-[10px] py-1.5 rounded-[3px] hover:bg-[#232f3e] transition-colors shadow-md border border-black">
                         🚀 Automate Shiprocket
                       </button>
+
+                      {/* 🚀 ADMIN CANCEL BUTTON */}
+                      <button 
+                        onClick={async () => {
+                          if(window.confirm("Cancel this order? This will also attempt to cancel it in Shiprocket if applicable.")){
+                             try {
+                               await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/${o._id}/cancel?adminId=${adminId}`);
+                               alert("Order Cancelled!");
+                               fetchDashboardData();
+                             } catch(e) { alert(e.response?.data?.message || "Error cancelling"); }
+                          }
+                        }}
+                        className="w-full bg-white border border-red-300 text-red-600 font-bold text-[10px] py-1.5 rounded hover:bg-red-50 transition-colors shadow-sm"
+                      >
+                        🚫 Cancel Order
+                      </button>
                     </div>
+                  ) : (
+                    <div className="text-center py-2 bg-red-50 text-red-700 text-[10px] font-bold border border-red-200 rounded">ORDER CANCELLED</div>
                   )}
                 </div>
 
@@ -9008,6 +9047,7 @@ export default function AdminDashboard() {
 
             </tr>
           ))}
+          {orders.length === 0 && <tr><td colSpan="5" className="p-10 text-center text-gray-500">No orders found.</td></tr>}
         </tbody>
       </table>
     </div>

@@ -2769,6 +2769,31 @@ exports.fulfillShiprocket = async (req, res) => {
   }
 };
 
+// exports.getLiveTracking = async (req, res) => {
+//   try {
+//     const order = await Order.findById(req.params.id);
+//     if (!order) return res.status(404).json({ message: 'Order not found' });
+
+//     if (order.shippingDetails?.provider === 'Shiprocket' && order.shippingDetails?.trackingId) {
+//       const authRes = await axios.post('https://apiv2.shiprocket.in/v1/external/auth/login', { email: process.env.SHIPROCKET_EMAIL, password: process.env.SHIPROCKET_PASSWORD });
+//       const trackRes = await axios.get(`https://apiv2.shiprocket.in/v1/external/courier/track/awb/${order.shippingDetails.trackingId}`, { headers: { Authorization: `Bearer ${authRes.data.token}` } });
+      
+//       let invoiceUrl = null;
+//       if(order.shippingDetails.shiprocketOrderId) {
+//          try {
+//            const invRes = await axios.post('https://apiv2.shiprocket.in/v1/external/orders/print/invoice', { ids: [order.shippingDetails.shiprocketOrderId] }, { headers: { Authorization: `Bearer ${authRes.data.token}` } });
+//            invoiceUrl = invRes.data.invoice_url;
+//          } catch(e) {}
+//       }
+
+//       return res.status(200).json({ isLive: true, provider: 'Shiprocket', trackingData: trackRes.data.tracking_data, shiprocketInvoiceUrl: invoiceUrl });
+//     }
+
+//     return res.status(200).json({ isLive: false, status: order.status, provider: order.shippingDetails?.provider || 'Pending', carrierName: order.shippingDetails?.carrierName, trackingId: order.shippingDetails?.trackingId });
+//   } catch (error) { res.status(500).json({ message: 'Tracking Error', error: error.message }); }
+// };
+
+
 exports.getLiveTracking = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -2778,6 +2803,31 @@ exports.getLiveTracking = async (req, res) => {
       const authRes = await axios.post('https://apiv2.shiprocket.in/v1/external/auth/login', { email: process.env.SHIPROCKET_EMAIL, password: process.env.SHIPROCKET_PASSWORD });
       const trackRes = await axios.get(`https://apiv2.shiprocket.in/v1/external/courier/track/awb/${order.shippingDetails.trackingId}`, { headers: { Authorization: `Bearer ${authRes.data.token}` } });
       
+      const trackingData = trackRes.data.tracking_data;
+      
+      // 🚀 AUTO-HEAL THE DATABASE: If Shiprocket says it's cancelled/delivered, force our DB to match!
+      let newStatus = order.status;
+      const srStatus = trackingData?.track_status;
+      
+      // Shiprocket Status Codes: 7 = Delivered, 15 = Cancelled, 10 = Cancelled before dispatch, 13 = RTO
+      if (srStatus === 7) newStatus = 'Delivered';
+      if (srStatus === 15 || srStatus === 10 || srStatus === 13) newStatus = 'Cancelled';
+      
+      if (newStatus !== order.status) {
+         order.status = newStatus;
+         await order.save();
+         
+         // If it was cancelled, safely reverse the wallet commission
+         if (newStatus === 'Cancelled') {
+             const WalletTransaction = require('../models/WalletTransaction');
+             const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
+             if (pendingTx) { 
+                 pendingTx.status = 'cancelled'; 
+                 await pendingTx.save(); 
+             }
+         }
+      }
+
       let invoiceUrl = null;
       if(order.shippingDetails.shiprocketOrderId) {
          try {
@@ -2786,12 +2836,15 @@ exports.getLiveTracking = async (req, res) => {
          } catch(e) {}
       }
 
-      return res.status(200).json({ isLive: true, provider: 'Shiprocket', trackingData: trackRes.data.tracking_data, shiprocketInvoiceUrl: invoiceUrl });
+      return res.status(200).json({ isLive: true, provider: 'Shiprocket', trackingData: trackingData, shiprocketInvoiceUrl: invoiceUrl, currentDbStatus: newStatus });
     }
 
     return res.status(200).json({ isLive: false, status: order.status, provider: order.shippingDetails?.provider || 'Pending', carrierName: order.shippingDetails?.carrierName, trackingId: order.shippingDetails?.trackingId });
-  } catch (error) { res.status(500).json({ message: 'Tracking Error', error: error.message }); }
+  } catch (error) { 
+    res.status(500).json({ message: 'Tracking Error', error: error.message }); 
+  }
 };
+
 
 // exports.handleShiprocketWebhook = async (req, res) => {
 //   try {
