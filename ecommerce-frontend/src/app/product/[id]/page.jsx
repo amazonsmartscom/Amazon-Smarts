@@ -3069,7 +3069,6 @@
 //   );
 // }
 
-
 // src/app/product/[id]/page.jsx
 'use client';
 import { useState, useEffect } from 'react';
@@ -3096,6 +3095,11 @@ export default function ProductDetailPage() {
   // 🚀 Text Expand States
   const [isExpandedDesc, setIsExpandedDesc] = useState(false);
   const [isExpandedFeatures, setIsExpandedFeatures] = useState(false);
+
+  // 🚀 Zoom & Modal States
+  const [showHoverZoom, setShowHoverZoom] = useState(false);
+  const [zoomPos, setZoomPos] = useState({ x: 0, y: 0 });
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   // 🚀 Pincode & Delivery States
   const [pincode, setPincode] = useState('');
@@ -3228,7 +3232,7 @@ export default function ProductDetailPage() {
     setPincodeStatus('loading');
     
     try {
-      // 🚀 ATTEMPT 1: Try Zippopotam for exact coordinates
+      // ATTEMPT 1: Try Zippopotam for exact coordinates
       try {
         const { data } = await axios.get(`https://api.zippopotam.us/in/${pincode}`);
         const place = data.places[0];
@@ -3244,33 +3248,38 @@ export default function ProductDetailPage() {
 
         let daysToDeliver = distanceInKm < 100 ? 1 : distanceInKm < 500 ? 3 : distanceInKm < 1500 ? 5 : 7; 
         setDynamicDeliveryDate(new Date(Date.now() + daysToDeliver * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' }));
-        return; // Success! Exit function.
+        return; 
       } catch (zipError) {
         console.log("Zippopotam failed, trying official Indian Post API...");
       }
 
-      // 🚀 ATTEMPT 2: Fallback to Official Indian Postal API
+      // ATTEMPT 2: Fallback to Official Indian Postal API
       const { data } = await axios.get(`https://api.postalpincode.in/pincode/${pincode}`);
       
       if (data && data[0].Status === 'Success') {
         const postOffice = data[0].PostOffice[0];
-        // Set location name using District or Block
         setDeliveryLocation(postOffice.District || postOffice.Block || postOffice.Name);
         setPincodeStatus('success');
         
-        // Since we don't have GPS coordinates, we estimate based on the State
         const isLocal = postOffice.State === "Punjab" || postOffice.State === "Chandigarh" || postOffice.State === "Haryana" || postOffice.State === "Himachal Pradesh";
-        const daysToDeliver = isLocal ? 2 : 5; // 2 days for local north, 5 days for rest of India
+        const daysToDeliver = isLocal ? 2 : 5; 
         
         setDynamicDeliveryDate(new Date(Date.now() + daysToDeliver * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' }));
       } else {
-        // If even the official API says it's fake, it's definitely a bad pincode.
         throw new Error("Invalid Pincode");
       }
 
     } catch (err) {
       setPincodeStatus('error');
     }
+  };
+
+  // Mouse tracker for desktop hover zoom
+  const handleMouseMove = (e) => {
+    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - left) / width) * 100;
+    const y = ((e.clientY - top) / height) * 100;
+    setZoomPos({ x, y });
   };
 
   if (loading) return <div className="min-h-screen bg-white flex items-center justify-center"><div className="w-10 h-10 border-4 border-[#e7e7e7] border-t-[#e77600] rounded-full animate-spin"></div></div>;
@@ -3381,19 +3390,49 @@ export default function ProductDetailPage() {
       <div className="max-w-[1500px] mx-auto px-4 flex flex-col lg:flex-row gap-4 lg:gap-10 pb-10">
         
         {/* ================= COLUMN 1: GALLERY ================= */}
-        <div className="w-full lg:w-[40%] flex flex-col-reverse lg:flex-row gap-4 h-fit lg:sticky lg:top-24">
+        <div className="w-full lg:w-[40%] flex flex-col-reverse lg:flex-row gap-4 h-fit lg:sticky lg:top-24 z-20">
+          
+          {/* Desktop Thumbnails */}
           {product.images?.length > 1 && (
             <div className="hidden lg:flex flex-col gap-2 w-auto">
               {product.images.map((img, index) => (
-                <div key={index} onMouseEnter={() => setMainImage(img)} className={`h-12 w-12 border rounded-[3px] cursor-pointer flex-shrink-0 p-1 flex items-center justify-center ${mainImage === img ? 'border-[#e77600] shadow-[0_0_3px_#e77600]' : 'border-[#DDD] hover:border-[#e77600]'}`}>
+                <div key={index} onMouseEnter={() => setMainImage(img)} onClick={() => setMainImage(img)} className={`h-12 w-12 border rounded-[3px] cursor-pointer flex-shrink-0 p-1 flex items-center justify-center ${mainImage === img ? 'border-[#e77600] shadow-[0_0_3px_#e77600]' : 'border-[#DDD] hover:border-[#e77600]'}`}>
                   <img src={getImageUrl(img)} alt="thumb" className="max-h-full max-w-full object-contain mix-blend-multiply" />
                 </div>
               ))}
             </div>
           )}
-          <div className="flex-1 bg-white flex items-center justify-center min-h-[300px] lg:min-h-[500px] p-4 relative">
-            <img src={getImageUrl(mainImage)} alt={product.name} className="max-h-[350px] lg:max-h-[500px] w-full object-contain cursor-zoom-in" />
+
+          {/* Main Image Container */}
+          <div 
+            className="flex-1 bg-white flex items-center justify-center min-h-[300px] lg:min-h-[500px] p-4 relative cursor-zoom-in group"
+            onMouseEnter={() => setShowHoverZoom(true)}
+            onMouseLeave={() => setShowHoverZoom(false)}
+            onMouseMove={handleMouseMove}
+            onClick={() => setIsImageModalOpen(true)}
+          >
+            <img src={getImageUrl(mainImage)} alt={product.name} className="max-h-[350px] lg:max-h-[500px] w-full object-contain pointer-events-none" />
+            
+            {/* Hover Indicator Icon (shows briefly on hover) */}
+            <div className="absolute top-4 right-4 bg-white/80 p-1 rounded border border-[#ddd] opacity-0 group-hover:opacity-100 transition-opacity hidden lg:block pointer-events-none">
+              <span className="text-[12px] text-[#555] font-bold">🔍 Click to expand</span>
+            </div>
+
+            {/* Amazon-style Hover Zoom Overlay (Desktop Only) */}
+            {showHoverZoom && (
+              <div 
+                className="hidden lg:block absolute top-0 left-full ml-2 w-[140%] h-[120%] bg-white border border-[#D5D9D9] z-[100] shadow-[0_4px_12px_rgba(0,0,0,0.15)] pointer-events-none"
+                style={{
+                  backgroundImage: `url(${getImageUrl(mainImage)})`,
+                  backgroundPosition: `${zoomPos.x}% ${zoomPos.y}%`,
+                  backgroundSize: '250%',
+                  backgroundRepeat: 'no-repeat'
+                }}
+              />
+            )}
           </div>
+
+          {/* Mobile Thumbnails */}
           {product.images?.length > 1 && (
             <div className="flex lg:hidden overflow-x-auto snap-x snap-mandatory gap-2 pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
               {product.images.map((img, index) => (
@@ -3474,12 +3513,10 @@ export default function ProductDetailPage() {
           )}
 
           {/* Feature Highlights (About this item) with Read More */}
-          {/* Feature Highlights (About this item) with Read More */}
           {product.features && product.features.length > 0 && (
             <div className="mt-4 pt-4 border-t border-[#EEE]">
                <h3 className="font-bold text-[16px] mb-2">About this item</h3>
                
-               {/* Wrap the list in a div with a max-height to hide overflow when collapsed */}
                <div className={`relative ${!isExpandedFeatures ? 'max-h-[110px] overflow-hidden' : ''}`}>
                  <ul className="list-disc pl-5 space-y-1.5 text-[14px] leading-relaxed text-[#111]">
                    {product.features.map((f, i) => (
@@ -3487,13 +3524,11 @@ export default function ProductDetailPage() {
                    ))}
                  </ul>
                  
-                 {/* Optional: Adds a white fade effect at the bottom when the text is collapsed */}
                  {!isExpandedFeatures && product.features.join(' ').length > 150 && (
                    <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
                  )}
                </div>
 
-               {/* Show the button based on text character count, not array length */}
                {product.features.join(' ').length > 150 && (
                  <button
                    onClick={() => setIsExpandedFeatures(!isExpandedFeatures)}
@@ -3707,6 +3742,39 @@ export default function ProductDetailPage() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ================= FULL SCREEN IMAGE MODAL ================= */}
+      {isImageModalOpen && (
+        <div className="fixed inset-0 z-[500] bg-white flex flex-col lg:flex-row animate-in fade-in duration-200">
+          
+          <div className="w-full lg:hidden flex justify-end p-4 border-b border-[#EEE]">
+             <button onClick={() => setIsImageModalOpen(false)} className="text-2xl font-bold text-[#111]">✕</button>
+          </div>
+          <button onClick={() => setIsImageModalOpen(false)} className="hidden lg:flex absolute top-6 right-8 text-3xl text-gray-500 hover:text-black z-50 transition-colors">✕</button>
+
+          <div className="order-2 lg:order-1 flex lg:flex-col gap-3 p-4 lg:w-[120px] lg:border-r border-[#EEE] overflow-x-auto lg:overflow-y-auto bg-[#F7Fafa] lg:bg-white h-fit lg:h-full justify-start lg:pt-10">
+            {product.images?.map((img, index) => (
+              <div 
+                key={index} 
+                onClick={() => setMainImage(img)} 
+                className={`flex-shrink-0 w-16 h-16 lg:w-20 lg:h-20 border-2 rounded p-1 cursor-pointer flex items-center justify-center bg-white ${mainImage === img ? 'border-[#e77600]' : 'border-transparent hover:border-[#DDD]'}`}
+              >
+                <img src={getImageUrl(img)} alt="thumb" className="max-h-full max-w-full object-contain" />
+              </div>
+            ))}
+          </div>
+
+          <div className="order-1 lg:order-2 flex-1 flex items-center justify-center p-4 lg:p-10 bg-white relative overflow-auto">
+            <img 
+              src={getImageUrl(mainImage)} 
+              alt={product.name} 
+              className="max-w-full lg:max-h-[85vh] object-contain cursor-crosshair" 
+              style={{ transform: "scale(1.2)", transformOrigin: "center" }}
+            />
+          </div>
+
         </div>
       )}
 
