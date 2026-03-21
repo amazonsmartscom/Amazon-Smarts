@@ -324,7 +324,7 @@ function AccountContent() {
     { title: "Your Orders", desc: "Track, return, or buy things again", icon: "📦", link: "/orders" },
     { title: "Message Center", desc: "View invoices, alerts, and order updates", icon: "✉️", link: "/account?tab=notifications" },
     { title: "Your Addresses", desc: "Edit addresses for orders and gifts", icon: "📍", link: "/account?tab=profile" },
-    { title: "Affiliate Wallet Settings", desc: "Manage payout details & bank accounts", icon: "💳", link: "/account?tab=profile" },
+    { title: "Wallet Settings", desc: "Manage payout details & bank accounts", icon: "💳", link: "/account?tab=profile" },
     { title: "Contact Us", desc: "Get help with your orders and products", icon: "🎧", link: "/contact" }
   ];
 
