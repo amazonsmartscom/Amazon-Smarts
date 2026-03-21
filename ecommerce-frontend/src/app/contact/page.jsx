@@ -258,7 +258,7 @@ export default function ContactPage() {
             <ul className="space-y-3 text-[14px]">
               <li><Link href="/orders" className={amzLink}>Track your package</Link></li>
               <li><Link href="/return-policy" className={amzLink}>Return or replace items</Link></li>
-              <li><Link href="/wallet" className={amzLink}>Manage your affiliate wallet</Link></li>
+              <li><Link href="/wallet" className={amzLink}>Manage your wallet</Link></li>
               <li><Link href="/login" className={amzLink}>Change password or account settings</Link></li>
             </ul>
           </div>
@@ -331,7 +331,7 @@ export default function ContactPage() {
                   <option value="A delivery, order or return">A delivery, order or return</option>
                   <option value="Product inquiry">Product inquiry</option>
                   <option value="Payment, charges or gift cards">Payment, charges or gift cards</option>
-                  <option value="Affiliate Program">Affiliate Program</option>
+                  <option value="Earning Program">Earning Program</option>
                   <option value="Other">Something else</option>
                 </select>
               </div>

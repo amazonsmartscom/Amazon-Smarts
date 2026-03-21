@@ -657,10 +657,10 @@ export default function Header() {
             <span className="font-semibold text-[14px] text-white">& Orders</span>
           </Link>
 
-          <Link href="/wallet" className={navItemStyle}>
+          {/* <Link href="/wallet" className={navItemStyle}>
             <span className="text-[11px] font-medium text-[#ccc]">Affiliate</span>
             <span className="font-semibold text-[14px] text-white">Wallet</span>
-          </Link>
+          </Link> */}
           
           {isAdmin && (
             <Link href="/admin" className="px-3 py-2 rounded-lg hover:bg-white/10 transition-colors flex flex-col cursor-pointer leading-tight">

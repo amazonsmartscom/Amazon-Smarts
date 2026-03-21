@@ -43,7 +43,7 @@ export default function PrivacyPolicyPage() {
           <div className="space-y-8 text-[14px] leading-[1.5] text-[#0F1111]">
             
             <section>
-              <p>We know that you care how information about you is used and shared, and we appreciate your trust that we will do so carefully and sensibly. This Privacy Notice describes how Amazon Smarts and its affiliates collect and process your personal information through our website, devices, products, and services.</p>
+              <p>We know that you care how information about you is used and shared, and we appreciate your trust that we will do so carefully and sensibly. This Privacy Notice describes how Amazon Smarts and its earnings collect and process your personal information through our website, devices, products, and services.</p>
             </section>
 
             <section>

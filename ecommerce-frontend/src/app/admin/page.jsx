@@ -9057,7 +9057,7 @@ export default function AdminDashboard() {
           {/* PAYOUTS TAB */}
           {activeTab === 'payouts' && (
             <div className="max-w-[1200px] mx-auto">
-               <h2 className="text-[22px] font-bold mb-6">Affiliate Payouts & Settings</h2>
+               <h2 className="text-[22px] font-bold mb-6"> Payouts & Settings</h2>
                <div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-8 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h3 className="text-[16px] font-bold text-[#111]">Referrer Reward (₹)</h3><p className="text-[12px] text-[#565959] mb-3">Amount given to the person who shared their link.</p>
@@ -9189,7 +9189,7 @@ export default function AdminDashboard() {
                      <div><label className={amzLabel}>List Price</label><div className="relative"><span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[13px]">₹</span><input type="number" className={amzInput + " pl-6"} value={price} onChange={e => setPrice(e.target.value)} required /></div></div>
                      <div><label className={amzLabel}>Discount Price</label><div className="relative"><span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[13px]">₹</span><input type="number" className={amzInput + " pl-6"} value={discountPrice} onChange={e => setDiscountPrice(e.target.value)} /></div></div>
                      <div><label className={amzLabel}>Stock</label><input type="number" className={amzInput} value={stock} onChange={e => setStock(e.target.value)} required /></div>
-                     <div><label className={amzLabel}>Affiliate Comm. (%)</label><input type="number" className={amzInput} value={affiliateCommission} onChange={e => setAffiliateCommission(e.target.value)} placeholder="e.g. 10" /></div>
+                     <div><label className={amzLabel}> Comm. (%)</label><input type="number" className={amzInput} value={affiliateCommission} onChange={e => setAffiliateCommission(e.target.value)} placeholder="e.g. 10" /></div>
                      <div><label className={amzLabel}>Review Reward (₹)</label><input type="number" className={amzInput} value={reviewCommission} onChange={e => setReviewCommission(e.target.value)} placeholder="e.g. 50" /></div>
                    </div>
                  </div>
@@ -9243,7 +9243,7 @@ export default function AdminDashboard() {
                      </div>
                      <div className="bg-[#F9F9F9] border border-[#EEE] rounded-[4px] p-6 flex flex-col justify-center">
                        <p className="text-[12px] font-bold text-[#565959] uppercase tracking-wider mb-4 flex items-center gap-2"><span>🌐</span> Google Search Preview</p>
-                       <div className="bg-white p-5 border border-[#DDD] rounded shadow-sm max-w-[500px]"><p className="text-[12px] text-[#202124] mb-1 truncate">https://amazonsmarts.com › products › <span className="text-[#5f6368]">{name ? name.toLowerCase().replace(/ /g, '-') : 'url'}</span></p><h4 className="text-[18px] text-[#1a0dab] hover:underline cursor-pointer font-medium leading-tight mb-1 truncate">{seoTitle || (name ? `${name} | AMAZON SMARTS` : 'Page Title Goes Here')}</h4><p className="text-[13px] text-[#4d5156] line-clamp-2 leading-relaxed">{seoDescription || 'Provide a meta description to see how your product will appear in search engine results.'}</p></div>
+                       <div className="bg-white p-5 border border-[#DDD] rounded shadow-sm max-w-[500px]"><p className="text-[12px] text-[#202124] mb-1 truncate">https://in.amazonsmarts.com › products › <span className="text-[#5f6368]">{name ? name.toLowerCase().replace(/ /g, '-') : 'url'}</span></p><h4 className="text-[18px] text-[#1a0dab] hover:underline cursor-pointer font-medium leading-tight mb-1 truncate">{seoTitle || (name ? `${name} | AMAZON SMARTS` : 'Page Title Goes Here')}</h4><p className="text-[13px] text-[#4d5156] line-clamp-2 leading-relaxed">{seoDescription || 'Provide a meta description to see how your product will appear in search engine results.'}</p></div>
                      </div>
                    </div>
                  </div>
@@ -9324,7 +9324,7 @@ export default function AdminDashboard() {
                     <div><label className={amzLabel}>MRP</label><input type="number" className={amzInput} value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} required /></div>
                     <div><label className={amzLabel}>Offer Price</label><input type="number" className={amzInput} value={editForm.discountPrice || ''} onChange={e => setEditForm({...editForm, discountPrice: e.target.value})} /></div>
                     <div><label className={amzLabel}>Stock</label><input type="number" className={amzInput} value={editForm.stock} onChange={e => setEditForm({...editForm, stock: e.target.value})} required /></div>
-                    <div><label className={amzLabel}>Affiliate Comm. (%)</label><input type="number" className={amzInput} value={editForm.affiliateCommission || 0} onChange={e => setEditForm({...editForm, affiliateCommission: e.target.value})} /></div>
+                    <div><label className={amzLabel}> Comm. (%)</label><input type="number" className={amzInput} value={editForm.affiliateCommission || 0} onChange={e => setEditForm({...editForm, affiliateCommission: e.target.value})} /></div>
                     <div><label className={amzLabel}>Review Reward (₹)</label><input type="number" className={amzInput} value={editForm.reviewCommission || 0} onChange={e => setEditForm({...editForm, reviewCommission: e.target.value})} /></div>
                   </div>
                 </div>

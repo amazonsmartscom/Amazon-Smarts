@@ -1748,10 +1748,10 @@ export default function WalletDashboard() {
         <div className="text-[14px] text-[#565959] mb-4 flex items-center gap-1">
           <Link href="/account" className="text-[#007185] hover:text-[#C45500] hover:underline">Your Account</Link> 
           <span className="text-[#565959] text-[10px]">›</span> 
-          <span className="text-[#C45500]">Affiliate Wallet</span>
+          <span className="text-[#C45500]"> Wallet</span>
         </div>
 
-        <h1 className="text-[28px] font-normal mb-6">Your Affiliate Wallet</h1>
+        <h1 className="text-[28px] font-normal mb-6">Your Wallet</h1>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="border border-[#D5D9D9] rounded-[8px] p-5 flex flex-col justify-between">
@@ -1821,7 +1821,7 @@ export default function WalletDashboard() {
                       </td>
                       <td className="p-4">
                         <p className="font-bold text-[#111]">
-                          {tx.source === 'referral_commission' ? 'Affiliate Commission' : 
+                          {tx.source === 'referral_commission' ? 'Commission' : 
                            tx.source === 'review_reward' ? 'Review Reward' :
                            tx.source === 'referral_signup_bonus' ? 'Signup Bonus (Referral)' :
                            tx.source === 'welcome_bonus' ? 'Welcome Bonus' : 'Withdrawal'}

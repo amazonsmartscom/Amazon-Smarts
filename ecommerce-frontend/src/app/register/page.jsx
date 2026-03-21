@@ -1352,7 +1352,7 @@ function SignupContent() {
           <Link href="/help" className="hover:underline">Help</Link>
         </div>
         <p className="text-[11px] text-[#555]">
-          © {new Date().getFullYear()}, AmazonSmarts.com, Inc. or its affiliates
+          © {new Date().getFullYear()}, in.amazonsmarts.com
         </p>
       </div>
 

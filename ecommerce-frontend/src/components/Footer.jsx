@@ -355,7 +355,7 @@ export default function Footer() {
           {/* Column 2: Make Money with Us */}
           <div>
             <h3 className={headingStyles}>Make Money with Us</h3>
-            <Link href="/wallet" className={linkStyles}>Affiliate Wallet</Link>
+            {/* <Link href="/wallet" className={linkStyles}>Affiliate Wallet</Link> */}
             <Link href="/" className={linkStyles}>Sell on Amazon Smarts</Link>
             <Link href="/" className={linkStyles}>Protect and Build Your Brand</Link>
             <Link href="/" className={linkStyles}>Advertise Your Products</Link>
@@ -426,7 +426,7 @@ export default function Footer() {
           <Link href="/return-policy" className="hover:underline">Return Policy</Link>
         </div>
         <p className="text-[12px] text-[#ddd] mt-2">
-          © {new Date().getFullYear()}, AmazonSmarts.com, Inc. or its affiliates
+          © {new Date().getFullYear()}, in.amazonsmarts.com
         </p>
       </div>
       

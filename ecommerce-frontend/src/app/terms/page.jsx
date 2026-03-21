@@ -43,7 +43,7 @@ export default function TermsPage() {
           <div className="space-y-8 text-[14px] leading-[1.5] text-[#0F1111]">
             
             <section>
-              <p>Welcome to Amazon Smarts. Amazon Smarts and/or its affiliates provide website features and other products and services to you when you visit or shop at AmazonSmarts.com. By using Amazon Smarts Services, you agree, on behalf of yourself and all members of your household and others who use any Service under your account, to the following conditions.</p>
+              <p>Welcome to Amazon Smarts. Amazon Smarts and/or its provide website features and other products and services to you when you visit or shop at in.amazonsmarts.com. By using Amazon Smarts Services, you agree, on behalf of yourself and all members of your household and others who use any Service under your account, to the following conditions.</p>
               <p className="mt-4 font-bold italic">Please read these conditions carefully.</p>
             </section>
 
@@ -58,8 +58,8 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-[18px] font-bold mb-3">3. Affiliate Program & Wallet</h2>
-              <p>Amazon Smarts operates a proprietary Referral Program. Commissions are credited to your Affiliate Wallet upon successful, non-returned delivery of orders placed using your unique code. We strictly prohibit fraudulent promotion, self-referrals, or automated spamming. Amazon Smarts reserves the right to audit wallet activity and withhold payouts if terms are breached.</p>
+              <h2 className="text-[18px] font-bold mb-3">3. Partner Program & Earnings Wallet</h2>
+              <p>Amazon Smarts operates a proprietary Partner Program. Credits are issued to your Earnings Wallet upon successful, non-returned delivery of orders placed using your unique referral link or code. We strictly prohibit fraudulent promotion, self-referrals, or automated spamming. Amazon Smarts reserves the right to audit wallet activity and withhold payouts if these terms are breached.</p>
             </section>
 
             <section>
@@ -88,7 +88,7 @@ export default function TermsPage() {
           </div>
         </div>
 
-        {/* Footer Links */}
+        {/* Footer Area */}
         
 
       </div>

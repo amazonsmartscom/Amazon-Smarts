@@ -287,8 +287,8 @@ function AccountContent() {
             {/* 3. Affiliate Payout / Bank Details */}
             <div className="border border-[#ddd] rounded-[8px] overflow-hidden">
               <div className="bg-[#f0f2f2] p-4 border-b border-[#ddd]">
-                <h2 className="font-bold text-[16px] text-[#0F1111]">3. Affiliate Payout Details</h2>
-                <p className="text-[12px] text-[#565959] font-normal">Where should we send your affiliate earnings?</p>
+                <h2 className="font-bold text-[16px] text-[#0F1111]">3.  Payout Details</h2>
+                <p className="text-[12px] text-[#565959] font-normal">Where should we send your earnings?</p>
               </div>
               <div className="p-5 space-y-4">
                 <div>
