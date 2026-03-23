@@ -3100,7 +3100,7 @@
 // src/app/admin/page.jsx
 'use client';
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Link from 'next/link';
