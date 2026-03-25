@@ -2229,10 +2229,6 @@ export default function CheckoutPage() {
   const [couponMessage, setCouponMessage] = useState(null); 
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
-  // 🚀 EMBEDDED RAZORPAY STATE
-  const [showRazorpayEmbed, setShowRazorpayEmbed] = useState(false);
-  const rzpContainerRef = useRef(null);
-
   useEffect(() => {
     setIsHydrated(true);
     if (user) {
@@ -2312,7 +2308,6 @@ export default function CheckoutPage() {
       alert("Error saving order to database. Please contact support.");
     } finally {
       setIsProcessing(false);
-      setShowRazorpayEmbed(false);
     }
   };
 
@@ -2334,21 +2329,18 @@ export default function CheckoutPage() {
             setIsProcessing(false);
             return; 
           }
-
-          // 🚀 INITIALIZE EMBEDDED RAZORPAY
-          setShowRazorpayEmbed(true);
           
           const options = {
             key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, 
             amount: rzpOrder.amount,
             currency: rzpOrder.currency,
-            name: "Secure Checkout", // Removed Razorpay branding
-            description: "Order Checkout",
-            image: "https://yourwebsite.com/logo.png", // Add your logo URL here to hide Razorpay logo
+            name: "Amazon Smarts",
+            description: "Secure Order Checkout",
             order_id: rzpOrder.id,
             handler: async function (response) {
               try {
                 // Keep showing processing overlay while verifying
+                setIsProcessing(true);
                 await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders/razorpay/verify`, {
                   razorpay_order_id: response.razorpay_order_id,
                   razorpay_payment_id: response.razorpay_payment_id,
@@ -2357,33 +2349,23 @@ export default function CheckoutPage() {
                 await placeOrderToDatabase('Razorpay', response.razorpay_payment_id);
               } catch (err) {
                 alert("Payment verification failed! Please contact support.");
-                setIsProcessing(false); setShowRazorpayEmbed(false);
+                setIsProcessing(false);
               }
             },
             prefill: { name: shippingInfo.fullName, email: shippingInfo.email, contact: shippingInfo.phone },
-            theme: { 
-              color: "#232F3E", // Matches your Amazon theme
-              hide_topbar: true // Hides Razorpay topbar in embedded mode if allowed
-            },
-            // 🚀 Force Embedded UI instead of Popup
-            config: {
-              display: {
-                blocks: {
-                  banks: { name: "Pay via UPI / Cards / Netbanking", instruments: [{ method: "upi" }, { method: "card" }, { method: "netbanking" }] }
-                },
-                sequence: ["block.banks"],
-                preferences: { show_default_blocks: false }
+            theme: { color: "#232F3E" },
+            modal: {
+              ondismiss: function() {
+                setIsProcessing(false); // Stop loading spinner if user closes popup
               }
             }
           };
 
           const paymentObject = new window.Razorpay(options);
           
-          // Render inside our div instead of popup
           paymentObject.on('payment.failed', function (response){
               alert("Payment Failed: " + response.error.description);
               setIsProcessing(false);
-              setShowRazorpayEmbed(false);
           });
 
           paymentObject.open();
@@ -2399,7 +2381,7 @@ export default function CheckoutPage() {
     } catch (error) {
       console.error(error);
       alert("An error occurred. Please try again.");
-      setIsProcessing(false); setShowRazorpayEmbed(false);
+      setIsProcessing(false);
     }
   };
 
@@ -2470,12 +2452,9 @@ export default function CheckoutPage() {
                   <label className="block text-[13px] font-bold text-[#111]">Enter OTP</label>
                   <button type="button" onClick={() => { setCheckoutStep('editing'); setOtp(''); }} className="text-[13px] text-[#0066c0] hover:text-[#c45500] hover:underline bg-transparent border-none cursor-pointer">Change email</button>
                 </div>
-                <input type="text" maxLength="6" required className={`${authInputStyles} text-lg tracking-widest text-center py-2.5`} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} disabled={showRazorpayEmbed} />
+                <input type="text" maxLength="6" required className={`${authInputStyles} text-lg tracking-widest text-center py-2.5`} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} />
               </div>
-              
-              {!showRazorpayEmbed && (
-                <button type="submit" disabled={isProcessing || otp.length < 6} className={authButton}>{isProcessing ? 'Processing Order...' : 'Verify & Place Order'}</button>
-              )}
+              <button type="submit" disabled={isProcessing || otp.length < 6} className={authButton}>{isProcessing ? 'Connecting...' : 'Verify & Place Order'}</button>
             </form>
           </div>
         </div>
@@ -2546,7 +2525,7 @@ export default function CheckoutPage() {
               <div className="p-5">
                 <div className="space-y-3">
                   <label className={`flex items-start gap-3 p-3 border rounded-[4px] cursor-pointer transition-colors ${paymentMethod === 'ONLINE' ? 'border-[#e77600] bg-[#fef8f2]' : 'border-[#ddd] bg-white hover:bg-[#f7fafa]'}`}>
-                    <input type="radio" name="paymentMethod" value="ONLINE" checked={paymentMethod === 'ONLINE'} onChange={() => { setPaymentMethod('ONLINE'); setShowRazorpayEmbed(false); }} className="mt-1 accent-[#e77600] w-4 h-4" />
+                    <input type="radio" name="paymentMethod" value="ONLINE" checked={paymentMethod === 'ONLINE'} onChange={() => setPaymentMethod('ONLINE')} className="mt-1 accent-[#e77600] w-4 h-4" />
                     <div className="w-full">
                       <p className="font-bold text-[14px]">Credit/Debit Card, UPI, Net Banking</p>
                       <div className="flex gap-2 mt-1">
@@ -2555,19 +2534,11 @@ export default function CheckoutPage() {
                         <span className="bg-white text-[10px] px-2 py-0.5 rounded font-bold border border-[#ddd] text-[#007185]">MasterCard</span>
                       </div>
                       <p className="text-[12px] text-[#007185] mt-1">100% Secure encrypted payment.</p>
-                      
-                      {/* 🚀 INLINE RAZORPAY INJECTION DIV */}
-                      {paymentMethod === 'ONLINE' && showRazorpayEmbed && (
-                         <div className="mt-4 border-t border-[#ddd] pt-4 transition-all duration-500 animate-in slide-in-from-top-4">
-                           <p className="text-[13px] font-bold text-[#111] mb-2 text-center animate-pulse">Complete your payment below 👇</p>
-                           {/* Razorpay will actually hijack the screen entirely once opened, but configuring it this way prevents the popup blocker */}
-                         </div>
-                      )}
                     </div>
                   </label>
                   
                   <label className={`flex items-start gap-3 p-3 border rounded-[4px] cursor-pointer transition-colors ${paymentMethod === 'COD' ? 'border-[#e77600] bg-[#fef8f2]' : 'border-[#ddd] bg-white hover:bg-[#f7fafa]'}`}>
-                    <input type="radio" name="paymentMethod" value="COD" checked={paymentMethod === 'COD'} onChange={() => { setPaymentMethod('COD'); setShowRazorpayEmbed(false); }} className="mt-1 accent-[#e77600] w-4 h-4" />
+                    <input type="radio" name="paymentMethod" value="COD" checked={paymentMethod === 'COD'} onChange={() => setPaymentMethod('COD')} className="mt-1 accent-[#e77600] w-4 h-4" />
                     <div>
                       <p className="font-bold text-[14px]">Cash on Delivery / Pay on Delivery</p>
                       <p className="text-[13px] text-[#565959] mt-1">Pay digitally with SMS link or pay cash at the time of delivery.</p>
@@ -2608,24 +2579,17 @@ export default function CheckoutPage() {
         <div className="w-full lg:w-[300px] shrink-0 space-y-4">
           <div className="border border-[#ddd] bg-[#f3f3f3] rounded-[8px] p-4 sticky top-6">
             
-            {/* OVERLAY LOADER FOR LOGGED IN USERS SO THEY KNOW IT'S WORKING */}
-            {isProcessing && !showRazorpayEmbed && (
+            {/* OVERLAY LOADER */}
+            {isProcessing && (
               <div className="absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center rounded-[8px]">
                 <div className="w-6 h-6 border-2 border-t-[#007185] border-[#e7e7e7] rounded-full animate-spin mb-2"></div>
                 <p className="text-[12px] font-bold">Securely connecting...</p>
               </div>
             )}
 
-            {!showRazorpayEmbed ? (
-              <button type="submit" form="checkoutForm" disabled={isProcessing || checkoutStep !== 'editing'} className={`${amzButton} mb-4 font-normal`}>
-                {isProcessing ? 'Processing...' : 'Place your order'}
-              </button>
-            ) : (
-              <div className="bg-[#e7f4e4] border border-[#007600] rounded p-3 mb-4 text-center">
-                 <p className="text-[13px] font-bold text-[#007600] mb-1">Secure Payment Initialized</p>
-                 <p className="text-[11px] text-[#111]">Please complete the payment in the Razorpay window.</p>
-              </div>
-            )}
+            <button type="submit" form="checkoutForm" disabled={isProcessing || checkoutStep !== 'editing'} className={`${amzButton} mb-4 font-normal`}>
+              {isProcessing ? 'Processing...' : 'Place your order'}
+            </button>
             
             <p className="text-[11px] text-[#565959] text-center border-b border-[#ddd] pb-4 mb-4 leading-tight">By placing your order, you agree to Amazon Smarts's <Link href="/privacy" className="text-[#007185] hover:underline">privacy notice</Link> and <Link href="/conditions" className="text-[#007185] hover:underline">conditions of use</Link>.</p>
             <h3 className="font-bold text-[18px] text-[#111] mb-2">Order Summary</h3>
