@@ -2741,7 +2741,7 @@ const ProductCard = ({ product, onAddToCart, onBuyNow, getImageUrl }) => (
           FREE Delivery by <span className="font-bold">Amazon Smarts</span>
         </div>
         
-        {/* 🚀 RESTORED: Add to Cart & Buy Now Buttons */}
+        {/* Add to Cart & Buy Now Buttons */}
         <div className="flex flex-col gap-2 mt-2">
           <button 
             onClick={(e) => { e.preventDefault(); onAddToCart(product); }} 
@@ -2842,7 +2842,6 @@ function StoreContent() {
     return 0;
   });
 
-  // 🚀 Added Buy Now Handler
   const handleAddToCart = (product) => addToCart(product);
   const handleBuyNow = (product) => { addToCart(product); router.push('/cart'); };
   
@@ -2854,7 +2853,6 @@ function StoreContent() {
     if(urlSearchQuery) router.push('/'); 
   };
 
-  // 🚀 Best Sellers Logic
   const bestSellers = products.filter(p => p.isBestSeller);
 
   const FilterOptions = () => (
@@ -2964,11 +2962,11 @@ function StoreContent() {
         </div>
       )}
 
-      {/* 🚀 MAIN CONTENT GRID - Responsive alignment fixed */}
-      <div className={`flex flex-col lg:flex-row max-w-[1600px] mx-auto px-4 sm:px-6 gap-6 pb-12 relative z-30 ${!urlSearchQuery && dynamicBanners.length > 0 ? '-mt-[50px] sm:-mt-[150px] lg:-mt-[250px] xl:-mt-[300px]' : 'pt-4'}`}>
+      {/* 🚀 MAIN CONTENT WRAPPER - Adjusted margins to push content down and reveal more banner */}
+      <div className={`relative z-30 max-w-[1600px] mx-auto px-4 sm:px-6 pb-12 ${!urlSearchQuery && dynamicBanners.length > 0 ? '-mt-[20px] sm:-mt-[60px] lg:-mt-[100px] xl:-mt-[140px]' : 'pt-4'}`}>
         
         {/* MOBILE FILTER & SORT BAR */}
-        <div className="lg:hidden flex gap-2 w-full sticky top-[60px] z-40 bg-[#EAEDED] py-2">
+        <div className="lg:hidden flex gap-2 w-full mb-4">
           <button 
             onClick={() => setIsMobileFilterOpen(true)}
             className="flex-1 bg-white border border-[#D5D9D9] py-2.5 rounded-[8px] shadow-sm text-[14px] font-medium text-[#0F1111] flex justify-center items-center gap-2"
@@ -2987,9 +2985,11 @@ function StoreContent() {
           </select>
         </div>
 
-        {/* 🚀 DESKTOP LEFT SIDEBAR */}
-        <aside className="hidden lg:block w-[240px] shrink-0">
-          <div className="sticky top-[80px] z-10 self-start">
+        {/* 🚀 FLEX CONTAINER FOR SIDEBAR + MAIN GRID */}
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          
+          {/* 🚀 DESKTOP LEFT SIDEBAR - Perfectly aligned with product cards */}
+          <aside className="hidden lg:block w-[240px] shrink-0 sticky top-[80px] lg:mt-[50px]">
             {urlSearchQuery || selectedCategory !== 'All' || selectedBrand !== 'All' ? (
               <div className="bg-white p-5 rounded-[4px] shadow-sm border border-[#D5D9D9]">
                 <FilterOptions />
@@ -3000,90 +3000,92 @@ function StoreContent() {
                 <FilterOptions />
               </div>
             )}
-          </div>
-        </aside>
+          </aside>
 
-        {/* MOBILE FILTER MODAL */}
-        {isMobileFilterOpen && (
-          <div className="fixed inset-0 z-[200] flex lg:hidden">
-            <div className="fixed inset-0 bg-black/60 transition-opacity" onClick={() => setIsMobileFilterOpen(false)}></div>
-            <div className="relative w-[85%] max-w-[350px] bg-white h-full shadow-2xl flex flex-col ml-auto animate-in slide-in-from-right duration-300">
-              <div className="bg-[#F0F2F2] p-4 border-b border-[#D5D9D9] flex justify-between items-center">
-                <h2 className="font-bold text-[18px]">Filters</h2>
-                <button onClick={() => setIsMobileFilterOpen(false)} className="text-2xl text-[#0F1111] leading-none">✕</button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-5"><FilterOptions /></div>
-              <div className="p-4 border-t border-[#D5D9D9] bg-white flex gap-3 shadow-[0_-4px_6px_rgba(0,0,0,0.05)]">
-                <button onClick={clearSearchAndFilters} className="w-1/3 bg-white border border-[#D5D9D9] py-2 rounded-full text-[14px] font-medium shadow-sm">Clear</button>
-                <button onClick={() => setIsMobileFilterOpen(false)} className="flex-1 bg-[#FFD814] border border-[#FCD200] py-2 rounded-full text-[14px] font-normal shadow-sm">Show {sortedProducts.length} Results</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* MAIN PRODUCT GRID & BEST SELLERS */}
-        <main className="flex-1 min-w-0">
-          
-          {/* 🚀 BEST SELLERS SECTION (Only shows on homepage without active filters) */}
-          {!urlSearchQuery && selectedCategory === 'All' && selectedBrand === 'All' && bestSellers.length > 0 && (
-            <div className="bg-white p-4 sm:p-5 rounded-[4px] shadow-sm border border-[#D5D9D9] mb-6">
-              <h2 className="text-[20px] font-bold text-[#0F1111] mb-4">Best Sellers in Tech & Gadgets</h2>
-              <div className="flex gap-4 overflow-x-auto pb-4 snap-x custom-scrollbar">
-                {bestSellers.map(product => (
-                  <div key={`bs-${product._id}`} className="snap-start shrink-0 w-[200px] sm:w-[240px]">
-                    <ProductCard product={product} onAddToCart={handleAddToCart} onBuyNow={handleBuyNow} getImageUrl={getImageUrl} />
-                  </div>
-                ))}
+          {/* MAIN PRODUCT GRID & BEST SELLERS */}
+          <main className="flex-1 min-w-0 w-full">
+            
+            {/* Desktop Sort Header */}
+            <div className="hidden lg:flex justify-end items-center mb-4 h-[34px]">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-white shadow-sm border border-[#D5D9D9] hover:bg-[#F7F8F8] transition-colors cursor-pointer">
+                <label className="text-[13px] text-[#0F1111] font-normal cursor-pointer">Sort by:</label>
+                <select 
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-transparent text-[13px] font-bold outline-none cursor-pointer text-[#0F1111] focus:ring-0"
+                >
+                  <option value="featured">Featured</option>
+                  <option value="price_low">Price: Low to High</option>
+                  <option value="price_high">Price: High to Low</option>
+                  <option value="rating">Avg. Customer Review</option>
+                </select>
               </div>
             </div>
-          )}
 
-          {/* Desktop Sort Header */}
-          <div className="hidden lg:flex justify-end items-start mb-4 h-[34px]">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-white shadow-sm border border-[#D5D9D9] hover:bg-[#F7F8F8] transition-colors cursor-pointer">
-              <label className="text-[13px] text-[#0F1111] font-normal cursor-pointer">Sort by:</label>
-              <select 
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-transparent text-[13px] font-bold outline-none cursor-pointer text-[#0F1111] focus:ring-0"
-              >
-                <option value="featured">Featured</option>
-                <option value="price_low">Price: Low to High</option>
-                <option value="price_high">Price: High to Low</option>
-                <option value="rating">Avg. Customer Review</option>
-              </select>
-            </div>
-          </div>
-
-          {/* 🚀 RESPONSIVE GRID: 1 col on small phones, 2 on phablets, 3 on large screens, 4 on XL */}
-          {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {[...Array(8)].map((_, i) => <SkeletonCard key={i} />)}
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
-                {sortedProducts.map(product => (
-                  <ProductCard 
-                    key={product._id} 
-                    product={product} 
-                    onAddToCart={handleAddToCart} 
-                    onBuyNow={handleBuyNow}
-                    getImageUrl={getImageUrl} 
-                  />
-                ))}
-              </div>
-              {sortedProducts.length === 0 && (
-                <div className="bg-white p-10 text-center border border-[#D5D9D9] rounded-[4px] mt-4 shadow-sm">
-                   <p className="text-lg font-bold text-[#0F1111]">No results found.</p>
-                   <p className="text-sm text-[#565959] mt-1">Try adjusting your filters or search terms.</p>
-                   <button onClick={clearSearchAndFilters} className="mt-4 text-[#007185] hover:underline font-medium">Clear all filters</button>
+            {/* BEST SELLERS SECTION (Only shows on homepage without active filters) */}
+            {!urlSearchQuery && selectedCategory === 'All' && selectedBrand === 'All' && bestSellers.length > 0 && (
+              <div className="bg-white p-4 sm:p-5 rounded-[4px] shadow-sm border border-[#D5D9D9] mb-6">
+                <h2 className="text-[20px] font-bold text-[#0F1111] mb-4">Best Sellers in Tech & Gadgets</h2>
+                <div className="flex gap-4 overflow-x-auto pb-4 snap-x custom-scrollbar">
+                  {bestSellers.map(product => (
+                    <div key={`bs-${product._id}`} className="snap-start shrink-0 w-[200px] sm:w-[240px]">
+                      <ProductCard product={product} onAddToCart={handleAddToCart} onBuyNow={handleBuyNow} getImageUrl={getImageUrl} />
+                    </div>
+                  ))}
                 </div>
-              )}
-            </>
-          )}
-        </main>
+              </div>
+            )}
+
+            {/* 🚀 RESPONSIVE GRID */}
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
+                {[...Array(8)].map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
+                  {sortedProducts.map(product => (
+                    <ProductCard 
+                      key={product._id} 
+                      product={product} 
+                      onAddToCart={handleAddToCart} 
+                      onBuyNow={handleBuyNow}
+                      getImageUrl={getImageUrl} 
+                    />
+                  ))}
+                </div>
+                {sortedProducts.length === 0 && (
+                  <div className="bg-white p-10 text-center border border-[#D5D9D9] rounded-[4px] mt-4 shadow-sm">
+                    <p className="text-lg font-bold text-[#0F1111]">No results found.</p>
+                    <p className="text-sm text-[#565959] mt-1">Try adjusting your filters or search terms.</p>
+                    <button onClick={clearSearchAndFilters} className="mt-4 text-[#007185] hover:underline font-medium">Clear all filters</button>
+                  </div>
+                )}
+              </>
+            )}
+          </main>
+
+        </div>
       </div>
+
+      {/* MOBILE FILTER MODAL */}
+      {isMobileFilterOpen && (
+        <div className="fixed inset-0 z-[200] flex lg:hidden">
+          <div className="fixed inset-0 bg-black/60 transition-opacity" onClick={() => setIsMobileFilterOpen(false)}></div>
+          <div className="relative w-[85%] max-w-[350px] bg-white h-full shadow-2xl flex flex-col ml-auto animate-in slide-in-from-right duration-300">
+            <div className="bg-[#F0F2F2] p-4 border-b border-[#D5D9D9] flex justify-between items-center">
+              <h2 className="font-bold text-[18px]">Filters</h2>
+              <button onClick={() => setIsMobileFilterOpen(false)} className="text-2xl text-[#0F1111] leading-none">✕</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5"><FilterOptions /></div>
+            <div className="p-4 border-t border-[#D5D9D9] bg-white flex gap-3 shadow-[0_-4px_6px_rgba(0,0,0,0.05)]">
+              <button onClick={clearSearchAndFilters} className="w-1/3 bg-white border border-[#D5D9D9] py-2 rounded-full text-[14px] font-medium shadow-sm">Clear</button>
+              <button onClick={() => setIsMobileFilterOpen(false)} className="flex-1 bg-[#FFD814] border border-[#FCD200] py-2 rounded-full text-[14px] font-normal shadow-sm">Show {sortedProducts.length} Results</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -3095,5 +3097,3 @@ export default function AdvancedStoreDashboard() {
     </Suspense>
   );
 }
-
-

@@ -3691,9 +3691,12 @@ exports.cancelOrder = async (req, res) => {
 };
 
 // 🚀 CANCEL INDIVIDUAL ITEM
+// 🚀 CANCEL INDIVIDUAL ITEM
 exports.cancelIndividualItem = async (req, res) => {
   try {
     const { id, itemId } = req.params;
+    const { reason } = req.body; // 🚀 Catch the reason from frontend
+    
     const order = await Order.findById(id);
 
     if (!order) return res.status(404).json({ message: "Order not found" });
@@ -3711,6 +3714,7 @@ exports.cancelIndividualItem = async (req, res) => {
 
     item.isCancelled = true;
     item.cancelledAt = new Date();
+    item.cancellationReason = reason || "No reason provided"; // 🚀 Save the reason
 
     const amountToDeduct = item.price * item.quantity;
     order.itemsPrice = Math.max(0, order.itemsPrice - amountToDeduct);

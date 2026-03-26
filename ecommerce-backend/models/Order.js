@@ -163,9 +163,10 @@ const orderSchema = new mongoose.Schema({
       price: { type: Number, required: true },
       product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
       selectedOptions: { type: Object, default: {} },
-      // 🚀 NEW: PER-ITEM CANCELLATION TRACKING
       isCancelled: { type: Boolean, default: false },
-      cancelledAt: { type: Date }
+      cancelledAt: { type: Date },
+      // 🚀 NEW: REASON FOR CANCELLATION
+      cancellationReason: { type: String }
     }
   ],
   
