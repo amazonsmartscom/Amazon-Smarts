@@ -12772,7 +12772,7 @@ export default function AdminDashboard() {
 
               </form>
             </div>
-            <div className="bg-white border-t border-[#DDD] p-4 flex justify-end gap-3 rounded-b-[4px]"><button type="button" onClick={() => setEditingProduct(null)} className={amzWhiteBtn}>Cancel Edit</button><button type="submit" form="editForm" className={amzYellowBtn + " px-10"}>Save Changes</button></div>
+            <div className="bg-white border-t border-[#DDD] p-4 flex justify-end gap-3 rounded-b-[4px]"><button type="button" onClick={() => setEditingProduct(null)} className={amzWhiteBtn}>Cancel Edit</button><button type="submit" form="editForm" className={amzYellowBtn + " px-10"}>Save Changes </button></div>
           </div>
         </div>
       )}
