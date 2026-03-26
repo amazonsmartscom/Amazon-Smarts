@@ -228,6 +228,47 @@
 
 
 
+// // routes/orderRoutes.js
+// const express = require('express');
+// const router = express.Router();
+// const multer = require('multer'); 
+// const path = require('path');
+
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) { cb(null, 'uploads/'); },
+//   filename: function (req, file, cb) { cb(null, 'invoice-' + Date.now() + path.extname(file.originalname)); }
+// });
+// const upload = multer({ storage: storage });
+
+// const { 
+//   createOrder, simulatePayment, getUserOrders, getAllOrders, updateOrderStatus, cancelOrder, uploadInvoice,
+//   fulfillManual, fulfillShiprocket, getLiveTracking,
+//   handleShiprocketWebhook,
+//   createRazorpayOrder, verifyRazorpayPayment,
+//   cancelIndividualItem // 🚀 ADDED THIS
+// } = require('../controllers/orderController');
+
+// router.post('/webhook/shiprocket', handleShiprocketWebhook);
+// router.post('/razorpay/create', createRazorpayOrder);
+// router.post('/razorpay/verify', verifyRazorpayPayment);
+
+// router.post('/', createOrder);
+// router.put('/:id/pay', simulatePayment);
+// router.get('/user/:userId', getUserOrders); 
+// router.put('/:id/cancel', cancelOrder); 
+// // 🚀 ADDED CANCEL ITEM ROUTE
+// router.put('/admin/:id/item/:itemId/cancel', cancelIndividualItem); 
+// router.get('/admin/all', getAllOrders);
+// router.put('/admin/:id/status', updateOrderStatus);
+// router.put('/admin/:id/invoice', upload.single('invoice'), uploadInvoice);
+
+// router.put('/admin/:id/fulfill/manual', fulfillManual);
+// router.put('/admin/:id/fulfill/shiprocket', fulfillShiprocket);
+// router.get('/:id/tracking', getLiveTracking);
+
+// module.exports = router;
+
+
 // routes/orderRoutes.js
 const express = require('express');
 const router = express.Router();
@@ -245,7 +286,8 @@ const {
   fulfillManual, fulfillShiprocket, getLiveTracking,
   handleShiprocketWebhook,
   createRazorpayOrder, verifyRazorpayPayment,
-  cancelIndividualItem // 🚀 ADDED THIS
+  cancelIndividualItem,
+  syncAllShiprocketOrders // 🚀 ADDED THIS
 } = require('../controllers/orderController');
 
 router.post('/webhook/shiprocket', handleShiprocketWebhook);
@@ -256,8 +298,11 @@ router.post('/', createOrder);
 router.put('/:id/pay', simulatePayment);
 router.get('/user/:userId', getUserOrders); 
 router.put('/:id/cancel', cancelOrder); 
-// 🚀 ADDED CANCEL ITEM ROUTE
 router.put('/admin/:id/item/:itemId/cancel', cancelIndividualItem); 
+
+// 🚀 ADDED BULK SYNC ROUTE
+router.put('/admin/sync-shiprocket', syncAllShiprocketOrders);
+
 router.get('/admin/all', getAllOrders);
 router.put('/admin/:id/status', updateOrderStatus);
 router.put('/admin/:id/invoice', upload.single('invoice'), uploadInvoice);
