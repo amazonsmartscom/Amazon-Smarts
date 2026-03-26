@@ -180,6 +180,54 @@
 
 // module.exports = router;
 
+// // routes/orderRoutes.js
+// const express = require('express');
+// const router = express.Router();
+// const multer = require('multer'); 
+// const path = require('path');
+
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) { cb(null, 'uploads/'); },
+//   filename: function (req, file, cb) { cb(null, 'invoice-' + Date.now() + path.extname(file.originalname)); }
+// });
+// const upload = multer({ storage: storage });
+
+// // 🚀 WE NOW IMPORT RAZORPAY FUNCTIONS DIRECTLY FROM ORDER CONTROLLER
+// const { 
+//   createOrder, simulatePayment, getUserOrders, getAllOrders, updateOrderStatus, cancelOrder, uploadInvoice,
+//   fulfillManual, fulfillShiprocket, getLiveTracking,
+//   handleShiprocketWebhook,
+//   createRazorpayOrder, verifyRazorpayPayment 
+// } = require('../controllers/orderController');
+
+// // 🚀 SHIPROCKET WEBHOOK
+// router.post('/webhook/shiprocket', handleShiprocketWebhook);
+
+// // 🚀 RAZORPAY ROUTES
+// router.post('/razorpay/create', createRazorpayOrder);
+// router.post('/razorpay/verify', verifyRazorpayPayment);
+
+// // STANDARD ORDER ROUTES
+// router.post('/', createOrder);
+// router.put('/:id/pay', simulatePayment);
+// router.get('/user/:userId', getUserOrders); 
+// router.put('/:id/cancel', cancelOrder); 
+// router.get('/admin/all', getAllOrders);
+// router.put('/admin/:id/status', updateOrderStatus);
+// router.put('/admin/:id/invoice', upload.single('invoice'), uploadInvoice);
+
+// // FULFILLMENT ROUTES
+// router.put('/admin/:id/fulfill/manual', fulfillManual);
+// router.put('/admin/:id/fulfill/shiprocket', fulfillShiprocket);
+
+// // LIVE TRACKING ROUTE
+// router.get('/:id/tracking', getLiveTracking);
+
+// module.exports = router;
+
+
+
+
 // routes/orderRoutes.js
 const express = require('express');
 const router = express.Router();
@@ -192,35 +240,30 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// 🚀 WE NOW IMPORT RAZORPAY FUNCTIONS DIRECTLY FROM ORDER CONTROLLER
 const { 
   createOrder, simulatePayment, getUserOrders, getAllOrders, updateOrderStatus, cancelOrder, uploadInvoice,
   fulfillManual, fulfillShiprocket, getLiveTracking,
   handleShiprocketWebhook,
-  createRazorpayOrder, verifyRazorpayPayment 
+  createRazorpayOrder, verifyRazorpayPayment,
+  cancelIndividualItem // 🚀 ADDED THIS
 } = require('../controllers/orderController');
 
-// 🚀 SHIPROCKET WEBHOOK
 router.post('/webhook/shiprocket', handleShiprocketWebhook);
-
-// 🚀 RAZORPAY ROUTES
 router.post('/razorpay/create', createRazorpayOrder);
 router.post('/razorpay/verify', verifyRazorpayPayment);
 
-// STANDARD ORDER ROUTES
 router.post('/', createOrder);
 router.put('/:id/pay', simulatePayment);
 router.get('/user/:userId', getUserOrders); 
 router.put('/:id/cancel', cancelOrder); 
+// 🚀 ADDED CANCEL ITEM ROUTE
+router.put('/admin/:id/item/:itemId/cancel', cancelIndividualItem); 
 router.get('/admin/all', getAllOrders);
 router.put('/admin/:id/status', updateOrderStatus);
 router.put('/admin/:id/invoice', upload.single('invoice'), uploadInvoice);
 
-// FULFILLMENT ROUTES
 router.put('/admin/:id/fulfill/manual', fulfillManual);
 router.put('/admin/:id/fulfill/shiprocket', fulfillShiprocket);
-
-// LIVE TRACKING ROUTE
 router.get('/:id/tracking', getLiveTracking);
 
 module.exports = router;

@@ -2431,10 +2431,551 @@
 //   }
 // };
 
+// // controllers/orderController.js
+// const axios = require('axios');
+// const Razorpay = require('razorpay'); // 🚀 ADDED RAZORPAY
+// const crypto = require('crypto');     // 🚀 ADDED CRYPTO
+// const Order = require('../models/Order');
+// const User = require('../models/User');
+// const WalletTransaction = require('../models/WalletTransaction');
+// const Product = require('../models/Product');
+// const { createNotification } = require('./notificationController');
+// const sendEmail = require('../utils/sendEmail'); 
+
+// const getBrandedEmailTemplate = (order, statusTitle, statusMessage, itemsTableHtml = "") => {
+//   const brandColor = "#232f3e"; const accentColor = "#febd69"; const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+//   return `
+//     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; background-color: #fff;">
+//       <div style="background-color: ${brandColor}; padding: 20px; text-align: center;"><h1 style="color: ${accentColor}; margin: 0; font-size: 26px; letter-spacing: -1px;">amazon<span style="color: #fff; font-weight: bold;">smarts</span></h1></div>
+//       <div style="padding: 30px; line-height: 1.6;">
+//         <h2 style="color: #111; font-size: 20px; margin-top: 0; border-bottom: 2px solid ${accentColor}; padding-bottom: 10px; display: inline-block;">${statusTitle}</h2>
+//         <p style="font-size: 15px; color: #333; margin-top: 20px;">${statusMessage}</p>
+//         <div style="margin: 25px 0; padding: 20px; background-color: #f9f9f9; border: 1px solid #eee; border-radius: 4px;"><p style="margin: 0; font-size: 13px; color: #666; text-transform: uppercase; font-weight: bold;">Order ID</p><p style="margin: 5px 0; font-size: 16px; font-weight: bold; color: #111;">#${order._id.toString().toUpperCase()}</p></div>
+//         ${itemsTableHtml}
+//         <div style="text-align: center; margin-top: 30px;"><a href="${frontendUrl}/orders" style="background-color: #FFD814; border: 1px solid #FCD200; color: #111; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">View Your Order</a></div>
+//       </div>
+//       <div style="background-color: #f0f2f2; padding: 20px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd;"><p style="margin: 0 0 10px 0;">This email was sent from a notification-only address. Please do not reply to this message.</p><p style="margin: 0;">© ${new Date().getFullYear()} AmazonSmarts.com, Inc. or its affiliates</p></div>
+//     </div>
+//   `;
+// };
+
+// // 🚀 DUAL-EMAIL HELPER (Handles custom HTML for receipts and guest emails)
+// const sendStatusEmailsToBoth = async (order, statusTitle, statusMessage, customHtml = "", explicitEmail = null) => {
+//   let trackingHtml = "";
+//   if (order.shippingDetails?.trackingId) {
+//     trackingHtml = `
+//       <div style="margin-top: 20px; padding: 15px; border: 1px dashed #febd69; border-radius: 4px; background-color: #fffaf5;">
+//         <p style="margin: 0; font-size: 13px; color: #666;">TRACKING ID (${order.shippingDetails.provider})</p>
+//         <p style="margin: 5px 0; font-size: 18px; font-weight: bold; color: #007185;">${order.shippingDetails.trackingId}</p>
+//         <p style="margin: 0; font-size: 12px; color: #565959;">Carrier: ${order.shippingDetails.carrierName}</p>
+//       </div>
+//     `;
+//   }
+
+//   const finalHtml = customHtml + trackingHtml;
+//   const emailBody = getBrandedEmailTemplate(order, statusTitle, statusMessage, finalHtml);
+//   const subject = `${order.status}: Amazon Smarts Order #${order._id.toString().slice(-6).toUpperCase()}`;
+  
+//   const customerEmail = explicitEmail || order.shippingAddress?.email || (order.user && order.user.email) || null;
+
+//   if (customerEmail) {
+//     try { await sendEmail({ email: customerEmail, subject, message: emailBody }); } catch (err) {}
+//   }
+
+//   try {
+//     const admins = await User.find({ role: 'admin' }).select('email');
+//     const adminEmails = admins.map(a => a.email).filter(e => e);
+//     const fallbackEmail = process.env.EMAIL_USER; 
+//     const finalEmails = adminEmails.length > 0 ? adminEmails : (fallbackEmail ? [fallbackEmail] : []);
+
+//     const adminBody = getBrandedEmailTemplate(order, `[ADMIN ALERT] Order ${order.status}`, `Customer (${customerEmail || 'Guest User'}) order status is now ${order.status}.`, finalHtml);
+    
+//     for (const adminEmail of finalEmails) {
+//       await sendEmail({ email: adminEmail, subject: `[ADMIN] ${subject}`, message: adminBody });
+//     }
+//   } catch (err) {}
+// };
+
+// exports.createOrder = async (req, res) => {
+//   try {
+//     const { userId, user, orderItems, shippingAddress, paymentMethod, itemsPrice, shippingPrice, discountAmount, couponCode, totalPrice, isPaid, paidAt, paymentResult } = req.body;
+
+//     if (!orderItems || orderItems.length === 0) return res.status(400).json({ message: 'No order items provided' });
+
+//     let finalUserId = userId || user;
+//     const guestEmail = shippingAddress?.email || req.body.email;
+
+//     if (!finalUserId && guestEmail) {
+//       const existingUser = await User.findOne({ email: guestEmail });
+//       if (existingUser) {
+//         finalUserId = existingUser._id;
+//         if (existingUser.name === 'Guest Customer' && shippingAddress?.fullName) {
+//           existingUser.name = shippingAddress.fullName;
+//           await existingUser.save();
+//         }
+//       }
+//     }
+
+//     const orderData = {
+//       user: finalUserId || undefined, orderItems, shippingAddress: shippingAddress || {}, paymentMethod: paymentMethod || 'Cash on Delivery', itemsPrice: itemsPrice || totalPrice || 0, shippingPrice: shippingPrice || 0, discountAmount: discountAmount || 0, couponCode: couponCode || null, totalPrice: totalPrice || 0, isPaid: isPaid || false, paidAt: paidAt || null, paymentResult, status: 'Processing' 
+//     };
+
+//     const order = new Order(orderData);
+//     const createdOrder = await order.save();
+
+//     let discountHtml = discountAmount > 0 ? `<tr><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">Discount applied:</td><td style="padding: 10px; text-align: right; color: #007600; font-weight: bold;">-₹${Number(discountAmount).toLocaleString('en-IN')}</td></tr>` : '';
+      
+//     const itemsHtml = `
+//       <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px;">
+//         <tr style="background-color: #f3f3f3;"><th style="padding: 10px; text-align: left;">Item</th><th style="padding: 10px; text-align: right;">Total</th></tr>
+//         ${orderItems.map(item => `<tr><td style="padding: 10px; border-bottom: 1px solid #eee;">${item.name || 'Product'} <strong>(x${item.quantity || item.qty || 1})</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">₹${Number(item.price || 0).toLocaleString('en-IN')}</td></tr>`).join('')}
+//         ${discountHtml}
+//         <tr><td colspan="2" style="padding: 10px; text-align: right; font-weight: bold; color: #B12704;">Grand Total: ₹${Number(totalPrice || 0).toLocaleString('en-IN')}</td></tr>
+//       </table>
+//     `;
+
+//     const emailToSend = shippingAddress?.email || guestEmail;
+    
+//     if (emailToSend) {
+//       console.log(`[EMAIL SYSTEM] Attempting to send Order Confirmation to: ${emailToSend}`);
+//       try { 
+//         await sendStatusEmailsToBoth(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready.", itemsHtml, emailToSend); 
+//         console.log(`[EMAIL SYSTEM] ✅ Successfully sent to ${emailToSend}`);
+//       } catch (err) {
+//         // 🚀 THIS IS THE MAGIC LOG THAT WILL TELL YOU WHAT IS BROKEN!
+//         console.error("🚨 [EMAIL SYSTEM] FAILED TO SEND! Error Details:", err.message || err); 
+//       }
+//     } else {
+//       console.log("🚨 [EMAIL SYSTEM] No email address found to send the confirmation to.");
+//     }
+
+//     res.status(201).json({ message: 'Order created successfully', order: createdOrder });
+//   } catch (error) { 
+//     console.error("BACKEND CREATE ORDER ERROR:", error);
+//     res.status(500).json({ message: 'Error saving order to database', error: error.message }); 
+//   }
+// };
+// // ==========================================
+// // 🚀 RAZORPAY CONTROLLERS ADDED HERE
+// // ==========================================
+// exports.createRazorpayOrder = async (req, res) => {
+//   try {
+//     // 🚀 Robust key detection to handle naming mismatches
+//     const keyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+//     const keySecret = process.env.RAZORPAY_SECRET || process.env.RAZORPAY_KEY_SECRET;
+
+//     if (!keyId || !keySecret) {
+//       console.error("CRITICAL ERROR: Razorpay keys are missing in the environment.");
+//       return res.status(500).json({ 
+//         message: "Payment configuration error on server. Please check environment variables." 
+//       });
+//     }
+
+//     const instance = new Razorpay({
+//       key_id: keyId,
+//       key_secret: keySecret,
+//     });
+
+//     const options = {
+//       amount: Math.round(Number(req.body.amount) * 100), // convert to paise
+//       currency: "INR",
+//       receipt: `rcpt_${Date.now()}`,
+//     };
+
+//     const rzpOrder = await instance.orders.create(options);
+    
+//     console.log("✅ Razorpay Order Created Successfully:", rzpOrder.id);
+//     res.status(200).json(rzpOrder);
+    
+//   } catch (error) {
+//     console.error("❌ Razorpay API Error:", error.message);
+//     res.status(500).json({ message: `Razorpay Error: ${error.message}` });
+//   }
+// };
+
+// exports.verifyRazorpayPayment = async (req, res) => {
+//   try {
+//     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+//     const sign = razorpay_order_id + "|" + razorpay_payment_id;
+//     const expectedSign = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET).update(sign.toString()).digest("hex");
+
+//     if (razorpay_signature === expectedSign) {
+//       return res.status(200).json({ message: "Payment verified successfully" });
+//     } else {
+//       return res.status(400).json({ message: "Invalid signature sent!" });
+//     }
+//   } catch (error) {
+//     console.error("Razorpay Verify Error:", error);
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+// exports.simulatePayment = async (req, res) => {
+//   try {
+//     const order = await Order.findById(req.params.id).populate('orderItems.product');
+//     if (order) {
+//       order.isPaid = true; order.paidAt = Date.now(); const updatedOrder = await order.save();
+//       if (order.user) {
+//         try {
+//           const buyingUser = await User.findById(order.user);
+//           if (buyingUser && buyingUser.referredBy) {
+//             const referrer = await User.findById(buyingUser.referredBy);
+//             if (referrer) {
+//               let totalCommissionAmount = 0;
+//               order.orderItems.forEach(item => { if (item.product && item.product.affiliateCommission > 0) { totalCommissionAmount += (item.price * (item.quantity || 1)) * (item.product.affiliateCommission / 100); } });
+//               totalCommissionAmount = Math.round(totalCommissionAmount);
+//               if (totalCommissionAmount > 0) {
+//                 await WalletTransaction.create({ userId: referrer._id, amount: totalCommissionAmount, type: 'credit', source: 'referral_commission', status: 'pending', relatedOrderId: order._id });
+//                 await createNotification(referrer._id, "Pending Commission ⏳", `A referral order was placed! ₹${totalCommissionAmount} will be credited upon delivery.`, "info", "/wallet");
+//               }
+//             }
+//           }
+//         } catch (err) { console.error("Commission Error:", err); }
+//       }
+//       res.json(updatedOrder);
+//     } else { res.status(404).json({ message: 'Order not found' }); }
+//   } catch (error) { res.status(500).json({ message: 'Payment error' }); }
+// };
+
+// exports.updateOrderStatus = async (req, res) => {
+//   try {
+//     const order = await Order.findById(req.params.id).populate('user', 'email');
+//     if (!order) return res.status(404).json({ message: 'Not found' });
+    
+//     order.status = req.body.status;
+//     await order.save();
+
+//     if (order.status === 'Delivered') {
+//       const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
+//       if (pendingTx) {
+//         pendingTx.status = 'completed'; await pendingTx.save();
+//         const referrer = await User.findById(pendingTx.userId);
+//         if (referrer) {
+//           referrer.wallet.availableBalance += pendingTx.amount; referrer.wallet.totalEarnings += pendingTx.amount; await referrer.save();
+//           await createNotification(referrer._id, "Commission Unlocked! 💰", `Order delivered! ₹${pendingTx.amount} added.`, "success", "/wallet");
+//         }
+//       }
+//     }
+
+//     let statusMsg = `Your order status has been updated to ${order.status}.`;
+//     if(order.status === 'Processing') statusMsg = "We are currently preparing your items for dispatch.";
+//     if(order.status === 'Shipped') statusMsg = "Your package is on its way!";
+//     if(order.status === 'Delivered') statusMsg = "Your package has been delivered. Enjoy your purchase!";
+//     if(order.status === 'Cancelled') statusMsg = "Your order has been cancelled.";
+
+//     await sendStatusEmailsToBoth(order, `Order Update: ${order.status}`, statusMsg);
+    
+//     if (order.user) {
+//       await createNotification(order.user._id || order.user, "Order Updated", `Order #${order._id.toString().slice(-6).toUpperCase()} is ${order.status}.`, "alert", "/orders");
+//     }
+
+//     res.status(200).json({ message: 'Updated', order });
+//   } catch (error) { res.status(500).json({ message: 'Error' }); }
+// };
+
+// exports.cancelOrder = async (req, res) => {
+//   try {
+//     const order = await Order.findById(req.params.id).populate('user', 'email');
+//     if (!order) return res.status(404).json({ message: 'Not found' });
+//     if (order.status === 'Shipped' || order.status === 'Delivered') return res.status(400).json({ message: 'Shipped orders cannot be cancelled.' });
+
+//     order.status = 'Cancelled'; await order.save();
+
+//     if (order.shippingDetails?.provider === 'Shiprocket' && order.shippingDetails?.shiprocketOrderId) {
+//       try {
+//         const authRes = await axios.post('https://apiv2.shiprocket.in/v1/external/auth/login', { email: process.env.SHIPROCKET_EMAIL, password: process.env.SHIPROCKET_PASSWORD });
+//         await axios.post('https://apiv2.shiprocket.in/v1/external/orders/cancel', { ids: [order.shippingDetails.shiprocketOrderId] }, { headers: { Authorization: `Bearer ${authRes.data.token}` } });
+//       } catch (srErr) {}
+//     }
+
+//     const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
+//     if (pendingTx) { pendingTx.status = 'cancelled'; await pendingTx.save(); }
+
+//     await sendStatusEmailsToBoth(order, "Order Cancelled", "Your order has been successfully cancelled.");
+//     res.status(200).json({ message: 'Cancelled', order });
+//   } catch (error) { res.status(500).json({ message: 'Error' }); }
+// };
+
+// exports.getUserOrders = async (req, res) => {
+//   try { const orders = await Order.find({ user: req.params.userId }).populate('orderItems.product').sort({ createdAt: -1 }); res.status(200).json(orders); } catch (error) { res.status(500).json({ message: 'Error' }); }
+// };
+
+// exports.getAllOrders = async (req, res) => {
+//   try { const orders = await Order.find({}).populate('user', 'name email').populate('orderItems.product').sort({ createdAt: -1 }); res.status(200).json(orders); } catch (error) { res.status(500).json({ message: 'Error' }); }
+// };
+
+// exports.uploadInvoice = async (req, res) => {
+//   try {
+//     const order = await Order.findById(req.params.id).populate('user', 'email');
+//     if (!order || !req.file) return res.status(400).json({ message: 'Error' });
+//     order.invoiceUrl = req.file.path.replace(/\\/g, "/"); await order.save();
+//     res.status(200).json({ message: 'Invoice uploaded', invoiceUrl: order.invoiceUrl });
+//   } catch (error) { res.status(500).json({ message: 'Error' }); }
+// };
+
+// exports.fulfillManual = async (req, res) => {
+//   try {
+//     const { carrierName, trackingId } = req.body;
+//     const order = await Order.findById(req.params.id).populate('user', 'email');
+//     order.shippingDetails = { provider: 'Manual', carrierName: carrierName || 'Courier', trackingId: trackingId };
+//     order.status = 'Shipped'; await order.save();
+
+//     await sendStatusEmailsToBoth(order, "Order Shipped!", `Your order shipped via ${carrierName}.`);
+    
+//     if (order.user) {
+//       await createNotification(order.user._id || order.user, "Order Shipped!", `Your order is on the way via ${carrierName}.`, "info", "/orders");
+//     }
+    
+//     res.status(200).json({ message: 'Fulfilled manually', order });
+//   } catch (error) { res.status(500).json({ message: 'Error', error: error.message }); }
+// };
+
+// exports.fulfillShiprocket = async (req, res) => {
+//   try {
+//     const order = await Order.findById(req.params.id).populate('user', 'email').populate('orderItems.product');
+//     const authRes = await axios.post('https://apiv2.shiprocket.in/v1/external/auth/login', { email: process.env.SHIPROCKET_EMAIL, password: process.env.SHIPROCKET_PASSWORD });
+//     const token = authRes.data.token;
+
+//     const srPayload = {
+//       order_id: order._id.toString() + "-" + Date.now().toString().slice(-4),
+//       order_date: new Date(order.createdAt).toISOString().split('T')[0],
+//       pickup_location: process.env.SHIPROCKET_PICKUP_LOCATION || "Primary",
+//       billing_customer_name: order.shippingAddress.fullName, billing_last_name: ".", billing_address: order.shippingAddress.address, billing_city: order.shippingAddress.city, billing_pincode: order.shippingAddress.pincode, billing_state: "Punjab", billing_country: "India", billing_email: order.shippingAddress.email || (order.user && order.user.email) || "guest@example.com", billing_phone: order.shippingAddress.phone, shipping_is_billing: true,
+//       order_items: order.orderItems.map(item => ({ name: item.name, sku: item.product?._id?.toString() || 'SKU-1', units: item.quantity || 1, selling_price: item.price, discount: 0, tax: 0, hsn: 441122 })),
+//       payment_method: order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD' ? 'COD' : 'Prepaid',
+//       shipping_charges: order.shippingPrice || 0, total_discount: order.discountAmount || 0, sub_total: order.totalPrice, length: 10, breadth: 10, height: 10, weight: 0.5 
+//     };
+
+//     const createOrderRes = await axios.post('https://apiv2.shiprocket.in/v1/external/orders/create/adhoc', srPayload, { headers: { Authorization: `Bearer ${token}` } });
+//     const srOrderId = createOrderRes.data.order_id; const srShipmentId = createOrderRes.data.shipment_id;
+
+//     const awbPayload = {}; if (srShipmentId) awbPayload.shipment_id = srShipmentId; if (srOrderId) awbPayload.order_id = srOrderId;
+//     const awbRes = await axios.post('https://apiv2.shiprocket.in/v1/external/courier/assign/awb', awbPayload, { headers: { Authorization: `Bearer ${token}` } });
+//     const awbData = awbRes.data.response.data;
+
+//     order.shippingDetails = { provider: 'Shiprocket', carrierName: awbData.courier_name, trackingId: awbData.awb_code, shiprocketOrderId: srOrderId, shiprocketShipmentId: srShipmentId };
+//     order.status = 'Shipped'; await order.save();
+
+//     await sendStatusEmailsToBoth(order, "Order Shipped!", `Your order shipped via <b>${awbData.courier_name}</b>.`);
+
+//     if (order.user) {
+//       await createNotification(order.user._id || order.user, "Order Shipped!", `Your order is shipped via ${awbData.courier_name}.`, "info", "/orders");
+//     }
+
+//     res.status(200).json({ message: 'Shiprocket automated successfully', order });
+//   } catch (error) { 
+//     const shiprocketErrorMsg = error.response?.data?.message || JSON.stringify(error.response?.data?.errors) || error.message;
+//     res.status(500).json({ message: 'Shiprocket Error', details: shiprocketErrorMsg }); 
+//   }
+// };
+
+// // exports.getLiveTracking = async (req, res) => {
+// //   try {
+// //     const order = await Order.findById(req.params.id);
+// //     if (!order) return res.status(404).json({ message: 'Order not found' });
+
+// //     if (order.shippingDetails?.provider === 'Shiprocket' && order.shippingDetails?.trackingId) {
+// //       const authRes = await axios.post('https://apiv2.shiprocket.in/v1/external/auth/login', { email: process.env.SHIPROCKET_EMAIL, password: process.env.SHIPROCKET_PASSWORD });
+// //       const trackRes = await axios.get(`https://apiv2.shiprocket.in/v1/external/courier/track/awb/${order.shippingDetails.trackingId}`, { headers: { Authorization: `Bearer ${authRes.data.token}` } });
+      
+// //       let invoiceUrl = null;
+// //       if(order.shippingDetails.shiprocketOrderId) {
+// //          try {
+// //            const invRes = await axios.post('https://apiv2.shiprocket.in/v1/external/orders/print/invoice', { ids: [order.shippingDetails.shiprocketOrderId] }, { headers: { Authorization: `Bearer ${authRes.data.token}` } });
+// //            invoiceUrl = invRes.data.invoice_url;
+// //          } catch(e) {}
+// //       }
+
+// //       return res.status(200).json({ isLive: true, provider: 'Shiprocket', trackingData: trackRes.data.tracking_data, shiprocketInvoiceUrl: invoiceUrl });
+// //     }
+
+// //     return res.status(200).json({ isLive: false, status: order.status, provider: order.shippingDetails?.provider || 'Pending', carrierName: order.shippingDetails?.carrierName, trackingId: order.shippingDetails?.trackingId });
+// //   } catch (error) { res.status(500).json({ message: 'Tracking Error', error: error.message }); }
+// // };
+
+
+// exports.getLiveTracking = async (req, res) => {
+//   try {
+//     const order = await Order.findById(req.params.id);
+//     if (!order) return res.status(404).json({ message: 'Order not found' });
+
+//     if (order.shippingDetails?.provider === 'Shiprocket' && order.shippingDetails?.shiprocketOrderId) {
+//       // 1. Login to Shiprocket
+//       const authRes = await axios.post('https://apiv2.shiprocket.in/v1/external/auth/login', { 
+//         email: process.env.SHIPROCKET_EMAIL, 
+//         password: process.env.SHIPROCKET_PASSWORD 
+//       });
+//       const token = authRes.data.token;
+
+//       // 2. 🚀 Ask Shiprocket for the EXACT Order Status
+//       const srOrderRes = await axios.get(
+//         `https://apiv2.shiprocket.in/v1/external/orders/show/${order.shippingDetails.shiprocketOrderId}`, 
+//         { headers: { Authorization: `Bearer ${token}` } }
+//       );
+      
+//       const srData = srOrderRes.data.data; 
+//       const srStatusCode = Number(srData.status_code);
+//       const srStatusStr = String(srData.status || '').toLowerCase(); // Catches "canceled"
+      
+//       console.log(`[SYNC] Order ${order._id} - Shiprocket Status: ${srStatusStr} (${srStatusCode})`);
+
+//       // 3. 🚀 AUTO-HEAL: Check both the number AND the word
+//       let newStatus = order.status;
+      
+//       if (srStatusCode === 7 || srStatusStr.includes('delivered')) newStatus = 'Delivered';
+      
+//       if (srStatusCode === 15 || srStatusCode === 10 || srStatusCode === 13 || srStatusStr.includes('cancel')) {
+//          newStatus = 'Cancelled';
+//       }
+      
+//       if (newStatus !== order.status) {
+//          order.status = newStatus;
+//          await order.save();
+         
+//          // Reverse affiliate commission if cancelled
+//          if (newStatus === 'Cancelled') {
+//              const WalletTransaction = require('../models/WalletTransaction');
+//              const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
+//              if (pendingTx) { 
+//                  pendingTx.status = 'cancelled'; 
+//                  await pendingTx.save(); 
+//              }
+//          }
+//       }
+
+//       // Try to get Invoice URL if it exists
+//       let invoiceUrl = null;
+//       try {
+//         const invRes = await axios.post('https://apiv2.shiprocket.in/v1/external/orders/print/invoice', { ids: [order.shippingDetails.shiprocketOrderId] }, { headers: { Authorization: `Bearer ${token}` } });
+//         invoiceUrl = invRes.data.invoice_url;
+//       } catch(e) {}
+
+//       return res.status(200).json({ 
+//         isLive: true, 
+//         provider: 'Shiprocket', 
+//         currentDbStatus: newStatus,
+//         shiprocketInvoiceUrl: invoiceUrl
+//       });
+//     }
+
+//     return res.status(200).json({ isLive: false, status: order.status });
+//   } catch (error) { 
+//     console.error("Live Tracking Sync Error:", error.response?.data || error.message);
+//     res.status(500).json({ message: 'Tracking Error', error: error.message }); 
+//   }
+// };
+
+
+// // exports.handleShiprocketWebhook = async (req, res) => {
+// //   try {
+// //     const { awb, status } = req.body;
+// //     const order = await Order.findOne({ "shippingDetails.trackingId": awb }).populate('user', 'email');
+
+// //     if (!order) return res.status(404).json({ message: "Order not found for this AWB" });
+
+// //     let newStatus = order.status;
+// //     if (status === "shipped" || status == 6) newStatus = "Shipped";
+// //     if (status === "delivered" || status == 7) newStatus = "Delivered";
+// //     if (status === "canceled" || status == 10) newStatus = "Cancelled";
+
+// //     if (order.status !== newStatus) {
+// //       order.status = newStatus;
+// //       await order.save();
+      
+// //       let statusMsg = `Your order status has been updated to ${newStatus}.`;
+// //       if(newStatus === 'Delivered') statusMsg = "Your package has been delivered. Enjoy your purchase!";
+// //       if(newStatus === 'Cancelled') statusMsg = "Your shipment was cancelled by the carrier.";
+
+// //       await sendStatusEmailsToBoth(order, `Order Update: ${newStatus}`, statusMsg);
+      
+// //       if (order.user) {
+// //         await createNotification(order.user._id || order.user, "Delivery Update", `Your order is now ${newStatus}!`, "info", "/orders");
+// //       }
+// //     }
+
+// //     res.status(200).send("Webhook Received");
+// //   } catch (error) { res.status(500).send("Webhook Error"); }
+// // };
+// exports.handleShiprocketWebhook = async (req, res) => {
+//   try {
+//     // 🚀 Shiprocket sends various fields depending on the status
+//     const { awb, current_status, current_status_id, order_id, channel_order_id } = req.body;
+    
+//     console.log("[SHIPROCKET WEBHOOK RECEIVED]:", current_status || "Unknown Status");
+
+//     // 1. Try to find the exact order in our database
+//     let order = null;
+    
+//     if (awb) {
+//       order = await Order.findOne({ "shippingDetails.trackingId": awb }).populate('user', 'email');
+//     }
+//     if (!order && order_id) {
+//       order = await Order.findOne({ "shippingDetails.shiprocketOrderId": order_id }).populate('user', 'email');
+//     }
+//     if (!order && channel_order_id) {
+//        // We sent our MongoDB ID as part of the channel_order_id during creation
+//        const dbId = channel_order_id.split('-')[0];
+//        if (dbId.length === 24) {
+//           order = await Order.findById(dbId).populate('user', 'email');
+//        }
+//     }
+
+//     if (!order) {
+//        console.log("Webhook ignored: Could not match this Shiprocket order to our database.");
+//        return res.status(200).send("Order not found, but webhook received.");
+//     }
+
+//     let newStatus = order.status;
+//     const statusStr = (current_status || "").toLowerCase();
+//     const statusId = current_status_id || req.body.status;
+
+//     // 2. Map Shiprocket Statuses to Our Statuses
+//     if (statusStr === "shipped" || statusId == 6 || statusId == 17) newStatus = "Shipped";
+//     if (statusStr === "delivered" || statusId == 7) newStatus = "Delivered";
+//     // Status 15 is Cancelled in Shiprocket
+//     if (statusStr === "canceled" || statusStr === "cancelled" || statusId == 15) newStatus = "Cancelled";
+
+//     // 3. If Shiprocket changed the status, update our database!
+//     if (order.status !== newStatus) {
+//       order.status = newStatus;
+//       await order.save();
+      
+//       let statusMsg = `Your order status has been updated to ${newStatus}.`;
+//       if(newStatus === 'Delivered') statusMsg = "Your package has been delivered. Enjoy your purchase!";
+//       if(newStatus === 'Cancelled') statusMsg = "Your order was cancelled. If you prepaid, your refund will be processed shortly.";
+
+//       // 🚀 If Shiprocket cancelled it, reverse the affiliate commission!
+//       if (newStatus === 'Cancelled') {
+//          const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
+//          if (pendingTx) { 
+//            pendingTx.status = 'cancelled'; 
+//            await pendingTx.save(); 
+//          }
+//       }
+
+//       // 4. Send Emails and In-App Notifications automatically!
+//       await sendStatusEmailsToBoth(order, `Order Update: ${newStatus}`, statusMsg);
+      
+//       if (order.user) {
+//         await createNotification(order.user._id || order.user, "Delivery Update", `Your order is now ${newStatus}!`, "info", "/orders");
+//       }
+//       console.log(`[WEBHOOK SUCCESS] Order ${order._id} updated to ${newStatus}`);
+//     }
+
+//     res.status(200).send("Webhook Processed Successfully");
+//   } catch (error) { 
+//     console.error("Webhook Processing Error:", error);
+//     res.status(500).send("Webhook Error"); 
+//   }
+// };
+
+
+
+
 // controllers/orderController.js
 const axios = require('axios');
-const Razorpay = require('razorpay'); // 🚀 ADDED RAZORPAY
-const crypto = require('crypto');     // 🚀 ADDED CRYPTO
+const Razorpay = require('razorpay'); 
+const crypto = require('crypto');     
 const Order = require('../models/Order');
 const User = require('../models/User');
 const WalletTransaction = require('../models/WalletTransaction');
@@ -2459,7 +3000,6 @@ const getBrandedEmailTemplate = (order, statusTitle, statusMessage, itemsTableHt
   `;
 };
 
-// 🚀 DUAL-EMAIL HELPER (Handles custom HTML for receipts and guest emails)
 const sendStatusEmailsToBoth = async (order, statusTitle, statusMessage, customHtml = "", explicitEmail = null) => {
   let trackingHtml = "";
   if (order.shippingDetails?.trackingId) {
@@ -2537,16 +3077,11 @@ exports.createOrder = async (req, res) => {
     const emailToSend = shippingAddress?.email || guestEmail;
     
     if (emailToSend) {
-      console.log(`[EMAIL SYSTEM] Attempting to send Order Confirmation to: ${emailToSend}`);
       try { 
         await sendStatusEmailsToBoth(createdOrder, "Order Confirmed", "Thank you for your purchase! We've received your order and are getting it ready.", itemsHtml, emailToSend); 
-        console.log(`[EMAIL SYSTEM] ✅ Successfully sent to ${emailToSend}`);
       } catch (err) {
-        // 🚀 THIS IS THE MAGIC LOG THAT WILL TELL YOU WHAT IS BROKEN!
         console.error("🚨 [EMAIL SYSTEM] FAILED TO SEND! Error Details:", err.message || err); 
       }
-    } else {
-      console.log("🚨 [EMAIL SYSTEM] No email address found to send the confirmation to.");
     }
 
     res.status(201).json({ message: 'Order created successfully', order: createdOrder });
@@ -2555,12 +3090,9 @@ exports.createOrder = async (req, res) => {
     res.status(500).json({ message: 'Error saving order to database', error: error.message }); 
   }
 };
-// ==========================================
-// 🚀 RAZORPAY CONTROLLERS ADDED HERE
-// ==========================================
+
 exports.createRazorpayOrder = async (req, res) => {
   try {
-    // 🚀 Robust key detection to handle naming mismatches
     const keyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_SECRET || process.env.RAZORPAY_KEY_SECRET;
 
@@ -2571,22 +3103,11 @@ exports.createRazorpayOrder = async (req, res) => {
       });
     }
 
-    const instance = new Razorpay({
-      key_id: keyId,
-      key_secret: keySecret,
-    });
-
-    const options = {
-      amount: Math.round(Number(req.body.amount) * 100), // convert to paise
-      currency: "INR",
-      receipt: `rcpt_${Date.now()}`,
-    };
-
+    const instance = new Razorpay({ key_id: keyId, key_secret: keySecret });
+    const options = { amount: Math.round(Number(req.body.amount) * 100), currency: "INR", receipt: `rcpt_${Date.now()}` };
     const rzpOrder = await instance.orders.create(options);
     
-    console.log("✅ Razorpay Order Created Successfully:", rzpOrder.id);
     res.status(200).json(rzpOrder);
-    
   } catch (error) {
     console.error("❌ Razorpay API Error:", error.message);
     res.status(500).json({ message: `Razorpay Error: ${error.message}` });
@@ -2605,7 +3126,6 @@ exports.verifyRazorpayPayment = async (req, res) => {
       return res.status(400).json({ message: "Invalid signature sent!" });
     }
   } catch (error) {
-    console.error("Razorpay Verify Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -2622,7 +3142,7 @@ exports.simulatePayment = async (req, res) => {
             const referrer = await User.findById(buyingUser.referredBy);
             if (referrer) {
               let totalCommissionAmount = 0;
-              order.orderItems.forEach(item => { if (item.product && item.product.affiliateCommission > 0) { totalCommissionAmount += (item.price * (item.quantity || 1)) * (item.product.affiliateCommission / 100); } });
+              order.orderItems.forEach(item => { if (item.product && item.product.affiliateCommission > 0 && !item.isCancelled) { totalCommissionAmount += (item.price * (item.quantity || 1)) * (item.product.affiliateCommission / 100); } });
               totalCommissionAmount = Math.round(totalCommissionAmount);
               if (totalCommissionAmount > 0) {
                 await WalletTransaction.create({ userId: referrer._id, amount: totalCommissionAmount, type: 'credit', source: 'referral_commission', status: 'pending', relatedOrderId: order._id });
@@ -2679,7 +3199,10 @@ exports.cancelOrder = async (req, res) => {
     if (!order) return res.status(404).json({ message: 'Not found' });
     if (order.status === 'Shipped' || order.status === 'Delivered') return res.status(400).json({ message: 'Shipped orders cannot be cancelled.' });
 
-    order.status = 'Cancelled'; await order.save();
+    order.status = 'Cancelled';
+    // Mark all items as cancelled if not already
+    order.orderItems.forEach(item => { item.isCancelled = true; item.cancelledAt = new Date(); });
+    await order.save();
 
     if (order.shippingDetails?.provider === 'Shiprocket' && order.shippingDetails?.shiprocketOrderId) {
       try {
@@ -2694,6 +3217,50 @@ exports.cancelOrder = async (req, res) => {
     await sendStatusEmailsToBoth(order, "Order Cancelled", "Your order has been successfully cancelled.");
     res.status(200).json({ message: 'Cancelled', order });
   } catch (error) { res.status(500).json({ message: 'Error' }); }
+};
+
+// 🚀 CANCEL INDIVIDUAL ITEM
+exports.cancelIndividualItem = async (req, res) => {
+  try {
+    const { id, itemId } = req.params; // Make sure to map req.params.id instead of orderId
+    const order = await Order.findById(id);
+
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    
+    if (order.shippingDetails?.trackingId) {
+       return res.status(400).json({ message: "Cannot cancel individual items after Shiprocket AWB is generated. Cancel the whole order instead." });
+    }
+    if (order.status !== 'Processing' && order.status !== 'Pending') {
+       return res.status(400).json({ message: "Cannot cancel items after the order has been shipped." });
+    }
+
+    const item = order.orderItems.id(itemId); 
+    if (!item) return res.status(404).json({ message: "Item not found" });
+    if (item.isCancelled) return res.status(400).json({ message: "Item is already cancelled" });
+
+    item.isCancelled = true;
+    item.cancelledAt = new Date();
+
+    const amountToDeduct = item.price * item.quantity;
+    order.itemsPrice = Math.max(0, order.itemsPrice - amountToDeduct);
+    order.totalPrice = Math.max(0, order.totalPrice - amountToDeduct);
+
+    const allCancelled = order.orderItems.every(i => i.isCancelled);
+    if (allCancelled) {
+      order.status = 'Cancelled';
+      const WalletTransaction = require('../models/WalletTransaction');
+      const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
+      if (pendingTx) { 
+          pendingTx.status = 'cancelled'; 
+          await pendingTx.save(); 
+      }
+    }
+
+    await order.save();
+    res.json({ success: true, order });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 exports.getUserOrders = async (req, res) => {
@@ -2736,12 +3303,15 @@ exports.fulfillShiprocket = async (req, res) => {
     const authRes = await axios.post('https://apiv2.shiprocket.in/v1/external/auth/login', { email: process.env.SHIPROCKET_EMAIL, password: process.env.SHIPROCKET_PASSWORD });
     const token = authRes.data.token;
 
+    const activeItems = order.orderItems.filter(item => !item.isCancelled);
+    if(activeItems.length === 0) return res.status(400).json({message: "All items cancelled."});
+
     const srPayload = {
       order_id: order._id.toString() + "-" + Date.now().toString().slice(-4),
       order_date: new Date(order.createdAt).toISOString().split('T')[0],
       pickup_location: process.env.SHIPROCKET_PICKUP_LOCATION || "Primary",
       billing_customer_name: order.shippingAddress.fullName, billing_last_name: ".", billing_address: order.shippingAddress.address, billing_city: order.shippingAddress.city, billing_pincode: order.shippingAddress.pincode, billing_state: "Punjab", billing_country: "India", billing_email: order.shippingAddress.email || (order.user && order.user.email) || "guest@example.com", billing_phone: order.shippingAddress.phone, shipping_is_billing: true,
-      order_items: order.orderItems.map(item => ({ name: item.name, sku: item.product?._id?.toString() || 'SKU-1', units: item.quantity || 1, selling_price: item.price, discount: 0, tax: 0, hsn: 441122 })),
+      order_items: activeItems.map(item => ({ name: item.name, sku: item.product?._id?.toString() || 'SKU-1', units: item.quantity || 1, selling_price: item.price, discount: 0, tax: 0, hsn: 441122 })),
       payment_method: order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD' ? 'COD' : 'Prepaid',
       shipping_charges: order.shippingPrice || 0, total_discount: order.discountAmount || 0, sub_total: order.totalPrice, length: 10, breadth: 10, height: 10, weight: 0.5 
     };
@@ -2769,45 +3339,18 @@ exports.fulfillShiprocket = async (req, res) => {
   }
 };
 
-// exports.getLiveTracking = async (req, res) => {
-//   try {
-//     const order = await Order.findById(req.params.id);
-//     if (!order) return res.status(404).json({ message: 'Order not found' });
-
-//     if (order.shippingDetails?.provider === 'Shiprocket' && order.shippingDetails?.trackingId) {
-//       const authRes = await axios.post('https://apiv2.shiprocket.in/v1/external/auth/login', { email: process.env.SHIPROCKET_EMAIL, password: process.env.SHIPROCKET_PASSWORD });
-//       const trackRes = await axios.get(`https://apiv2.shiprocket.in/v1/external/courier/track/awb/${order.shippingDetails.trackingId}`, { headers: { Authorization: `Bearer ${authRes.data.token}` } });
-      
-//       let invoiceUrl = null;
-//       if(order.shippingDetails.shiprocketOrderId) {
-//          try {
-//            const invRes = await axios.post('https://apiv2.shiprocket.in/v1/external/orders/print/invoice', { ids: [order.shippingDetails.shiprocketOrderId] }, { headers: { Authorization: `Bearer ${authRes.data.token}` } });
-//            invoiceUrl = invRes.data.invoice_url;
-//          } catch(e) {}
-//       }
-
-//       return res.status(200).json({ isLive: true, provider: 'Shiprocket', trackingData: trackRes.data.tracking_data, shiprocketInvoiceUrl: invoiceUrl });
-//     }
-
-//     return res.status(200).json({ isLive: false, status: order.status, provider: order.shippingDetails?.provider || 'Pending', carrierName: order.shippingDetails?.carrierName, trackingId: order.shippingDetails?.trackingId });
-//   } catch (error) { res.status(500).json({ message: 'Tracking Error', error: error.message }); }
-// };
-
-
 exports.getLiveTracking = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
     if (order.shippingDetails?.provider === 'Shiprocket' && order.shippingDetails?.shiprocketOrderId) {
-      // 1. Login to Shiprocket
       const authRes = await axios.post('https://apiv2.shiprocket.in/v1/external/auth/login', { 
         email: process.env.SHIPROCKET_EMAIL, 
         password: process.env.SHIPROCKET_PASSWORD 
       });
       const token = authRes.data.token;
 
-      // 2. 🚀 Ask Shiprocket for the EXACT Order Status
       const srOrderRes = await axios.get(
         `https://apiv2.shiprocket.in/v1/external/orders/show/${order.shippingDetails.shiprocketOrderId}`, 
         { headers: { Authorization: `Bearer ${token}` } }
@@ -2815,24 +3358,20 @@ exports.getLiveTracking = async (req, res) => {
       
       const srData = srOrderRes.data.data; 
       const srStatusCode = Number(srData.status_code);
-      const srStatusStr = String(srData.status || '').toLowerCase(); // Catches "canceled"
+      const srStatusStr = String(srData.status || '').toLowerCase(); 
       
-      console.log(`[SYNC] Order ${order._id} - Shiprocket Status: ${srStatusStr} (${srStatusCode})`);
-
-      // 3. 🚀 AUTO-HEAL: Check both the number AND the word
       let newStatus = order.status;
       
       if (srStatusCode === 7 || srStatusStr.includes('delivered')) newStatus = 'Delivered';
-      
       if (srStatusCode === 15 || srStatusCode === 10 || srStatusCode === 13 || srStatusStr.includes('cancel')) {
          newStatus = 'Cancelled';
       }
       
       if (newStatus !== order.status) {
          order.status = newStatus;
+         if(newStatus === 'Cancelled') order.orderItems.forEach(i => { i.isCancelled = true; i.cancelledAt = new Date(); });
          await order.save();
          
-         // Reverse affiliate commission if cancelled
          if (newStatus === 'Cancelled') {
              const WalletTransaction = require('../models/WalletTransaction');
              const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
@@ -2843,128 +3382,61 @@ exports.getLiveTracking = async (req, res) => {
          }
       }
 
-      // Try to get Invoice URL if it exists
       let invoiceUrl = null;
       try {
         const invRes = await axios.post('https://apiv2.shiprocket.in/v1/external/orders/print/invoice', { ids: [order.shippingDetails.shiprocketOrderId] }, { headers: { Authorization: `Bearer ${token}` } });
         invoiceUrl = invRes.data.invoice_url;
       } catch(e) {}
 
-      return res.status(200).json({ 
-        isLive: true, 
-        provider: 'Shiprocket', 
-        currentDbStatus: newStatus,
-        shiprocketInvoiceUrl: invoiceUrl
-      });
+      return res.status(200).json({ isLive: true, provider: 'Shiprocket', currentDbStatus: newStatus, shiprocketInvoiceUrl: invoiceUrl });
     }
 
     return res.status(200).json({ isLive: false, status: order.status });
   } catch (error) { 
-    console.error("Live Tracking Sync Error:", error.response?.data || error.message);
     res.status(500).json({ message: 'Tracking Error', error: error.message }); 
   }
 };
 
-
-// exports.handleShiprocketWebhook = async (req, res) => {
-//   try {
-//     const { awb, status } = req.body;
-//     const order = await Order.findOne({ "shippingDetails.trackingId": awb }).populate('user', 'email');
-
-//     if (!order) return res.status(404).json({ message: "Order not found for this AWB" });
-
-//     let newStatus = order.status;
-//     if (status === "shipped" || status == 6) newStatus = "Shipped";
-//     if (status === "delivered" || status == 7) newStatus = "Delivered";
-//     if (status === "canceled" || status == 10) newStatus = "Cancelled";
-
-//     if (order.status !== newStatus) {
-//       order.status = newStatus;
-//       await order.save();
-      
-//       let statusMsg = `Your order status has been updated to ${newStatus}.`;
-//       if(newStatus === 'Delivered') statusMsg = "Your package has been delivered. Enjoy your purchase!";
-//       if(newStatus === 'Cancelled') statusMsg = "Your shipment was cancelled by the carrier.";
-
-//       await sendStatusEmailsToBoth(order, `Order Update: ${newStatus}`, statusMsg);
-      
-//       if (order.user) {
-//         await createNotification(order.user._id || order.user, "Delivery Update", `Your order is now ${newStatus}!`, "info", "/orders");
-//       }
-//     }
-
-//     res.status(200).send("Webhook Received");
-//   } catch (error) { res.status(500).send("Webhook Error"); }
-// };
 exports.handleShiprocketWebhook = async (req, res) => {
   try {
-    // 🚀 Shiprocket sends various fields depending on the status
     const { awb, current_status, current_status_id, order_id, channel_order_id } = req.body;
-    
-    console.log("[SHIPROCKET WEBHOOK RECEIVED]:", current_status || "Unknown Status");
-
-    // 1. Try to find the exact order in our database
     let order = null;
     
-    if (awb) {
-      order = await Order.findOne({ "shippingDetails.trackingId": awb }).populate('user', 'email');
-    }
-    if (!order && order_id) {
-      order = await Order.findOne({ "shippingDetails.shiprocketOrderId": order_id }).populate('user', 'email');
-    }
+    if (awb) order = await Order.findOne({ "shippingDetails.trackingId": awb }).populate('user', 'email');
+    if (!order && order_id) order = await Order.findOne({ "shippingDetails.shiprocketOrderId": order_id }).populate('user', 'email');
     if (!order && channel_order_id) {
-       // We sent our MongoDB ID as part of the channel_order_id during creation
        const dbId = channel_order_id.split('-')[0];
-       if (dbId.length === 24) {
-          order = await Order.findById(dbId).populate('user', 'email');
-       }
+       if (dbId.length === 24) order = await Order.findById(dbId).populate('user', 'email');
     }
 
-    if (!order) {
-       console.log("Webhook ignored: Could not match this Shiprocket order to our database.");
-       return res.status(200).send("Order not found, but webhook received.");
-    }
+    if (!order) return res.status(200).send("Order not found, but webhook received.");
 
     let newStatus = order.status;
     const statusStr = (current_status || "").toLowerCase();
     const statusId = current_status_id || req.body.status;
 
-    // 2. Map Shiprocket Statuses to Our Statuses
     if (statusStr === "shipped" || statusId == 6 || statusId == 17) newStatus = "Shipped";
     if (statusStr === "delivered" || statusId == 7) newStatus = "Delivered";
-    // Status 15 is Cancelled in Shiprocket
     if (statusStr === "canceled" || statusStr === "cancelled" || statusId == 15) newStatus = "Cancelled";
 
-    // 3. If Shiprocket changed the status, update our database!
     if (order.status !== newStatus) {
       order.status = newStatus;
+      if(newStatus === 'Cancelled') order.orderItems.forEach(i => { i.isCancelled = true; i.cancelledAt = new Date(); });
       await order.save();
       
       let statusMsg = `Your order status has been updated to ${newStatus}.`;
       if(newStatus === 'Delivered') statusMsg = "Your package has been delivered. Enjoy your purchase!";
       if(newStatus === 'Cancelled') statusMsg = "Your order was cancelled. If you prepaid, your refund will be processed shortly.";
 
-      // 🚀 If Shiprocket cancelled it, reverse the affiliate commission!
       if (newStatus === 'Cancelled') {
          const pendingTx = await WalletTransaction.findOne({ relatedOrderId: order._id, status: 'pending', type: 'credit' });
-         if (pendingTx) { 
-           pendingTx.status = 'cancelled'; 
-           await pendingTx.save(); 
-         }
+         if (pendingTx) { pendingTx.status = 'cancelled'; await pendingTx.save(); }
       }
 
-      // 4. Send Emails and In-App Notifications automatically!
       await sendStatusEmailsToBoth(order, `Order Update: ${newStatus}`, statusMsg);
-      
-      if (order.user) {
-        await createNotification(order.user._id || order.user, "Delivery Update", `Your order is now ${newStatus}!`, "info", "/orders");
-      }
-      console.log(`[WEBHOOK SUCCESS] Order ${order._id} updated to ${newStatus}`);
+      if (order.user) await createNotification(order.user._id || order.user, "Delivery Update", `Your order is now ${newStatus}!`, "info", "/orders");
     }
 
     res.status(200).send("Webhook Processed Successfully");
-  } catch (error) { 
-    console.error("Webhook Processing Error:", error);
-    res.status(500).send("Webhook Error"); 
-  }
+  } catch (error) { res.status(500).send("Webhook Error"); }
 };
