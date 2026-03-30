@@ -516,27 +516,27 @@ export default function CartPage() {
           
           {/* ACTIVE CART */}
           {cart.length > 0 && (
-            <div className="bg-white p-6 border border-[#DDD] shadow-sm">
+            <div className="bg-white p-4 sm:p-6 border border-[#DDD] shadow-sm">
               <div className="flex justify-between items-end border-b border-[#DDD] pb-2 mb-4">
-                <h1 className="text-[28px] font-normal leading-none text-[#0F1111]">Shopping Cart</h1>
+                <h1 className="text-[24px] sm:text-[28px] font-normal leading-none text-[#0F1111]">Shopping Cart</h1>
                 <span className="text-[14px] text-[#565959] font-normal hidden sm:block">Price</span>
               </div>
 
               <div className="space-y-4">
                 {cart.map((item, index) => (
-                  <div key={index} className="flex gap-4 border-b border-[#EEE] pb-4 relative group">
+                  <div key={index} className="flex gap-2 sm:gap-4 border-b border-[#EEE] pb-4 relative group">
                     {/* Checkbox (Visual only for Amazon look) */}
-                    <input type="checkbox" defaultChecked className="mt-1 w-4 h-4 accent-[#007185] cursor-pointer" />
+                    <input type="checkbox" defaultChecked className="mt-1 w-4 h-4 accent-[#007185] cursor-pointer shrink-0" />
                     
-                    {/* Image */}
-                    <div className="w-[120px] shrink-0 cursor-pointer" onClick={() => router.push(`/product/${item._id}`)}>
-                      <img src={getImageUrl(item.images?.[0])} alt={item.name} className="w-full object-contain mix-blend-multiply" />
+                    {/* Image - Fixed width to prevent crushing */}
+                    <div className="w-[80px] sm:w-[120px] shrink-0 cursor-pointer" onClick={() => router.push(`/product/${item._id}`)}>
+                      <img src={getImageUrl(item.images?.[0])} alt={item.name} className="w-full h-auto object-contain mix-blend-multiply" />
                     </div>
 
-                    {/* Details */}
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <Link href={`/product/${item._id}`} className="text-[18px] leading-tight font-medium text-[#007185] hover:text-[#C45500] hover:underline line-clamp-2 pr-4">
+                    {/* Details - min-w-0 prevents flexbox blowout */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:justify-between items-start gap-1 sm:gap-4">
+                        <Link href={`/product/${item._id}`} className="text-[15px] sm:text-[18px] leading-tight font-medium text-[#007185] hover:text-[#C45500] hover:underline line-clamp-2 break-words">
                           {item.name}
                         </Link>
                         <span className="font-bold text-[18px] text-[#0F1111] shrink-0">₹{(item.discountPrice || item.price).toLocaleString('en-IN')}</span>
@@ -554,7 +554,7 @@ export default function CartPage() {
 
                       {/* Variant Options */}
                       {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
-                        <div className="text-[12px] text-[#565959] mb-3 font-bold">
+                        <div className="text-[12px] text-[#565959] mb-3 font-bold break-words">
                           {Object.entries(item.selectedOptions).map(([key, val]) => (
                             <span key={key} className="mr-3">{key}: <span className="font-normal">{val}</span></span>
                           ))}
@@ -564,7 +564,7 @@ export default function CartPage() {
                       {/* Action Bar (Qty, Delete, Save, Share) */}
                       <div className="flex items-center flex-wrap gap-2 mt-2">
                         {/* Qty Dropdown */}
-                        <div className="bg-[#F0F2F2] border border-[#D5D9D9] rounded-[7px] shadow-sm hover:bg-[#E3E6E6] flex items-center px-2 py-0.5">
+                        <div className="bg-[#F0F2F2] border border-[#D5D9D9] rounded-[7px] shadow-sm hover:bg-[#E3E6E6] flex items-center px-2 py-0.5 shrink-0">
                           <select 
                             value={item.quantity} 
                             onChange={(e) => updateQuantity(item._id, item.selectedOptions, Number(e.target.value))}
@@ -574,16 +574,16 @@ export default function CartPage() {
                           </select>
                         </div>
                         
-                        <span className="text-[#DDD] px-1">|</span>
+                        <span className="text-[#DDD] px-1 hidden sm:inline">|</span>
                         <button onClick={() => removeFromCart(item._id, item.selectedOptions)} className={amzLink}>Delete</button>
                         <span className="text-[#DDD] px-1">|</span>
                         
                         {/* 🚀 SAVE FOR LATER BUTTON */}
                         <button onClick={() => saveForLater(item)} className={amzLink}>Save for later</button>
-                        <span className="text-[#DDD] px-1">|</span>
+                        <span className="text-[#DDD] px-1 hidden sm:inline">|</span>
                         
                         {/* 🚀 SHARE BUTTON */}
-                        <button onClick={() => handleShare(item._id)} className={amzLink}>Share</button>
+                        <button onClick={() => handleShare(item._id)} className={`${amzLink} hidden sm:inline`}>Share</button>
                       </div>
                     </div>
                   </div>
@@ -599,8 +599,8 @@ export default function CartPage() {
 
           {/* 🚀 SAVED FOR LATER SECTION */}
           {savedItems.length > 0 && (
-            <div className="bg-white p-6 border border-[#DDD] shadow-sm">
-              <h2 className="text-[24px] font-bold text-[#0F1111] border-b border-[#DDD] pb-3 mb-4">
+            <div className="bg-white p-4 sm:p-6 border border-[#DDD] shadow-sm">
+              <h2 className="text-[20px] sm:text-[24px] font-bold text-[#0F1111] border-b border-[#DDD] pb-3 mb-4">
                 Saved for later ({savedItems.length} item{savedItems.length > 1 ? 's' : ''})
               </h2>
 
@@ -660,7 +660,7 @@ export default function CartPage() {
 
               <div className="text-[18px] mb-4">
                 <span className="font-normal">Subtotal ({totalItems} items): </span>
-                <span className="font-bold">₹{totalPrice.toLocaleString('en-IN')}</span>
+                <span className="text-[18px] font-bold block sm:inline">₹{totalPrice.toLocaleString('en-IN')}</span>
               </div>
 
               <div className="flex items-center gap-2 mb-4">

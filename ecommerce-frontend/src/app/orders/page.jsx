@@ -2353,6 +2353,492 @@
 
 
 
+// // src/app/orders/page.jsx
+// 'use client';
+// import { useState, useEffect, useCallback } from 'react';
+// import { useAuth } from '../../context/AuthContext';
+// import { useRouter } from 'next/navigation';
+// import axios from 'axios';
+// import Link from 'next/link';
+
+// export default function MyOrdersPage() {
+//   const { user } = useAuth();
+//   const router = useRouter();
+//   const [orders, setOrders] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [activeTab, setActiveTab] = useState('orders'); 
+  
+//   // Tracking & Modal States
+//   const [trackingOrder, setTrackingOrder] = useState(null);
+//   const [liveTrackingData, setLiveTrackingData] = useState(null);
+//   const [isTrackingLoading, setIsTrackingLoading] = useState(false);
+//   const [viewingDetails, setViewingDetails] = useState(null);
+
+//   // CANCELLATION MODAL STATES
+//   const [cancelModalData, setCancelModalData] = useState(null); 
+//   const [cancelReason, setCancelReason] = useState('Order Created by Mistake');
+//   const [isCancelling, setIsCancelling] = useState(false);
+
+//   // ROBUST IMAGE FALLBACK LOGIC
+//   const getImageUrl = (itemOrPath) => {
+//     if (!itemOrPath) return 'https://placehold.co/100x100?text=No+Image';
+//     const imagePath = typeof itemOrPath === 'string' ? itemOrPath : (itemOrPath.image || (itemOrPath.product?.images && itemOrPath.product.images[0]) || itemOrPath.product?.image);
+//     if (!imagePath) return 'https://placehold.co/100x100?text=No+Image';
+//     const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+//     return imagePath.startsWith('http') ? imagePath : `${baseUrl}/${imagePath}`;
+//   };
+
+//   const formatDateTime = (dateString) => {
+//     if (!dateString) return 'N/A';
+//     return new Date(dateString).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+//   };
+
+//   const fetchOrders = useCallback(async () => {
+//     if (!user) return;
+//     try {
+//       const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/orders/user/${user?._id || user?.user?._id}`);
+//       setOrders(data);
+//     } catch (error) { console.error("Error fetching orders:", error); } finally { setLoading(false); }
+//   }, [user]);
+
+//   useEffect(() => {
+//     if (user) { fetchOrders(); } else { const redirectTimer = setTimeout(() => { router.push('/login'); }, 2000); return () => clearTimeout(redirectTimer); }
+//   }, [user, router, fetchOrders]);
+
+//   // SUBMIT THE AMAZON STYLE CANCEL MODAL
+//   const submitCancellation = async () => {
+//     setIsCancelling(true);
+//     try {
+//       const adminId = user?.user?._id || user?._id; 
+//       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${cancelModalData.orderId}/item/${cancelModalData.item._id}/cancel?adminId=${adminId}`, {
+//         reason: cancelReason
+//       });
+      
+//       setCancelModalData(null);
+//       setLoading(true); 
+//       await fetchOrders(); 
+//     } catch (error) { 
+//       alert(error.response?.data?.message || "Cannot cancel this item."); 
+//     } finally {
+//       setIsCancelling(false);
+//     }
+//   };
+
+//   const handleTrackPackage = async (order) => {
+//     setTrackingOrder(order); setLiveTrackingData(null); setIsTrackingLoading(true);
+//     try {
+//       const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/orders/${order._id}/tracking`);
+//       setLiveTrackingData(data);
+//     } catch (error) { setLiveTrackingData({ isLive: false, status: order.status }); } finally { setIsTrackingLoading(false); }
+//   };
+
+//   const handleViewOrderDetails = async (order) => {
+//     setViewingDetails(order);
+//     if(order.shippingDetails?.provider === 'Shiprocket' && order.shippingDetails?.trackingId) {
+//         try {
+//             const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/orders/${order._id}/tracking`);
+//             setLiveTrackingData(data); 
+//         } catch(e) {}
+//     }
+//   };
+
+//   const filteredOrders = orders.filter(order => {
+//     if (activeTab === 'not_shipped') return order.status === 'Processing';
+//     if (activeTab === 'cancelled') return order.status === 'Cancelled';
+//     return true; 
+//   });
+
+//   const buyAgainItems = [];
+//   if (activeTab === 'buy_again') {
+//     orders.forEach(order => {
+//       order.orderItems.forEach(item => {
+//         const prodId = item.product?._id || item.product;
+//         if (!buyAgainItems.some(existing => (existing.product?._id || existing.product) === prodId)) { buyAgainItems.push(item); }
+//       });
+//     });
+//   }
+
+//   const amzButtonYellow = "bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-[8px] py-1.5 px-4 text-[13px] text-[#0F1111] shadow-sm transition-all cursor-pointer font-medium w-full block text-center";
+//   const amzButtonWhite = "bg-white border border-[#D5D9D9] hover:bg-[#F7FAFA] py-1.5 px-4 rounded-[8px] text-[13px] text-[#0F1111] shadow-sm transition-all cursor-pointer font-medium w-full block text-center";
+//   const amzLink = "text-[#007185] hover:text-[#C45500] hover:underline cursor-pointer transition-colors";
+
+//   if (!user || loading) return <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4"><div className="w-10 h-10 border-4 border-[#e7e7e7] border-t-[#e77600] rounded-full animate-spin"></div></div>;
+
+//   return (
+//     <div className="min-h-screen bg-white font-sans text-[#0F1111] pb-20">
+      
+//       {/* HEADER BREADCRUMBS & TABS */}
+//       <div className="max-w-[1000px] mx-auto px-4 pt-4 pb-2">
+//         <div className="text-[12px] text-[#565959] mb-4 flex items-center gap-1"><Link href="/account" className={amzLink}>Your Account</Link> <span>›</span> <span className="text-[#c45500]">Your Orders</span></div>
+//         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline mb-4 gap-4">
+//           <h1 className="text-[28px] font-normal leading-tight">Your Orders</h1>
+//           <div className="flex flex-wrap gap-6 text-[14px] border-b sm:border-none border-[#ddd] pb-2 sm:pb-0 w-full sm:w-auto">
+//             {['orders', 'buy_again', 'not_shipped', 'cancelled'].map((tab) => (
+//               <span key={tab} onClick={() => setActiveTab(tab)} className={`pb-1 capitalize transition-all cursor-pointer ${activeTab === tab ? 'font-bold border-b-2 border-[#e77600] text-[#0F1111]' : 'text-[#007185] hover:text-[#C45500] hover:underline'}`}>
+//                 {tab.replace('_', ' ')}
+//               </span>
+//             ))}
+//           </div>
+//         </div>
+//       </div>
+
+//       <div className="max-w-[1000px] mx-auto px-4 mt-2">
+//         {/* BUY AGAIN TAB VIEW */}
+//         {activeTab === 'buy_again' ? (
+//            buyAgainItems.length === 0 ? (
+//             <div className="border border-[#ddd] rounded-lg p-10 text-center bg-[#f7fafa]"><p className="text-[15px] text-[#0F1111] font-bold">No past purchases found.</p></div>
+//           ) : (
+//             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+//               {buyAgainItems.map((item, idx) => {
+//                 const prodId = item.product?._id || item.product;
+//                 return (
+//                   <div key={idx} className="border border-[#ddd] rounded-lg p-4 flex flex-col items-center text-center shadow-sm">
+//                     <div className="w-32 h-32 mb-4"><img src={getImageUrl(item)} alt={item.name} className="w-full h-full object-contain mix-blend-multiply" /></div>
+//                     <Link href={`/product/${prodId}`} className={`${amzLink} text-[13px] font-medium line-clamp-2 mb-2 h-10`}>{item.name}</Link>
+//                     <Link href={`/product/${prodId}`} className="w-full mt-auto"><button className={amzButtonYellow}>Buy it again</button></Link>
+//                   </div>
+//                 );
+//               })}
+//             </div>
+//           )
+//         ) : filteredOrders.length === 0 ? (
+//           // EMPTY STATE FOR ORDERS/NOT SHIPPED/CANCELLED
+//           <div className="border border-[#ddd] rounded-lg p-10 text-center flex flex-col items-center bg-[#f7fafa]">
+//             <p className="text-[15px] text-[#0F1111] font-bold mb-4">{activeTab === 'not_shipped' ? "You don't have any pending shipments." : activeTab === 'cancelled' ? "You don't have any cancelled orders." : "Looks like you haven't placed any orders yet."}</p>
+//             <Link href="/"><button className={amzButtonYellow + " w-auto px-8"}>Start Shopping</button></Link>
+//           </div>
+//         ) : (
+//           // ORDER CARDS
+//           <div className="space-y-6">
+//             <p className="text-[14px] font-bold mb-4">{filteredOrders.length} orders placed</p>
+//             {filteredOrders.map((order) => (
+//               <div key={order._id} className="border border-[#d5d9d9] rounded-lg overflow-hidden mb-4 shadow-sm">
+                
+//                 {/* CARD HEADER */}
+//                 <div className="bg-[#f0f2f2] p-4 border-b border-[#d5d9d9] grid grid-cols-1 md:grid-cols-4 gap-4 text-[12px] text-[#565959]">
+//                   <div><p className="uppercase font-bold text-[10px]">Order placed</p><p className="text-[#0F1111]">{formatDateTime(order.createdAt)}</p></div>
+//                   <div><p className="uppercase font-bold text-[10px]">Total</p><p className="text-[#0F1111]">₹{order.totalPrice.toLocaleString('en-IN')}</p></div>
+//                   <div><p className="uppercase font-bold text-[10px]">Ship to</p><span className={`${amzLink} font-bold`}>{order.shippingAddress?.fullName || user?.name?.split(' ')[0] || 'Customer'}</span></div>
+//                   <div className="md:text-right">
+//                     <p className="uppercase font-bold text-[10px]">Order # {order._id.slice(-12).toUpperCase()}</p>
+//                     <div className="flex justify-start md:justify-end gap-2 mt-1">
+//                       <span onClick={() => handleViewOrderDetails(order)} className={amzLink + " font-bold"}>View details</span><span className="text-[#ddd]">|</span>
+//                       {order.invoiceUrl ? <a href={getImageUrl(order.invoiceUrl)} target="_blank" rel="noopener noreferrer" className={amzLink}>Invoice</a> : <span className="text-gray-400 cursor-default" title="Invoice processing...">Invoice</span>}
+//                     </div>
+//                   </div>
+//                 </div>
+
+//                 {/* CARD BODY */}
+//                 <div className="p-5 bg-white">
+//                   <div className="mb-4 flex flex-wrap gap-2 items-center">
+//                     <h3 className={`font-bold text-[18px] ${order.status === 'Cancelled' ? 'text-[#c40000]' : 'text-[#0F1111]'}`}>{order.status}</h3>
+                    
+//                     {order.shippingDetails?.trackingId && (
+//                         <div className="flex items-center gap-1 bg-[#f0f7ff] border border-[#007185] px-2 py-0.5 rounded text-[10px]">
+//                             <span className="font-bold text-[#007185] uppercase">📦 {order.shippingDetails.carrierName}:</span>
+//                             <span className="font-mono font-bold text-[#111]">{order.shippingDetails.trackingId}</span>
+//                         </div>
+//                     )}
+//                     <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${order.paymentMethod === 'COD' || order.paymentMethod === 'Cash on Delivery' ? 'bg-[#FFF3E0] text-[#C45500] border-[#FBD8B4]' : 'bg-[#E7F4E4] text-[#007600] border-[#A5DCA0]'}`}>
+//                       {order.paymentMethod === 'COD' || order.paymentMethod === 'Cash on Delivery' ? 'COD' : 'PREPAID'}
+//                     </span>
+//                   </div>
+                  
+//                   <div className="space-y-6">
+//                     {order.orderItems.map((item, index) => {
+//                       const productId = item.product?._id || item.product;
+//                       const isItemCancellable = item.product?.isCancellable !== false; 
+//                       const isOrderActive = !['Shipped', 'Delivered', 'Cancelled'].includes(order.status);
+//                       const showCancelBtn = isOrderActive && isItemCancellable && !item.isCancelled;
+
+//                       return (
+//                         <div key={item._id || index} className={`flex flex-col md:flex-row gap-6 items-start p-2 rounded ${item.isCancelled ? 'bg-gray-50 opacity-70' : ''}`}>
+//                           <div className="w-[90px] h-[90px] shrink-0 border border-gray-100 rounded p-1 relative">
+//                             <Link href={`/product/${productId}`}>
+//                                 <img src={getImageUrl(item)} alt={item.name} className={`w-full h-full object-contain mix-blend-multiply ${order.status === 'Cancelled' || item.isCancelled ? 'opacity-50 grayscale' : ''}`} />
+//                             </Link>
+//                             {/* Visual Cancel Cross over image */}
+//                             {item.isCancelled && <div className="absolute inset-0 flex items-center justify-center"><span className="text-red-600 text-4xl font-bold drop-shadow-md">✕</span></div>}
+//                           </div>
+                          
+//                           <div className="flex-1">
+//                             <div className="flex items-center gap-2 mb-1">
+//                                 <Link href={`/product/${productId}`}><h4 className={`${amzLink} text-[15px] font-bold leading-tight line-clamp-2 ${order.status === 'Cancelled' || item.isCancelled ? 'text-[#565959] line-through font-normal' : ''}`}>{item.name}</h4></Link>
+//                                 {item.isCancelled && <span className="bg-red-100 text-red-700 border border-red-200 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider whitespace-nowrap">Cancelled</span>}
+//                             </div>
+
+//                             {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+//                               <div className="text-[12px] text-[#565959] mb-1 italic">{Object.entries(item.selectedOptions).map(([key, val]) => `${key}: ${val}`).join(' | ')}</div>
+//                             )}
+//                             <div className="text-[12px] text-[#0F1111] mt-2">{order.status === 'Cancelled' || item.isCancelled ? <span className="text-[#c40000] font-bold">Item Cancelled: {item.cancellationReason || 'No reason'}</span> : <span className="text-[#565959]">Return window valid for 7 days after delivery</span>}</div>
+                            
+//                             {/* MOBILE BUTTONS */}
+//                             <div className="mt-4 flex flex-wrap gap-2 md:hidden">
+//                               <Link href={`/product/${productId}`} className="flex-1"><button className={amzButtonYellow}>Buy it again</button></Link>
+//                               {showCancelBtn ? <button onClick={() => setCancelModalData({ orderId: order._id, item })} className={amzButtonWhite + " flex-1"}>Cancel item</button> : isOrderActive && !item.isCancelled ? <span className="text-[#B12704] text-[11px] font-bold py-1 w-full flex-1 mt-1 text-center">Non-cancellable item</span> : null}
+//                             </div>
+//                           </div>
+
+//                           {/* DESKTOP BUTTONS */}
+//                           <div className="hidden md:flex w-52 flex-col gap-2 shrink-0 border-l border-[#eee] pl-4">
+//                             <Link href={`/product/${productId}`}><button className={amzButtonYellow + " flex items-center justify-center gap-2"}><span className="text-lg leading-none">↻</span> Buy it again</button></Link>
+                            
+//                             {/* OPENS CANCEL MODAL */}
+//                             {showCancelBtn && <button onClick={() => setCancelModalData({ orderId: order._id, item })} className={amzButtonWhite}>Cancel item</button>}
+                            
+//                             {!isItemCancellable && isOrderActive && !item.isCancelled && (<span className="text-[#B12704] text-[10px] text-center font-bold px-2">Non-cancellable item</span>)}
+//                             {order.status === 'Delivered' && !item.isCancelled && <Link href={`/product/${productId}`}><button className={amzButtonWhite}>Write a product review</button></Link>}
+//                             {order.status !== 'Cancelled' && order.shippingDetails?.trackingId && !item.isCancelled && <button onClick={() => handleTrackPackage(order)} className={amzButtonWhite}>Track package</button>}
+//                           </div>
+//                         </div>
+//                       )
+//                     })}
+//                   </div>
+//                 </div>
+//               </div>
+//             ))}
+//           </div>
+//         )}
+//       </div>
+
+//       {/* 🚀 AMAZON STYLE CANCELLATION MODAL */}
+//       {cancelModalData && (
+//         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[700] backdrop-blur-sm">
+//           <div className="bg-white rounded-[8px] w-full max-w-[500px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+//             <div className="bg-[#f0f2f2] border-b border-[#ddd] p-4 flex justify-between items-center">
+//               <h2 className="text-[18px] font-bold text-[#111]">Cancel Item</h2>
+//               <button onClick={() => setCancelModalData(null)} className="text-2xl leading-none text-[#565959] hover:text-[#111] transition-colors">✕</button>
+//             </div>
+            
+//             <div className="p-6">
+//               <div className="flex gap-4 mb-6 pb-6 border-b border-[#eee]">
+//                 <img src={getImageUrl(cancelModalData.item)} alt="Product" className="w-16 h-16 object-contain mix-blend-multiply border border-[#eee] rounded p-1" />
+//                 <div>
+//                   <h4 className="text-[14px] font-bold text-[#111] leading-snug line-clamp-2">{cancelModalData.item.name}</h4>
+//                   <p className="text-[13px] text-[#565959] mt-1">Qty: {cancelModalData.item.quantity || cancelModalData.item.qty}</p>
+//                 </div>
+//               </div>
+
+//               <div className="space-y-3">
+//                 <label className="block text-[14px] font-bold text-[#111]">Cancellation Reason:</label>
+//                 <select 
+//                   value={cancelReason} 
+//                   onChange={(e) => setCancelReason(e.target.value)}
+//                   className="w-full bg-white border border-[#D5D9D9] py-2 px-3 rounded-[8px] shadow-sm text-[14px] text-[#0F1111] outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600]"
+//                 >
+//                   <option value="Order Created by Mistake">Order Created by Mistake</option>
+//                   <option value="Item(s) would not arrive on time">Item(s) would not arrive on time</option>
+//                   <option value="Shipping cost too high">Shipping cost too high</option>
+//                   <option value="Item price too high">Item price too high</option>
+//                   <option value="Found cheaper somewhere else">Found cheaper somewhere else</option>
+//                   <option value="Need to change shipping address">Need to change shipping address</option>
+//                   <option value="Need to change payment method">Need to change payment method</option>
+//                   <option value="Other">Other</option>
+//                 </select>
+//                 <p className="text-[11px] text-[#565959] mt-2">Any prepaid amount for this item will be automatically refunded to your original payment method within 3-5 business days.</p>
+//               </div>
+//             </div>
+
+//             <div className="bg-[#f3f3f3] p-4 border-t flex justify-end gap-3">
+//               <button onClick={() => setCancelModalData(null)} className="px-4 py-1.5 text-[13px] font-bold text-[#007185] hover:underline">Keep item</button>
+//               <button onClick={submitCancellation} disabled={isCancelling} className={amzButtonYellow + " max-w-[200px]"}>
+//                 {isCancelling ? 'Cancelling...' : 'Cancel checked items'}
+//               </button>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       {/* 🚀 ORDER DETAILS MODAL (Now includes full item list + cancellation status) */}
+//       {viewingDetails && (
+//         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[600] overflow-y-auto backdrop-blur-sm">
+//           <div className="bg-white rounded-lg w-full max-w-[750px] shadow-2xl flex flex-col my-8">
+//             <div className="bg-[#f0f2f2] border-b border-[#ddd] p-4 flex justify-between items-center shrink-0">
+//               <h2 className="text-[18px] font-bold text-[#111]">Order Details</h2>
+//               <button onClick={() => setViewingDetails(null)} className="text-2xl leading-none hover:text-red-600 transition-colors">✕</button>
+//             </div>
+//             <div className="p-6 overflow-y-auto custom-scrollbar">
+//               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-6 gap-4">
+//                 <div>
+//                     <p className="text-[14px] text-[#565959]">Ordered on {formatDateTime(viewingDetails.createdAt)}</p>
+//                     <p className="text-[14px] text-[#565959]">Order# <span className="text-[#111] font-mono">{viewingDetails._id.toUpperCase()}</span></p>
+//                 </div>
+//                 {(viewingDetails.invoiceUrl || liveTrackingData?.shiprocketInvoiceUrl) && (
+//                   <a href={viewingDetails.invoiceUrl ? getImageUrl(viewingDetails.invoiceUrl) : liveTrackingData.shiprocketInvoiceUrl} target="_blank" rel="noopener noreferrer" className={amzButtonWhite + " w-auto text-[12px] shadow-sm"}>
+//                     Download Invoice
+//                   </a>
+//                 )}
+//               </div>
+
+//               {/* Shipping and Payment Info */}
+//               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+//                 <div className="border border-[#ddd] rounded-lg p-5 shadow-sm">
+//                   <h3 className="font-bold text-[12px] text-gray-500 uppercase mb-3 tracking-wider">Shipping Address</h3>
+//                   <p className="text-[14px] font-bold text-[#111]">{viewingDetails.shippingAddress?.fullName}</p>
+//                   <p className="text-[13px] text-[#111] mt-1">{viewingDetails.shippingAddress?.address}</p>
+//                   <p className="text-[13px] text-[#111]">{viewingDetails.shippingAddress?.city}, {viewingDetails.shippingAddress?.pincode}</p>
+//                   <p className="text-[13px] text-[#111] mt-2 font-bold">Phone: {viewingDetails.shippingAddress?.phone}</p>
+//                 </div>
+//                 <div className="border border-[#ddd] rounded-lg p-5 shadow-sm">
+//                   <h3 className="font-bold text-[12px] text-gray-500 uppercase mb-3 tracking-wider">Payment Method</h3>
+//                   <p className="text-[14px] text-[#111] font-medium">
+//                     {viewingDetails.isPaid === false || viewingDetails.paymentMethod?.toUpperCase().includes('COD') ? 'Pay on Delivery (Cash/UPI)' : 'Online Payment (Razorpay)'}
+//                   </p>
+//                 </div>
+//               </div>
+
+//               {/* 🚀 FULL ITEM LIST DISPLAY INSIDE MODAL */}
+//               <div className="border border-[#ddd] rounded-lg overflow-hidden shadow-sm mb-6">
+//                 <div className="bg-[#f0f2f2] p-3 border-b border-[#ddd]"><h3 className="font-bold text-[14px]">Items in Order</h3></div>
+//                 <div className="p-5 bg-white space-y-4">
+//                   {viewingDetails.orderItems.map((item, idx) => {
+//                     const prodId = item.product?._id || item.product;
+//                     return (
+//                       <div key={idx} className={`flex gap-4 items-start ${item.isCancelled ? 'opacity-60 grayscale' : ''}`}>
+//                         <div className="w-16 h-16 shrink-0 border border-[#eee] rounded p-1">
+//                            <img src={getImageUrl(item)} alt={item.name} className="w-full h-full object-contain mix-blend-multiply" />
+//                         </div>
+//                         <div className="flex-1">
+//                           <Link href={`/product/${prodId}`} className={`${amzLink} text-[13px] font-bold leading-tight line-clamp-2 ${item.isCancelled ? 'line-through' : ''}`}>{item.name}</Link>
+//                           <div className="text-[12px] text-[#565959] mt-1">Qty: {item.quantity || item.qty} | Price: ₹{(item.price || 0).toLocaleString()}</div>
+//                           {item.isCancelled && (
+//                             <div className="mt-1 text-[11px]">
+//                               <span className="text-red-600 font-bold bg-red-100 px-1 rounded mr-1">Cancelled</span>
+//                               <span className="text-gray-500">({item.cancellationReason || 'No reason provided'})</span>
+//                             </div>
+//                           )}
+//                         </div>
+//                       </div>
+//                     )
+//                   })}
+//                 </div>
+//               </div>
+
+//               {/* Live Tracking Link */}
+//               {viewingDetails.shippingDetails?.trackingId && (
+//                 <div className="border border-[#007185] bg-[#f0f7ff] rounded-lg p-5 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+//                   <div>
+//                     <h3 className="font-bold text-[14px] text-[#007185] mb-1">Shipping Status</h3>
+//                     <p className="text-[13px] text-[#111]">Shipped via <span className="font-bold">{viewingDetails.shippingDetails.carrierName}</span></p>
+//                     <p className="text-[13px] text-[#111]">Tracking ID: <span className="font-mono font-bold bg-white px-1 border rounded">{viewingDetails.shippingDetails.trackingId}</span></p>
+//                   </div>
+//                   <button onClick={() => handleTrackPackage(viewingDetails)} className={amzButtonYellow + " w-full sm:w-auto px-6 shadow-sm"}>Track Live Package</button>
+//                 </div>
+//               )}
+
+//               {/* Order Summary Totals */}
+//               <div className="border border-[#ddd] rounded-lg overflow-hidden shadow-sm">
+//                 <div className="bg-[#f0f2f2] p-3 border-b border-[#ddd]"><h3 className="font-bold text-[14px]">Order Summary</h3></div>
+//                 <div className="p-5 bg-white space-y-2 text-[14px] text-[#111]">
+//                   <div className="flex justify-between"><span>Item(s) Subtotal:</span><span>₹{viewingDetails.itemsPrice?.toLocaleString('en-IN')}</span></div>
+//                   <div className="flex justify-between"><span>Shipping & Handling:</span><span>{viewingDetails.shippingPrice === 0 ? 'Free' : `₹${viewingDetails.shippingPrice?.toLocaleString('en-IN')}`}</span></div>
+//                   {viewingDetails.discountAmount > 0 && <div className="flex justify-between text-[#007600] font-medium"><span>Promotion Applied:</span><span>-₹{viewingDetails.discountAmount?.toLocaleString('en-IN')}</span></div>}
+//                   <div className="flex justify-between font-bold text-[18px] text-[#B12704] border-t border-[#eee] pt-4 mt-4"><span>Grand Total:</span><span>₹{viewingDetails.totalPrice?.toLocaleString('en-IN')}</span></div>
+//                 </div>
+//               </div>
+//             </div>
+            
+//             <div className="bg-[#f3f3f3] p-4 border-t text-center">
+//                 <button onClick={() => setViewingDetails(null)} className={amzButtonWhite + " max-w-[150px] mx-auto"}>Close Window</button>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       {/* 🚀 NESTED AMAZON-STYLE LIVE TRACKING MODAL (z-index 800 to sit above details) */}
+//       {trackingOrder && (
+//         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-[800] backdrop-blur-sm">
+//           <div className="bg-white rounded-lg w-full max-w-[500px] max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+//             <div className="bg-[#f3f3f3] border-b border-[#ddd] p-4 flex justify-between items-center shrink-0">
+//               <h2 className="text-[16px] font-bold text-[#0F1111]">Track Package</h2>
+//               <button onClick={() => setTrackingOrder(null)} className="text-2xl leading-none hover:text-red-600 transition-colors">✕</button>
+//             </div>
+            
+//             <div className="p-6 overflow-y-auto custom-scrollbar">
+//               {isTrackingLoading ? (
+//                 <div className="py-12 text-center flex flex-col items-center">
+//                   <div className="w-10 h-10 border-4 border-t-[#007185] border-gray-100 rounded-full animate-spin mb-4"></div>
+//                   <p className="text-[13px] font-bold text-gray-600">Connecting to carrier...</p>
+//                 </div>
+//               ) : (
+//                 <div className="relative">
+//                   <div className="mb-6 pb-4 border-b border-gray-100">
+//                     <p className="font-bold text-[22px] text-[#007600] mb-1">
+//                       {liveTrackingData?.trackingData?.track_status === 7 ? 'Delivered' : 
+//                        liveTrackingData?.trackingData?.track_status === 6 ? 'On the way' : trackingOrder.status}
+//                     </p>
+//                     <p className="text-[13px] text-[#565959]">Tracking ID: <span className="font-mono font-bold text-black">{trackingOrder.shippingDetails?.trackingId}</span></p>
+//                   </div>
+
+//                   {/* 🚀 VERTICAL TIMELINE */}
+//                   <div className="ml-4 border-l-2 border-gray-200 pl-8 space-y-10 relative">
+                    
+//                     {/* Delivered Step */}
+//                     <div className="relative">
+//                       <div className={`absolute -left-[41px] top-0 w-6 h-6 rounded-full border-4 border-white z-10 shadow-sm ${trackingOrder.status === 'Delivered' ? 'bg-[#007600] ring-2 ring-green-100' : 'bg-gray-300'}`}></div>
+//                       <div>
+//                         <p className={`font-bold text-[15px] ${trackingOrder.status === 'Delivered' ? 'text-[#007600]' : 'text-gray-400'}`}>Delivered</p>
+//                         {trackingOrder.status === 'Delivered' && <p className="text-[12px] text-gray-500 mt-1">Your package was handed over.</p>}
+//                       </div>
+//                     </div>
+
+//                     {/* Shipped & NESTED TRANSIT INFO */}
+//                     <div className="relative">
+//                       <div className={`absolute -left-[41px] top-0 w-6 h-6 rounded-full border-4 border-white z-10 shadow-sm ${['Shipped', 'Delivered'].includes(trackingOrder.status) ? 'bg-[#007600]' : 'bg-gray-300'}`}></div>
+//                       <div className="w-full">
+//                         <p className={`font-bold text-[15px] ${trackingOrder.status !== 'Processing' ? 'text-black' : 'text-gray-400'}`}>Shipped</p>
+                        
+//                         {['Shipped', 'Delivered'].includes(trackingOrder.status) && (
+//                           <div className="mt-5 space-y-6">
+//                             {liveTrackingData?.isLive && liveTrackingData?.trackingData?.shipment_track_activities?.length > 0 ? (
+//                               liveTrackingData.trackingData.shipment_track_activities.map((activity, idx) => (
+//                                 <div key={idx} className="flex gap-4 items-start relative group">
+//                                   <div className="absolute w-2.5 h-2.5 bg-gray-400 rounded-full -left-[36px] top-1.5 ring-4 ring-white"></div>
+//                                   <div className="text-[13px] leading-snug">
+//                                     <p className="font-bold text-gray-800 uppercase">{activity.location || 'In Transit'}</p>
+//                                     <p className="text-gray-700 mt-0.5">{activity.activity}</p>
+//                                     <p className="text-[11px] text-gray-500 font-medium mt-1">
+//                                       {new Date(activity.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}, {new Date(activity.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+//                                     </p>
+//                                   </div>
+//                                 </div>
+//                               ))
+//                             ) : (
+//                               <div className="bg-blue-50 p-3 rounded border border-blue-100 text-[12px] text-blue-700 flex gap-2 items-start">
+//                                 <span className="font-bold text-lg leading-none">ℹ</span>
+//                                 <p>Carrier has picked up the package and is processing it for transit.</p>
+//                               </div>
+//                             )}
+//                           </div>
+//                         )}
+//                       </div>
+//                     </div>
+
+//                     {/* Ordered Step */}
+//                     <div className="relative">
+//                       <div className="absolute -left-[41px] top-0 w-6 h-6 rounded-full border-4 border-white z-10 bg-[#007600] shadow-sm"></div>
+//                       <div>
+//                         <p className="font-bold text-[15px] text-black">Ordered</p>
+//                         <p className="text-[12px] text-gray-500 mt-1">{formatDateTime(trackingOrder.createdAt)}</p>
+//                       </div>
+//                     </div>
+//                   </div>
+//                 </div>
+//               )}
+//             </div>
+            
+//             <div className="bg-[#f3f3f3] p-4 border-t flex justify-center">
+//                 <button onClick={() => setTrackingOrder(null)} className={amzButtonYellow + " max-w-[150px]"}>Close</button>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+
+
 // src/app/orders/page.jsx
 'use client';
 import { useState, useEffect, useCallback } from 'react';
@@ -2374,12 +2860,12 @@ export default function MyOrdersPage() {
   const [isTrackingLoading, setIsTrackingLoading] = useState(false);
   const [viewingDetails, setViewingDetails] = useState(null);
 
-  // 🚀 NEW: CANCELLATION MODAL STATES
-  const [cancelModalData, setCancelModalData] = useState(null); // Holds { orderId, item }
+  // CANCELLATION MODAL STATES
+  const [cancelModalData, setCancelModalData] = useState(null); 
   const [cancelReason, setCancelReason] = useState('Order Created by Mistake');
   const [isCancelling, setIsCancelling] = useState(false);
 
-  // 🚀 ROBUST IMAGE FALLBACK LOGIC
+  // ROBUST IMAGE FALLBACK LOGIC
   const getImageUrl = (itemOrPath) => {
     if (!itemOrPath) return 'https://placehold.co/100x100?text=No+Image';
     const imagePath = typeof itemOrPath === 'string' ? itemOrPath : (itemOrPath.image || (itemOrPath.product?.images && itemOrPath.product.images[0]) || itemOrPath.product?.image);
@@ -2405,13 +2891,13 @@ export default function MyOrdersPage() {
     if (user) { fetchOrders(); } else { const redirectTimer = setTimeout(() => { router.push('/login'); }, 2000); return () => clearTimeout(redirectTimer); }
   }, [user, router, fetchOrders]);
 
-  // 🚀 SUBMIT THE AMAZON STYLE CANCEL MODAL
+  // SUBMIT THE AMAZON STYLE CANCEL MODAL
   const submitCancellation = async () => {
     setIsCancelling(true);
     try {
       const adminId = user?.user?._id || user?._id; 
       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${cancelModalData.orderId}/item/${cancelModalData.item._id}/cancel?adminId=${adminId}`, {
-        reason: cancelReason // Pass the reason to the backend
+        reason: cancelReason
       });
       
       setCancelModalData(null);
@@ -2511,97 +2997,118 @@ export default function MyOrdersPage() {
           // ORDER CARDS
           <div className="space-y-6">
             <p className="text-[14px] font-bold mb-4">{filteredOrders.length} orders placed</p>
-            {filteredOrders.map((order) => (
-              <div key={order._id} className="border border-[#d5d9d9] rounded-lg overflow-hidden mb-4 shadow-sm">
-                
-                {/* CARD HEADER */}
-                <div className="bg-[#f0f2f2] p-4 border-b border-[#d5d9d9] grid grid-cols-1 md:grid-cols-4 gap-4 text-[12px] text-[#565959]">
-                  <div><p className="uppercase font-bold text-[10px]">Order placed</p><p className="text-[#0F1111]">{formatDateTime(order.createdAt)}</p></div>
-                  <div><p className="uppercase font-bold text-[10px]">Total</p><p className="text-[#0F1111]">₹{order.totalPrice.toLocaleString('en-IN')}</p></div>
-                  <div><p className="uppercase font-bold text-[10px]">Ship to</p><span className={`${amzLink} font-bold`}>{order.shippingAddress?.fullName || user?.name?.split(' ')[0] || 'Customer'}</span></div>
-                  <div className="md:text-right">
-                    <p className="uppercase font-bold text-[10px]">Order # {order._id.slice(-12).toUpperCase()}</p>
-                    <div className="flex justify-start md:justify-end gap-2 mt-1">
-                      <span onClick={() => handleViewOrderDetails(order)} className={amzLink + " font-bold"}>View details</span><span className="text-[#ddd]">|</span>
-                      {order.invoiceUrl ? <a href={getImageUrl(order.invoiceUrl)} target="_blank" rel="noopener noreferrer" className={amzLink}>Invoice</a> : <span className="text-gray-400 cursor-default" title="Invoice processing...">Invoice</span>}
+            {filteredOrders.map((order) => {
+              // Check if order is fully cancelled
+              const isOrderFullyCancelled = order.status === 'Cancelled' || order.orderItems.every(i => i.isCancelled);
+
+              return (
+                <div key={order._id} className="border border-[#d5d9d9] rounded-lg overflow-hidden mb-4 shadow-sm">
+                  
+                  {/* CARD HEADER */}
+                  <div className="bg-[#f0f2f2] p-4 border-b border-[#d5d9d9] grid grid-cols-1 md:grid-cols-4 gap-4 text-[12px] text-[#565959]">
+                    <div><p className="uppercase font-bold text-[10px]">Order placed</p><p className="text-[#0F1111]">{formatDateTime(order.createdAt)}</p></div>
+                    <div><p className="uppercase font-bold text-[10px]">Total</p><p className="text-[#0F1111]">₹{order.totalPrice.toLocaleString('en-IN')}</p></div>
+                    <div><p className="uppercase font-bold text-[10px]">Ship to</p><span className={`${amzLink} font-bold`}>{order.shippingAddress?.fullName || user?.name?.split(' ')[0] || 'Customer'}</span></div>
+                    <div className="md:text-right">
+                      <p className="uppercase font-bold text-[10px]">Order # {order._id.slice(-12).toUpperCase()}</p>
+                      <div className="flex justify-start md:justify-end gap-2 mt-1">
+                        <span onClick={() => handleViewOrderDetails(order)} className={amzLink + " font-bold"}>View details</span>
+                        
+                        {/* 🚀 HIDE INVOICE IF CANCELLED */}
+                        {!isOrderFullyCancelled && (
+                          <>
+                            <span className="text-[#ddd]">|</span>
+                            {order.invoiceUrl ? <a href={getImageUrl(order.invoiceUrl)} target="_blank" rel="noopener noreferrer" className={amzLink}>Invoice</a> : <span className="text-gray-400 cursor-default" title="Invoice processing...">Invoice</span>}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CARD BODY */}
+                  <div className="p-5 bg-white">
+                    <div className="mb-4 flex flex-wrap gap-2 items-center">
+                      <h3 className={`font-bold text-[18px] ${isOrderFullyCancelled ? 'text-[#c40000]' : 'text-[#0F1111]'}`}>
+                        {isOrderFullyCancelled ? 'Cancelled' : order.status}
+                      </h3>
+                      
+                      {/* Hide Tracking Badge if Cancelled */}
+                      {order.shippingDetails?.trackingId && !isOrderFullyCancelled && (
+                          <div className="flex items-center gap-1 bg-[#f0f7ff] border border-[#007185] px-2 py-0.5 rounded text-[10px]">
+                              <span className="font-bold text-[#007185] uppercase">📦 {order.shippingDetails.carrierName}:</span>
+                              <span className="font-mono font-bold text-[#111]">{order.shippingDetails.trackingId}</span>
+                          </div>
+                      )}
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${order.paymentMethod === 'COD' || order.paymentMethod === 'Cash on Delivery' ? 'bg-[#FFF3E0] text-[#C45500] border-[#FBD8B4]' : 'bg-[#E7F4E4] text-[#007600] border-[#A5DCA0]'}`}>
+                        {order.paymentMethod === 'COD' || order.paymentMethod === 'Cash on Delivery' ? 'COD' : 'PREPAID'}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-6">
+                      {order.orderItems.map((item, index) => {
+                        const productId = item.product?._id || item.product;
+                        const isItemCancellable = item.product?.isCancellable !== false; 
+                        const isOrderActive = !['Shipped', 'Delivered', 'Cancelled'].includes(order.status);
+                        const showCancelBtn = isOrderActive && isItemCancellable && !item.isCancelled && !isOrderFullyCancelled;
+
+                        return (
+                          <div key={item._id || index} className={`flex flex-col md:flex-row gap-6 items-start p-2 rounded ${item.isCancelled ? 'bg-gray-50 opacity-70' : ''}`}>
+                            <div className="w-[90px] h-[90px] shrink-0 border border-gray-100 rounded p-1 relative">
+                              <Link href={`/product/${productId}`}>
+                                  <img src={getImageUrl(item)} alt={item.name} className={`w-full h-full object-contain mix-blend-multiply ${isOrderFullyCancelled || item.isCancelled ? 'opacity-50 grayscale' : ''}`} />
+                              </Link>
+                              {item.isCancelled && <div className="absolute inset-0 flex items-center justify-center"><span className="text-red-600 text-4xl font-bold drop-shadow-md">✕</span></div>}
+                            </div>
+                            
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                  <Link href={`/product/${productId}`}><h4 className={`${amzLink} text-[15px] font-bold leading-tight line-clamp-2 ${isOrderFullyCancelled || item.isCancelled ? 'text-[#565959] line-through font-normal' : ''}`}>{item.name}</h4></Link>
+                                  {item.isCancelled && <span className="bg-red-100 text-red-700 border border-red-200 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider whitespace-nowrap">Cancelled</span>}
+                              </div>
+
+                              {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                                <div className="text-[12px] text-[#565959] mb-1 italic">{Object.entries(item.selectedOptions).map(([key, val]) => `${key}: ${val}`).join(' | ')}</div>
+                              )}
+                              
+                              <div className="text-[12px] text-[#0F1111] mt-2">
+                                {isOrderFullyCancelled || item.isCancelled ? 
+                                  <span className="text-[#c40000] font-bold">Item Cancelled: {item.cancellationReason || 'No reason'}</span> 
+                                  : <span className="text-[#565959]">Return window valid for 7 days after delivery</span>
+                                }
+                              </div>
+                              
+                              {/* MOBILE BUTTONS */}
+                              <div className="mt-4 flex flex-wrap gap-2 md:hidden">
+                                <Link href={`/product/${productId}`} className="flex-1"><button className={amzButtonYellow}>Buy it again</button></Link>
+                                {showCancelBtn ? <button onClick={() => setCancelModalData({ orderId: order._id, item })} className={amzButtonWhite + " flex-1"}>Cancel item</button> : isOrderActive && !item.isCancelled ? <span className="text-[#B12704] text-[11px] font-bold py-1 w-full flex-1 mt-1 text-center">Non-cancellable item</span> : null}
+                              </div>
+                            </div>
+
+                            {/* DESKTOP BUTTONS */}
+                            <div className="hidden md:flex w-52 flex-col gap-2 shrink-0 border-l border-[#eee] pl-4">
+                              <Link href={`/product/${productId}`}><button className={amzButtonYellow + " flex items-center justify-center gap-2"}><span className="text-lg leading-none">↻</span> Buy it again</button></Link>
+                              
+                              {showCancelBtn && <button onClick={() => setCancelModalData({ orderId: order._id, item })} className={amzButtonWhite}>Cancel item</button>}
+                              
+                              {!isItemCancellable && isOrderActive && !item.isCancelled && !isOrderFullyCancelled && (<span className="text-[#B12704] text-[10px] text-center font-bold px-2">Non-cancellable item</span>)}
+                              {order.status === 'Delivered' && !item.isCancelled && <Link href={`/product/${productId}`}><button className={amzButtonWhite}>Write a product review</button></Link>}
+                              
+                              {/* 🚀 HIDE TRACKING IF CANCELLED */}
+                              {!isOrderFullyCancelled && order.shippingDetails?.trackingId && !item.isCancelled && <button onClick={() => handleTrackPackage(order)} className={amzButtonWhite}>Track package</button>}
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 </div>
-
-                {/* CARD BODY */}
-                <div className="p-5 bg-white">
-                  <div className="mb-4 flex flex-wrap gap-2 items-center">
-                    <h3 className={`font-bold text-[18px] ${order.status === 'Cancelled' ? 'text-[#c40000]' : 'text-[#0F1111]'}`}>{order.status}</h3>
-                    
-                    {order.shippingDetails?.trackingId && (
-                        <div className="flex items-center gap-1 bg-[#f0f7ff] border border-[#007185] px-2 py-0.5 rounded text-[10px]">
-                            <span className="font-bold text-[#007185] uppercase">📦 {order.shippingDetails.carrierName}:</span>
-                            <span className="font-mono font-bold text-[#111]">{order.shippingDetails.trackingId}</span>
-                        </div>
-                    )}
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${order.paymentMethod === 'COD' || order.paymentMethod === 'Cash on Delivery' ? 'bg-[#FFF3E0] text-[#C45500] border-[#FBD8B4]' : 'bg-[#E7F4E4] text-[#007600] border-[#A5DCA0]'}`}>
-                      {order.paymentMethod === 'COD' || order.paymentMethod === 'Cash on Delivery' ? 'COD' : 'PREPAID'}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-6">
-                    {order.orderItems.map((item, index) => {
-                      const productId = item.product?._id || item.product;
-                      const isItemCancellable = item.product?.isCancellable !== false; 
-                      const isOrderActive = !['Shipped', 'Delivered', 'Cancelled'].includes(order.status);
-                      const showCancelBtn = isOrderActive && isItemCancellable && !item.isCancelled;
-
-                      return (
-                        <div key={item._id || index} className={`flex flex-col md:flex-row gap-6 items-start p-2 rounded ${item.isCancelled ? 'bg-gray-50 opacity-70' : ''}`}>
-                          <div className="w-[90px] h-[90px] shrink-0 border border-gray-100 rounded p-1 relative">
-                            <Link href={`/product/${productId}`}>
-                                <img src={getImageUrl(item)} alt={item.name} className={`w-full h-full object-contain mix-blend-multiply ${order.status === 'Cancelled' || item.isCancelled ? 'opacity-50 grayscale' : ''}`} />
-                            </Link>
-                            {/* Visual Cancel Cross over image */}
-                            {item.isCancelled && <div className="absolute inset-0 flex items-center justify-center"><span className="text-red-600 text-4xl font-bold drop-shadow-md">✕</span></div>}
-                          </div>
-                          
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                                <Link href={`/product/${productId}`}><h4 className={`${amzLink} text-[15px] font-bold leading-tight line-clamp-2 ${order.status === 'Cancelled' || item.isCancelled ? 'text-[#565959] line-through font-normal' : ''}`}>{item.name}</h4></Link>
-                                {item.isCancelled && <span className="bg-red-100 text-red-700 border border-red-200 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider whitespace-nowrap">Cancelled</span>}
-                            </div>
-
-                            {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
-                              <div className="text-[12px] text-[#565959] mb-1 italic">{Object.entries(item.selectedOptions).map(([key, val]) => `${key}: ${val}`).join(' | ')}</div>
-                            )}
-                            <div className="text-[12px] text-[#0F1111] mt-2">{order.status === 'Cancelled' || item.isCancelled ? <span className="text-[#c40000] font-bold">Item Cancelled: {item.cancellationReason || 'No reason'}</span> : <span className="text-[#565959]">Return window valid for 7 days after delivery</span>}</div>
-                            
-                            {/* MOBILE BUTTONS */}
-                            <div className="mt-4 flex flex-wrap gap-2 md:hidden">
-                              <Link href={`/product/${productId}`} className="flex-1"><button className={amzButtonYellow}>Buy it again</button></Link>
-                              {showCancelBtn ? <button onClick={() => setCancelModalData({ orderId: order._id, item })} className={amzButtonWhite + " flex-1"}>Cancel item</button> : isOrderActive && !item.isCancelled ? <span className="text-[#B12704] text-[11px] font-bold py-1 w-full flex-1 mt-1 text-center">Non-cancellable item</span> : null}
-                            </div>
-                          </div>
-
-                          {/* DESKTOP BUTTONS */}
-                          <div className="hidden md:flex w-52 flex-col gap-2 shrink-0 border-l border-[#eee] pl-4">
-                            <Link href={`/product/${productId}`}><button className={amzButtonYellow + " flex items-center justify-center gap-2"}><span className="text-lg leading-none">↻</span> Buy it again</button></Link>
-                            
-                            {/* 🚀 OPENS CANCEL MODAL */}
-                            {showCancelBtn && <button onClick={() => setCancelModalData({ orderId: order._id, item })} className={amzButtonWhite}>Cancel item</button>}
-                            
-                            {!isItemCancellable && isOrderActive && !item.isCancelled && (<span className="text-[#B12704] text-[10px] text-center font-bold px-2">Non-cancellable item</span>)}
-                            {order.status === 'Delivered' && !item.isCancelled && <Link href={`/product/${productId}`}><button className={amzButtonWhite}>Write a product review</button></Link>}
-                            {order.status !== 'Cancelled' && order.shippingDetails?.trackingId && !item.isCancelled && <button onClick={() => handleTrackPackage(order)} className={amzButtonWhite}>Track package</button>}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* 🚀 NEW: AMAZON STYLE CANCELLATION MODAL */}
+      {/* 🚀 AMAZON STYLE CANCELLATION MODAL */}
       {cancelModalData && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[700] backdrop-blur-sm">
           <div className="bg-white rounded-[8px] w-full max-w-[500px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
@@ -2649,10 +3156,107 @@ export default function MyOrdersPage() {
         </div>
       )}
 
-      {/* ... (Keep your Tracking and Order Details Modals exactly the same as before here) ... */}
+      {/* 🚀 ORDER DETAILS MODAL */}
+      {viewingDetails && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[600] overflow-y-auto backdrop-blur-sm">
+          <div className="bg-white rounded-lg w-full max-w-[750px] shadow-2xl flex flex-col my-8">
+            <div className="bg-[#f0f2f2] border-b border-[#ddd] p-4 flex justify-between items-center shrink-0">
+              <h2 className="text-[18px] font-bold text-[#111]">Order Details</h2>
+              <button onClick={() => setViewingDetails(null)} className="text-2xl leading-none hover:text-red-600 transition-colors">✕</button>
+            </div>
+            <div className="p-6 overflow-y-auto custom-scrollbar">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-6 gap-4">
+                <div>
+                    <p className="text-[14px] text-[#565959]">Ordered on {formatDateTime(viewingDetails.createdAt)}</p>
+                    <p className="text-[14px] text-[#565959]">Order# <span className="text-[#111] font-mono">{viewingDetails._id.toUpperCase()}</span></p>
+                </div>
+                
+                {/* 🚀 HIDE INVOICE BUTTON IF FULLY CANCELLED */}
+                {(viewingDetails.status !== 'Cancelled') && (viewingDetails.invoiceUrl || liveTrackingData?.shiprocketInvoiceUrl) && (
+                  <a href={viewingDetails.invoiceUrl ? getImageUrl(viewingDetails.invoiceUrl) : liveTrackingData.shiprocketInvoiceUrl} target="_blank" rel="noopener noreferrer" className={amzButtonWhite + " w-auto text-[12px] shadow-sm"}>
+                    Download Invoice
+                  </a>
+                )}
+              </div>
+
+              {/* Shipping and Payment Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="border border-[#ddd] rounded-lg p-5 shadow-sm">
+                  <h3 className="font-bold text-[12px] text-gray-500 uppercase mb-3 tracking-wider">Shipping Address</h3>
+                  <p className="text-[14px] font-bold text-[#111]">{viewingDetails.shippingAddress?.fullName}</p>
+                  <p className="text-[13px] text-[#111] mt-1">{viewingDetails.shippingAddress?.address}</p>
+                  <p className="text-[13px] text-[#111]">{viewingDetails.shippingAddress?.city}, {viewingDetails.shippingAddress?.pincode}</p>
+                  <p className="text-[13px] text-[#111] mt-2 font-bold">Phone: {viewingDetails.shippingAddress?.phone}</p>
+                </div>
+                <div className="border border-[#ddd] rounded-lg p-5 shadow-sm">
+                  <h3 className="font-bold text-[12px] text-gray-500 uppercase mb-3 tracking-wider">Payment Method</h3>
+                  <p className="text-[14px] text-[#111] font-medium">
+                    {viewingDetails.isPaid === false || viewingDetails.paymentMethod?.toUpperCase().includes('COD') ? 'Pay on Delivery (Cash/UPI)' : 'Online Payment (Razorpay)'}
+                  </p>
+                </div>
+              </div>
+
+              {/* FULL ITEM LIST DISPLAY INSIDE MODAL */}
+              <div className="border border-[#ddd] rounded-lg overflow-hidden shadow-sm mb-6">
+                <div className="bg-[#f0f2f2] p-3 border-b border-[#ddd]"><h3 className="font-bold text-[14px]">Items in Order</h3></div>
+                <div className="p-5 bg-white space-y-4">
+                  {viewingDetails.orderItems.map((item, idx) => {
+                    const prodId = item.product?._id || item.product;
+                    return (
+                      <div key={idx} className={`flex gap-4 items-start ${item.isCancelled ? 'opacity-60 grayscale' : ''}`}>
+                        <div className="w-16 h-16 shrink-0 border border-[#eee] rounded p-1">
+                           <img src={getImageUrl(item)} alt={item.name} className="w-full h-full object-contain mix-blend-multiply" />
+                        </div>
+                        <div className="flex-1">
+                          <Link href={`/product/${prodId}`} className={`${amzLink} text-[13px] font-bold leading-tight line-clamp-2 ${item.isCancelled ? 'line-through' : ''}`}>{item.name}</Link>
+                          <div className="text-[12px] text-[#565959] mt-1">Qty: {item.quantity || item.qty} | Price: ₹{(item.price || 0).toLocaleString()}</div>
+                          {item.isCancelled && (
+                            <div className="mt-1 text-[11px]">
+                              <span className="text-red-600 font-bold bg-red-100 px-1 rounded mr-1">Cancelled</span>
+                              <span className="text-gray-500">({item.cancellationReason || 'No reason provided'})</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* 🚀 HIDE TRACKING LINK IF CANCELLED */}
+              {viewingDetails.status !== 'Cancelled' && viewingDetails.shippingDetails?.trackingId && (
+                <div className="border border-[#007185] bg-[#f0f7ff] rounded-lg p-5 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="font-bold text-[14px] text-[#007185] mb-1">Shipping Status</h3>
+                    <p className="text-[13px] text-[#111]">Shipped via <span className="font-bold">{viewingDetails.shippingDetails.carrierName}</span></p>
+                    <p className="text-[13px] text-[#111]">Tracking ID: <span className="font-mono font-bold bg-white px-1 border rounded">{viewingDetails.shippingDetails.trackingId}</span></p>
+                  </div>
+                  <button onClick={() => handleTrackPackage(viewingDetails)} className={amzButtonYellow + " w-full sm:w-auto px-6 shadow-sm"}>Track Live Package</button>
+                </div>
+              )}
+
+              {/* Order Summary Totals */}
+              <div className="border border-[#ddd] rounded-lg overflow-hidden shadow-sm">
+                <div className="bg-[#f0f2f2] p-3 border-b border-[#ddd]"><h3 className="font-bold text-[14px]">Order Summary</h3></div>
+                <div className="p-5 bg-white space-y-2 text-[14px] text-[#111]">
+                  <div className="flex justify-between"><span>Item(s) Subtotal:</span><span>₹{viewingDetails.itemsPrice?.toLocaleString('en-IN')}</span></div>
+                  <div className="flex justify-between"><span>Shipping & Handling:</span><span>{viewingDetails.shippingPrice === 0 ? 'Free' : `₹${viewingDetails.shippingPrice?.toLocaleString('en-IN')}`}</span></div>
+                  {viewingDetails.discountAmount > 0 && <div className="flex justify-between text-[#007600] font-medium"><span>Promotion Applied:</span><span>-₹{viewingDetails.discountAmount?.toLocaleString('en-IN')}</span></div>}
+                  <div className="flex justify-between font-bold text-[18px] text-[#B12704] border-t border-[#eee] pt-4 mt-4"><span>Grand Total:</span><span>₹{viewingDetails.totalPrice?.toLocaleString('en-IN')}</span></div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-[#f3f3f3] p-4 border-t text-center">
+                <button onClick={() => setViewingDetails(null)} className={amzButtonWhite + " max-w-[150px] mx-auto"}>Close Window</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 🚀 NESTED AMAZON-STYLE LIVE TRACKING MODAL */}
       {trackingOrder && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-[500] backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-[800] backdrop-blur-sm">
           <div className="bg-white rounded-lg w-full max-w-[500px] max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             <div className="bg-[#f3f3f3] border-b border-[#ddd] p-4 flex justify-between items-center shrink-0">
               <h2 className="text-[16px] font-bold text-[#0F1111]">Track Package</h2>
@@ -2675,7 +3279,6 @@ export default function MyOrdersPage() {
                     <p className="text-[13px] text-[#565959]">Tracking ID: <span className="font-mono font-bold text-black">{trackingOrder.shippingDetails?.trackingId}</span></p>
                   </div>
 
-                  {/* 🚀 VERTICAL TIMELINE */}
                   <div className="ml-4 border-l-2 border-gray-200 pl-8 space-y-10 relative">
                     
                     {/* Delivered Step */}
@@ -2738,76 +3341,9 @@ export default function MyOrdersPage() {
           </div>
         </div>
       )}
-
-      {/* 🚀 ORDER DETAILS MODAL */}
-      {viewingDetails && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[600] overflow-y-auto backdrop-blur-sm">
-          <div className="bg-white rounded-lg w-full max-w-[750px] shadow-2xl flex flex-col my-8">
-            <div className="bg-[#f0f2f2] border-b border-[#ddd] p-4 flex justify-between items-center shrink-0">
-              <h2 className="text-[18px] font-bold text-[#111]">Order Details</h2>
-              <button onClick={() => setViewingDetails(null)} className="text-2xl leading-none hover:text-red-600 transition-colors">✕</button>
-            </div>
-            <div className="p-6 overflow-y-auto custom-scrollbar">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-6 gap-4">
-                <div>
-                    <p className="text-[14px] text-[#565959]">Ordered on {formatDateTime(viewingDetails.createdAt)}</p>
-                    <p className="text-[14px] text-[#565959]">Order# <span className="text-[#111] font-mono">{viewingDetails._id.toUpperCase()}</span></p>
-                </div>
-                {(viewingDetails.invoiceUrl || liveTrackingData?.shiprocketInvoiceUrl) && (
-                  <a href={viewingDetails.invoiceUrl ? getImageUrl(viewingDetails.invoiceUrl) : liveTrackingData.shiprocketInvoiceUrl} target="_blank" rel="noopener noreferrer" className={amzButtonWhite + " w-auto text-[12px] shadow-sm"}>
-                    Download Invoice
-                  </a>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div className="border border-[#ddd] rounded-lg p-5 shadow-sm">
-                  <h3 className="font-bold text-[12px] text-gray-500 uppercase mb-3 tracking-wider">Shipping Address</h3>
-                  <p className="text-[14px] font-bold text-[#111]">{viewingDetails.shippingAddress?.fullName}</p>
-                  <p className="text-[13px] text-[#111] mt-1">{viewingDetails.shippingAddress?.address}</p>
-                  <p className="text-[13px] text-[#111]">{viewingDetails.shippingAddress?.city}, {viewingDetails.shippingAddress?.pincode}</p>
-                  <p className="text-[13px] text-[#111] mt-2 font-bold">Phone: {viewingDetails.shippingAddress?.phone}</p>
-                </div>
-                <div className="border border-[#ddd] rounded-lg p-5 shadow-sm">
-                  <h3 className="font-bold text-[12px] text-gray-500 uppercase mb-3 tracking-wider">Payment Method</h3>
-                  <p className="text-[14px] text-[#111] font-medium">
-                    {viewingDetails.isPaid === false || viewingDetails.paymentMethod?.toUpperCase().includes('COD') ? 'Pay on Delivery (Cash/UPI)' : 'Online Payment (Razorpay)'}
-                  </p>
-                </div>
-              </div>
-
-              {viewingDetails.shippingDetails?.trackingId && (
-                <div className="border border-[#007185] bg-[#f0f7ff] rounded-lg p-5 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div>
-                    <h3 className="font-bold text-[14px] text-[#007185] mb-1">Shipping Status</h3>
-                    <p className="text-[13px] text-[#111]">Shipped via <span className="font-bold">{viewingDetails.shippingDetails.carrierName}</span></p>
-                    <p className="text-[13px] text-[#111]">Tracking ID: <span className="font-mono font-bold bg-white px-1 border rounded">{viewingDetails.shippingDetails.trackingId}</span></p>
-                  </div>
-                  <button onClick={() => handleTrackPackage(viewingDetails)} className={amzButtonYellow + " w-full sm:w-auto px-6 shadow-sm"}>Track Live Package</button>
-                </div>
-              )}
-
-              <div className="border border-[#ddd] rounded-lg overflow-hidden shadow-sm">
-                <div className="bg-[#f0f2f2] p-3 border-b border-[#ddd]"><h3 className="font-bold text-[14px]">Order Summary</h3></div>
-                <div className="p-5 bg-white space-y-2 text-[14px] text-[#111]">
-                  <div className="flex justify-between"><span>Item(s) Subtotal:</span><span>₹{viewingDetails.itemsPrice?.toLocaleString('en-IN')}</span></div>
-                  <div className="flex justify-between"><span>Shipping & Handling:</span><span>{viewingDetails.shippingPrice === 0 ? 'Free' : `₹${viewingDetails.shippingPrice?.toLocaleString('en-IN')}`}</span></div>
-                  {viewingDetails.discountAmount > 0 && <div className="flex justify-between text-[#007600] font-medium"><span>Promotion Applied:</span><span>-₹{viewingDetails.discountAmount?.toLocaleString('en-IN')}</span></div>}
-                  <div className="flex justify-between font-bold text-[18px] text-[#B12704] border-t border-[#eee] pt-4 mt-4"><span>Grand Total:</span><span>₹{viewingDetails.totalPrice?.toLocaleString('en-IN')}</span></div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-[#f3f3f3] p-4 border-t text-center">
-                <button onClick={() => setViewingDetails(null)} className={amzButtonWhite + " max-w-[150px] mx-auto"}>Close Window</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
-
 
 // // src/app/orders/page.jsx
 // 'use client';
