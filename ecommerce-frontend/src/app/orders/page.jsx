@@ -2374,6 +2374,11 @@ export default function MyOrdersPage() {
   const [isTrackingLoading, setIsTrackingLoading] = useState(false);
   const [viewingDetails, setViewingDetails] = useState(null);
 
+  // 🚀 NEW: CANCELLATION MODAL STATES
+  const [cancelModalData, setCancelModalData] = useState(null); // Holds { orderId, item }
+  const [cancelReason, setCancelReason] = useState('Order Created by Mistake');
+  const [isCancelling, setIsCancelling] = useState(false);
+
   // 🚀 ROBUST IMAGE FALLBACK LOGIC
   const getImageUrl = (itemOrPath) => {
     if (!itemOrPath) return 'https://placehold.co/100x100?text=No+Image';
@@ -2400,19 +2405,22 @@ export default function MyOrdersPage() {
     if (user) { fetchOrders(); } else { const redirectTimer = setTimeout(() => { router.push('/login'); }, 2000); return () => clearTimeout(redirectTimer); }
   }, [user, router, fetchOrders]);
 
-  // 🚀 FIXED: PROPER INDIVIDUAL ITEM CANCELLATION
-  const handleCancelItem = async (orderId, itemId) => {
-    if (!window.confirm("Are you sure you want to cancel this specific item? The total price will be adjusted.")) return;
+  // 🚀 SUBMIT THE AMAZON STYLE CANCEL MODAL
+  const submitCancellation = async () => {
+    setIsCancelling(true);
     try {
-      // Calls the new specific item endpoint using the adminId (which bypasses any strict single-item user limitations if set up that way)
       const adminId = user?.user?._id || user?._id; 
-      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${orderId}/item/${itemId}/cancel?adminId=${adminId}`);
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${cancelModalData.orderId}/item/${cancelModalData.item._id}/cancel?adminId=${adminId}`, {
+        reason: cancelReason // Pass the reason to the backend
+      });
       
-      alert("Item successfully cancelled."); 
+      setCancelModalData(null);
       setLoading(true); 
       await fetchOrders(); 
     } catch (error) { 
       alert(error.response?.data?.message || "Cannot cancel this item."); 
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -2440,7 +2448,6 @@ export default function MyOrdersPage() {
     return true; 
   });
 
-  // 🚀 BUY AGAIN LOGIC
   const buyAgainItems = [];
   if (activeTab === 'buy_again') {
     orders.forEach(order => {
@@ -2563,21 +2570,21 @@ export default function MyOrdersPage() {
                             {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
                               <div className="text-[12px] text-[#565959] mb-1 italic">{Object.entries(item.selectedOptions).map(([key, val]) => `${key}: ${val}`).join(' | ')}</div>
                             )}
-                            <div className="text-[12px] text-[#0F1111] mt-2">{order.status === 'Cancelled' || item.isCancelled ? <span className="text-[#c40000] font-bold">Item Cancelled</span> : <span className="text-[#565959]">Return window valid for 7 days after delivery</span>}</div>
+                            <div className="text-[12px] text-[#0F1111] mt-2">{order.status === 'Cancelled' || item.isCancelled ? <span className="text-[#c40000] font-bold">Item Cancelled: {item.cancellationReason || 'No reason'}</span> : <span className="text-[#565959]">Return window valid for 7 days after delivery</span>}</div>
                             
                             {/* MOBILE BUTTONS */}
                             <div className="mt-4 flex flex-wrap gap-2 md:hidden">
                               <Link href={`/product/${productId}`} className="flex-1"><button className={amzButtonYellow}>Buy it again</button></Link>
-                              {showCancelBtn ? <button onClick={() => handleCancelItem(order._id, item._id)} className={amzButtonWhite + " flex-1"}>Cancel item</button> : isOrderActive && !item.isCancelled ? <span className="text-[#B12704] text-[11px] font-bold py-1 w-full flex-1 mt-1 text-center">Non-cancellable item</span> : null}
+                              {showCancelBtn ? <button onClick={() => setCancelModalData({ orderId: order._id, item })} className={amzButtonWhite + " flex-1"}>Cancel item</button> : isOrderActive && !item.isCancelled ? <span className="text-[#B12704] text-[11px] font-bold py-1 w-full flex-1 mt-1 text-center">Non-cancellable item</span> : null}
                             </div>
                           </div>
 
                           {/* DESKTOP BUTTONS */}
                           <div className="hidden md:flex w-52 flex-col gap-2 shrink-0 border-l border-[#eee] pl-4">
-                            {/* REPLACED "View Item" with prominent "Buy it again" */}
                             <Link href={`/product/${productId}`}><button className={amzButtonYellow + " flex items-center justify-center gap-2"}><span className="text-lg leading-none">↻</span> Buy it again</button></Link>
                             
-                            {showCancelBtn && <button onClick={() => handleCancelItem(order._id, item._id)} className={amzButtonWhite}>Cancel item</button>}
+                            {/* 🚀 OPENS CANCEL MODAL */}
+                            {showCancelBtn && <button onClick={() => setCancelModalData({ orderId: order._id, item })} className={amzButtonWhite}>Cancel item</button>}
                             
                             {!isItemCancellable && isOrderActive && !item.isCancelled && (<span className="text-[#B12704] text-[10px] text-center font-bold px-2">Non-cancellable item</span>)}
                             {order.status === 'Delivered' && !item.isCancelled && <Link href={`/product/${productId}`}><button className={amzButtonWhite}>Write a product review</button></Link>}
@@ -2594,6 +2601,55 @@ export default function MyOrdersPage() {
         )}
       </div>
 
+      {/* 🚀 NEW: AMAZON STYLE CANCELLATION MODAL */}
+      {cancelModalData && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[700] backdrop-blur-sm">
+          <div className="bg-white rounded-[8px] w-full max-w-[500px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-[#f0f2f2] border-b border-[#ddd] p-4 flex justify-between items-center">
+              <h2 className="text-[18px] font-bold text-[#111]">Cancel Item</h2>
+              <button onClick={() => setCancelModalData(null)} className="text-2xl leading-none text-[#565959] hover:text-[#111] transition-colors">✕</button>
+            </div>
+            
+            <div className="p-6">
+              <div className="flex gap-4 mb-6 pb-6 border-b border-[#eee]">
+                <img src={getImageUrl(cancelModalData.item)} alt="Product" className="w-16 h-16 object-contain mix-blend-multiply border border-[#eee] rounded p-1" />
+                <div>
+                  <h4 className="text-[14px] font-bold text-[#111] leading-snug line-clamp-2">{cancelModalData.item.name}</h4>
+                  <p className="text-[13px] text-[#565959] mt-1">Qty: {cancelModalData.item.quantity || cancelModalData.item.qty}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-[14px] font-bold text-[#111]">Cancellation Reason:</label>
+                <select 
+                  value={cancelReason} 
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  className="w-full bg-white border border-[#D5D9D9] py-2 px-3 rounded-[8px] shadow-sm text-[14px] text-[#0F1111] outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_#e77600]"
+                >
+                  <option value="Order Created by Mistake">Order Created by Mistake</option>
+                  <option value="Item(s) would not arrive on time">Item(s) would not arrive on time</option>
+                  <option value="Shipping cost too high">Shipping cost too high</option>
+                  <option value="Item price too high">Item price too high</option>
+                  <option value="Found cheaper somewhere else">Found cheaper somewhere else</option>
+                  <option value="Need to change shipping address">Need to change shipping address</option>
+                  <option value="Need to change payment method">Need to change payment method</option>
+                  <option value="Other">Other</option>
+                </select>
+                <p className="text-[11px] text-[#565959] mt-2">Any prepaid amount for this item will be automatically refunded to your original payment method within 3-5 business days.</p>
+              </div>
+            </div>
+
+            <div className="bg-[#f3f3f3] p-4 border-t flex justify-end gap-3">
+              <button onClick={() => setCancelModalData(null)} className="px-4 py-1.5 text-[13px] font-bold text-[#007185] hover:underline">Keep item</button>
+              <button onClick={submitCancellation} disabled={isCancelling} className={amzButtonYellow + " max-w-[200px]"}>
+                {isCancelling ? 'Cancelling...' : 'Cancel checked items'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ... (Keep your Tracking and Order Details Modals exactly the same as before here) ... */}
       {/* 🚀 NESTED AMAZON-STYLE LIVE TRACKING MODAL */}
       {trackingOrder && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-[500] backdrop-blur-sm">
@@ -2751,7 +2807,6 @@ export default function MyOrdersPage() {
     </div>
   );
 }
-
 
 
 // // src/app/orders/page.jsx

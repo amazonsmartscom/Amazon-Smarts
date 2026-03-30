@@ -11867,10 +11867,13 @@ export default function AdminDashboard() {
     alert(`Order Updated to ${status}`); fetchDashboardData();
   };
 
+  // 🚀 PER-ITEM CANCEL HANDLER
   const handleCancelSingleItem = async (orderId, itemId) => {
     if(!window.confirm("Cancel this specific item? The order total will be recalculated.")) return;
     try {
-      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${orderId}/item/${itemId}/cancel?adminId=${adminId}`);
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${orderId}/item/${itemId}/cancel?adminId=${adminId}`, {
+        reason: "Cancelled by Admin" // Records that the admin did it
+      });
       fetchDashboardData();
     } catch(err) {
       alert(err.response?.data?.message || "Error cancelling item");
@@ -12260,7 +12263,6 @@ export default function AdminDashboard() {
                 </div>
                 
                 <div className="hidden lg:flex gap-2 text-[13px]">
-                   {/* 🚀 NEW: MANUAL BACKGROUND SYNC BUTTON */}
                    <button 
                      onClick={() => triggerBulkSync(true)} 
                      disabled={isSyncingAll}
@@ -12315,7 +12317,7 @@ export default function AdminDashboard() {
                           <p className="text-[11px] text-[#565959] mt-1 mb-1">{formatDateTime(o.createdAt)}</p>
                         </td>
 
-                        {/* 🚀 ITEMS COLUMN WITH PER-ITEM CANCELLATION */}
+                        {/* 🚀 ITEMS COLUMN WITH ADMIN CANCEL REASON */}
                         <td className="p-4 border-r border-[#DDD]">
                           <div className="space-y-3">
                             {o.orderItems?.map((i, idx) => (
@@ -12328,9 +12330,14 @@ export default function AdminDashboard() {
                                   <div className="flex justify-between items-start">
                                     <span className={`font-bold leading-snug ${i.isCancelled ? 'text-gray-500 line-through' : 'text-[#007185]'}`}>{i.name}</span>
                                     
-                                    {/* 🚀 PER-ITEM CANCEL BUTTON */}
+                                    {/* 🚀 ADMIN VIEW OF CANCEL REASON */}
                                     {i.isCancelled ? (
-                                      <span className="text-red-600 font-bold text-[9px] uppercase ml-2 bg-red-100 px-1 rounded border border-red-200">Cancelled</span>
+                                      <div className="ml-2 flex flex-col items-end shrink-0">
+                                        <span className="text-red-600 font-bold text-[9px] uppercase bg-red-100 px-1 rounded border border-red-200">Cancelled</span>
+                                        <span className="text-[9px] text-gray-500 mt-0.5 text-right w-[100px] leading-tight" title="Reason for cancellation">
+                                          {i.cancellationReason || 'No reason provided'}
+                                        </span>
+                                      </div>
                                     ) : (
                                       o.status === 'Processing' && !o.shippingDetails?.trackingId && (
                                         <button 
@@ -12772,7 +12779,7 @@ export default function AdminDashboard() {
 
               </form>
             </div>
-            <div className="bg-white border-t border-[#DDD] p-4 flex justify-end gap-3 rounded-b-[4px]"><button type="button" onClick={() => setEditingProduct(null)} className={amzWhiteBtn}>Cancel Edit</button><button type="submit" form="editForm" className={amzYellowBtn + " px-10"}>Save Changes </button></div>
+            <div className="bg-white border-t border-[#DDD] p-4 flex justify-end gap-3 rounded-b-[4px]"><button type="button" onClick={() => setEditingProduct(null)} className={amzWhiteBtn}>Cancel Edit</button><button type="submit" form="editForm" className={amzYellowBtn + " px-10"}>Save Changes</button></div>
           </div>
         </div>
       )}
