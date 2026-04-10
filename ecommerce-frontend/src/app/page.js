@@ -2858,7 +2858,7 @@ function StoreContent() {
   const FilterOptions = () => (
     <div className="space-y-6 pr-2">
       <div>
-        <h3 className="font-bold text-[14px] mb-2 text-[#0F1111]">Department</h3>
+        <h3 className="font-bold text-[14px] mb-2 text-[#0F1111]">Category</h3>
         <ul className="space-y-1.5 ml-1">
           {uniqueCategories.map(cat => (
             <li key={cat}>
