@@ -2,18 +2,18 @@
 const Order = require('../models/Order');
 const EmiConfig = require('../models/EmiConfig');
 const Product = require('../models/Product');
+const User = require('../models/User'); // 🚀 IMPORT USER MODEL
+const axios = require('axios'); // For real API calls
 
-// 🚀 1. GET DYNAMIC CART CONFIGURATION (Hierarchy: Product > Category > Global)
 exports.getCartEmiConfig = async (req, res) => {
   try {
     const { cartItems } = req.body;
     let config = await EmiConfig.findOne();
-    if (!config) config = await EmiConfig.create({}); // Create default if missing
+    if (!config) config = await EmiConfig.create({});
 
     let highestMinDownPayment = config.global.minDownPaymentPercent;
     let overlappingTenures = config.global.allowedTenures;
 
-    // Evaluate the cart strictly
     for (let item of cartItems) {
       const product = await Product.findById(item.product);
       if (!product) continue;
@@ -21,27 +21,22 @@ exports.getCartEmiConfig = async (req, res) => {
       let itemDownPayment = config.global.minDownPaymentPercent;
       let itemTenures = config.global.allowedTenures;
 
-      // Check Category Override
       const catOverride = config.categories.find(c => c.categoryName === product.category);
       if (catOverride) {
         if(catOverride.minDownPaymentPercent !== undefined) itemDownPayment = catOverride.minDownPaymentPercent;
         if(catOverride.allowedTenures?.length) itemTenures = catOverride.allowedTenures;
       }
 
-      // Check Product Override (Highest Priority)
       if (product.emiOverride?.isActive) {
         itemDownPayment = product.emiOverride.minDownPaymentPercent;
         itemTenures = product.emiOverride.allowedTenures;
       }
 
-      // Apply Strictest Rules to overall cart
       if (itemDownPayment > highestMinDownPayment) highestMinDownPayment = itemDownPayment;
-      
-      // Intersection of allowed tenures
       overlappingTenures = overlappingTenures.filter(t => itemTenures.includes(t));
     }
 
-    if (overlappingTenures.length === 0) overlappingTenures = [3]; // Fallback
+    if (overlappingTenures.length === 0) overlappingTenures = [3];
 
     res.json({
       minDownPaymentPercent: highestMinDownPayment,
@@ -52,7 +47,6 @@ exports.getCartEmiConfig = async (req, res) => {
   }
 };
 
-// 🚀 2. CALCULATE ACTUAL EMI
 exports.calculateEmi = async (req, res) => {
   try {
     const { cartItems, downPaymentPercent, tenureMonths } = req.body;
@@ -84,7 +78,7 @@ exports.calculateEmi = async (req, res) => {
         itemEmi = (itemPrincipal * interestRate * Math.pow(1 + interestRate, tenureMonths)) / 
                   (Math.pow(1 + interestRate, tenureMonths) - 1);
       } else {
-        itemEmi = itemPrincipal / tenureMonths; // 0% Interest case
+        itemEmi = itemPrincipal / tenureMonths;
       }
       totalMonthlyEmi += itemEmi;
     }
@@ -92,7 +86,6 @@ exports.calculateEmi = async (req, res) => {
     const totalDownPayment = totalOrderValue * (downPaymentPercent / 100);
     const principalToFinance = totalOrderValue - totalDownPayment;
 
-    // Admin Minimum Charge Safety Net
     if (totalMonthlyEmi < 150) totalMonthlyEmi = 150;
 
     res.json({
@@ -107,7 +100,6 @@ exports.calculateEmi = async (req, res) => {
   }
 };
 
-// 🚀 3. ADMIN CONFIG CONTROLLERS
 exports.getAdminConfig = async (req, res) => {
   let config = await EmiConfig.findOne();
   if (!config) config = await EmiConfig.create({});
@@ -123,46 +115,55 @@ exports.updateAdminConfig = async (req, res) => {
   res.json({ message: "EMI Config updated successfully", config });
 };
 
-// 🚀 4. API-BASED KYC
+
+// =================================================================
+// 🚀 AUTHENTIC API-BASED KYC VERIFICATION & DATABASE STORAGE
+// =================================================================
+
+const CASHFREE_HEADERS = {
+  'x-client-id': process.env.CASHFREE_CLIENT_ID,
+  'x-client-secret': process.env.CASHFREE_CLIENT_SECRET,
+  'Content-Type': 'application/json'
+};
+
 exports.verifyPanCard = async (req, res) => {
   try {
     const { panNumber, customerName } = req.body;
     if (panNumber.length !== 10) return res.status(400).json({ message: "Invalid PAN Format" });
 
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // 🚀 REAL API CALL (If keys exist)
+    if (process.env.CASHFREE_CLIENT_ID) {
+       const response = await axios.post('https://api.cashfree.com/verification/pan', { pan: panNumber, name: customerName }, { headers: CASHFREE_HEADERS });
+       return res.json({ success: true, message: "PAN Verified", data: response.data });
+    }
 
+    // 🛡️ SANDBOX FALLBACK (If no keys, allow testing)
+    await new Promise(resolve => setTimeout(resolve, 1000));
     res.json({
-      success: true,
-      message: "PAN Verified Successfully",
-      data: {
-        registeredName: customerName ? customerName.toUpperCase() : "VERIFIED USER", 
-        panNumber: panNumber.toUpperCase(),
-        isValid: true
-      }
+      success: true, message: "PAN Verified (Sandbox)",
+      data: { registeredName: customerName ? customerName.toUpperCase() : "VERIFIED USER", panNumber: panNumber.toUpperCase(), isValid: true }
     });
   } catch (error) {
-    res.status(500).json({ message: "PAN Verification Failed" });
+    res.status(500).json({ message: "PAN Verification Failed or Invalid PAN" });
   }
 };
 
-// 🚀 2. SEND AADHAAR OTP (Simulates UIDAI behavior)
 exports.sendAadhaarOtp = async (req, res) => {
   try {
     const { aadhaarNumber } = req.body;
     if (aadhaarNumber.length !== 12) return res.status(400).json({ message: "Invalid Aadhaar Number" });
 
-    // Simulate API delay
+    // 🚀 REAL API CALL
+    if (process.env.CASHFREE_CLIENT_ID) {
+       const response = await axios.post('https://api.cashfree.com/verification/offline-aadhaar/otp', { aadhaar_number: aadhaarNumber }, { headers: CASHFREE_HEADERS });
+       return res.json({ success: true, referenceId: response.data.ref_id, mobileEnding: "XXXX", message: "OTP sent." });
+    }
+
+    // 🛡️ SANDBOX FALLBACK
     await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Mocking real API behavior: UIDAI returns the last 4 digits of the linked mobile
     const mockLastFourDigits = Math.floor(1000 + Math.random() * 9000).toString();
-
     res.json({
-      success: true,
-      referenceId: "ref_" + Date.now(), 
-      mobileEnding: mockLastFourDigits, // 🚀 Send back masked mobile ending
-      message: `OTP sent to Aadhaar registered mobile number.`
+      success: true, referenceId: "ref_" + Date.now(), mobileEnding: mockLastFourDigits, message: `OTP sent to Aadhaar registered mobile.`
     });
   } catch (error) {
     res.status(500).json({ message: "Failed to send Aadhaar OTP" });
@@ -171,29 +172,37 @@ exports.sendAadhaarOtp = async (req, res) => {
 
 exports.verifyAadhaarOtp = async (req, res) => {
   try {
-    const { referenceId, otp } = req.body;
+    const { referenceId, otp, userId, panNumber, aadhaarNumber } = req.body;
     
-    // Sandbox OTP bypass
-    if (otp !== "123456") { 
-      return res.status(400).json({ message: "Invalid OTP entered." });
+    // 🚀 REAL API CALL
+    if (process.env.CASHFREE_CLIENT_ID) {
+       const response = await axios.post('https://api.cashfree.com/verification/offline-aadhaar/verify', { ref_id: referenceId, otp: otp }, { headers: CASHFREE_HEADERS });
+       
+       // 💾 SAVE TO USER DATABASE
+       if (userId && response.data.status === 'VALID') {
+          await User.findByIdAndUpdate(userId, { kycVerified: true, panNumber: panNumber, aadhaarNumber: aadhaarNumber });
+       }
+       return res.json({ success: true, message: "Aadhaar Verified", data: response.data });
     }
 
+    // 🛡️ SANDBOX FALLBACK
+    if (otp !== "123456") return res.status(400).json({ message: "Invalid OTP entered. (Use 123456 for Sandbox)" });
     await new Promise(resolve => setTimeout(resolve, 1000));
 
+    // 💾 SAVE TO USER DATABASE (SANDBOX)
+    if (userId) {
+       await User.findByIdAndUpdate(userId, { kycVerified: true, panNumber: panNumber, aadhaarNumber: aadhaarNumber });
+    }
+
     res.json({
-      success: true,
-      message: "Aadhaar Verified Successfully",
-      data: {
-        address: "123 Fake Street, Mumbai, Maharashtra, 400001",
-        careOf: "Father Name"
-      }
+      success: true, message: "Aadhaar Verified Successfully",
+      data: { address: "123 Fake Street, Mumbai", careOf: "Father Name" }
     });
   } catch (error) {
     res.status(500).json({ message: "Aadhaar Verification Failed" });
   }
 };
 
-// 🚀 5. ADMIN FORECLOSURE
 exports.forecloseLoan = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);

@@ -3725,7 +3725,6 @@ export default function CheckoutPage() {
   const router = useRouter();
 
   const [isHydrated, setIsHydrated] = useState(false);
-  
   const [checkoutStep, setCheckoutStep] = useState('editing'); 
   const [isProcessing, setIsProcessing] = useState(false);
   const [otp, setOtp] = useState('');
@@ -3736,27 +3735,25 @@ export default function CheckoutPage() {
     email: user?.email || user?.user?.email || '', 
     phone: '', address: '', city: '', pincode: ''
   });
-  
   const [hasSavedAddress, setHasSavedAddress] = useState(false);
-  
   const [paymentMethod, setPaymentMethod] = useState('UPI'); 
   const [upiId, setUpiId] = useState('');
 
-  // 🚀 EMI & KYC STATES
+  // 🚀 EMI STATES
   const [dynamicEmiConfig, setDynamicEmiConfig] = useState({ minDownPaymentPercent: 10, allowedTenures: [3, 6, 9, 12] });
   const [emiDownPayment, setEmiDownPayment] = useState(10); 
   const [emiTenure, setEmiTenure] = useState(6); 
   const [emiCalcData, setEmiCalcData] = useState(null);
-  const [aadhaarMobileEnding, setAadhaarMobileEnding] = useState(''); // 🚀 NEW STATE
-  // Interactive KYC States
+
+  // 🚀 INTERACTIVE API KYC STATES
   const [showKycModal, setShowKycModal] = useState(false);
-  const [kycStep, setKycStep] = useState('PAN'); // 'PAN', 'AADHAAR_SEND', 'AADHAAR_VERIFY', 'DONE'
+  const [kycStep, setKycStep] = useState('PAN'); 
   const [panNumber, setPanNumber] = useState('');
   const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [aadhaarRefId, setAadhaarRefId] = useState('');
   const [aadhaarOtp, setAadhaarOtp] = useState('');
+  const [aadhaarMobileEnding, setAadhaarMobileEnding] = useState(''); 
   const [isVerifying, setIsVerifying] = useState(false);
-  const [extractedKycData, setExtractedKycData] = useState({});
 
   const [couponCode, setCouponCode] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState(0);
@@ -3769,7 +3766,7 @@ export default function CheckoutPage() {
       const userId = user?.user?._id || user?._id;
       axios.get(`${process.env.NEXT_PUBLIC_API_URL}/users/${userId}`)
         .then(res => {
-          const { phone, addresses } = res.data;
+          const { phone, addresses, kycVerified } = res.data;
           if (addresses && addresses.length > 0) {
             const defaultAddr = addresses[0]; 
             setShippingInfo(prev => ({
@@ -3777,6 +3774,7 @@ export default function CheckoutPage() {
             }));
             setHasSavedAddress(true);
           }
+          // If user already KYC verified in DB, we could skip the modal, but leaving it for flow demo.
         }).catch(err => console.error(err));
     }
     loadRazorpayScript();
@@ -3786,7 +3784,7 @@ export default function CheckoutPage() {
   const shippingPrice = itemsPrice > 50000 ? 0 : 0; 
   const grandTotal = Math.max(0, itemsPrice + (cart.length > 0 ? shippingPrice : 0) - appliedDiscount);
 
-  // 🚀 1. FETCH DYNAMIC CART LIMITS ON LOAD 
+  // 1. FETCH DYNAMIC CART LIMITS ON LOAD 
   useEffect(() => {
     if(cart.length > 0) {
       const formattedCart = cart.map(item => ({ ...item, product: item._id }));
@@ -3802,7 +3800,7 @@ export default function CheckoutPage() {
     }
   }, [cart]);
 
-  // 🚀 2. CALCULATE MATH WHEN SLIDER MOVES
+  // 2. CALCULATE MATH WHEN SLIDER MOVES
   useEffect(() => {
     if (paymentMethod === 'EMI_LOAN' && grandTotal > 0) {
       const formattedCart = cart.map(item => ({ ...item, product: item._id }));
@@ -3834,6 +3832,40 @@ export default function CheckoutPage() {
   };
 
   const handleRemoveCoupon = () => { setCouponCode(''); setAppliedDiscount(0); setCouponMessage(null); };
+
+  // 🚀 KYC API HANDLERS
+  const verifyPan = async () => {
+    setIsVerifying(true);
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/emi/kyc/pan`, { panNumber, customerName: shippingInfo.fullName });
+      setKycStep('AADHAAR_SEND');
+    } catch(e) { alert(e.response?.data?.message || "Invalid PAN"); }
+    setIsVerifying(false);
+  };
+
+  const sendAadhaar = async () => {
+    setIsVerifying(true);
+    try {
+      const { data } = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/emi/kyc/aadhaar/send-otp`, { aadhaarNumber });
+      setAadhaarRefId(data.referenceId);
+      setAadhaarMobileEnding(data.mobileEnding || 'XXXX'); 
+      setKycStep('AADHAAR_VERIFY');
+    } catch(e) { alert(e.response?.data?.message || "Invalid Aadhaar Number"); }
+    setIsVerifying(false);
+  };
+
+  const verifyAadhaar = async () => {
+    setIsVerifying(true);
+    try {
+      // Passes userId to backend so it saves to the database
+      const userId = user?.user?._id || user?._id;
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/emi/kyc/aadhaar/verify-otp`, { 
+        referenceId: aadhaarRefId, otp: aadhaarOtp, userId, panNumber, aadhaarNumber 
+      });
+      setKycStep('DONE');
+    } catch(e) { alert(e.response?.data?.message || "Invalid OTP"); }
+    setIsVerifying(false);
+  };
 
   const placeOrderToDatabase = async (methodString, razorpayPaymentId = null) => {
     try {
@@ -3869,7 +3901,10 @@ export default function CheckoutPage() {
             interestRateMonthly: emiCalcData.interestRateMonthly,
             tenureMonths: emiTenure,
             monthlyEmiAmount: emiCalcData.monthlyEmi,
-            kyc: { verificationStatus: 'Verified', extractedData: extractedKycData },
+            kyc: { 
+              verificationStatus: 'Verified', 
+              extractedData: { panNumber: panNumber, idNumber: aadhaarNumber, name: shippingInfo.fullName } 
+            },
             schedule: schedule
           }
         } : {})
@@ -3893,43 +3928,8 @@ export default function CheckoutPage() {
     }
   };
 
-  // 🚀 KYC API HANDLERS
-  const verifyPan = async () => {
-    setIsVerifying(true);
-    try {
-      const { data } = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/emi/kyc/pan`, { panNumber, customerName: shippingInfo.fullName });
-      setExtractedKycData({ ...extractedKycData, panData: data.data });
-      setKycStep('AADHAAR_SEND');
-    } catch(e) { alert(e.response?.data?.message || "Invalid PAN"); }
-    setIsVerifying(false);
-  };
-
-  const sendAadhaar = async () => {
-    setIsVerifying(true);
-    try {
-      const { data } = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/emi/kyc/aadhaar/send-otp`, { aadhaarNumber });
-      setAadhaarRefId(data.referenceId);
-      setAadhaarMobileEnding(data.mobileEnding || 'XXXX'); // 🚀 Catch the 4 digits
-      setKycStep('AADHAAR_VERIFY');
-    } catch(e) { alert(e.response?.data?.message || "Invalid ID Number"); }
-    setIsVerifying(false);
-  };
-
-  const verifyAadhaar = async () => {
-    setIsVerifying(true);
-    try {
-      const { data } = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/emi/kyc/aadhaar/verify-otp`, { referenceId: aadhaarRefId, otp: aadhaarOtp });
-      setExtractedKycData({ ...extractedKycData, aadhaarData: data.data });
-      setKycStep('DONE');
-    } catch(e) { alert(e.response?.data?.message || "Invalid OTP (Use 123456 for Sandbox)"); }
-    setIsVerifying(false);
-  };
-
   const executeOrderPlacement = async () => {
-    if (paymentMethod === 'UPI' && !upiId.trim()) {
-      alert("Please enter your UPI ID.");
-      return;
-    }
+    if (paymentMethod === 'UPI' && !upiId.trim()) return alert("Please enter your UPI ID.");
 
     if (paymentMethod === 'EMI_LOAN' && kycStep !== 'DONE') {
        setShowKycModal(true); 
@@ -3964,7 +3964,7 @@ export default function CheckoutPage() {
             name: "Amazon Smarts",
             description: paymentMethod === 'EMI_LOAN' ? "Down Payment & E-Mandate Setup" : `Secure ${paymentMethod} Payment`,
             order_id: rzpOrder.id,
-            // 🚀 MAGIC LINE FOR RECURRING E-MANDATES
+            // 🚀 E-MANDATE RECURRING ENFORCEMENT
             recurring: paymentMethod === 'EMI_LOAN' ? "1" : undefined, 
             handler: async function (response) {
               try {
@@ -3988,7 +3988,7 @@ export default function CheckoutPage() {
                   custom_block: {
                     name: "Complete Payment",
                     instruments: [
-                      paymentMethod === 'EMI_LOAN' ? { method: "emandate" } : // 🚀 FORCES E-MANDATE FLOW
+                      paymentMethod === 'EMI_LOAN' ? { method: "emandate" } : 
                       paymentMethod === 'UPI' ? { method: "upi" } :
                       paymentMethod === 'CARD' ? { method: "card" } :
                       paymentMethod === 'NETBANKING' ? { method: "netbanking" } :
@@ -4117,7 +4117,7 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-white font-sans text-[#0F1111] relative">
       
-      {/* 🚀 INTERACTIVE API KYC MODAL */}
+      {/* 🚀 PERFECTED KYC MODAL UI */}
       {showKycModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-[999] backdrop-blur-sm">
           <div className="bg-white rounded-[8px] w-full max-w-[450px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in duration-200">
@@ -4127,21 +4127,35 @@ export default function CheckoutPage() {
             </div>
             
             <div className="p-6 space-y-4">
+              
+              {/* STEP 1: PAN */}
               {kycStep === 'PAN' && (
                 <div className="animate-in fade-in slide-in-from-right-4">
                   <label className={labelStyles}>Enter your 10-digit PAN</label>
                   <input type="text" maxLength={10} className={`${inputStyles} uppercase font-mono tracking-widest`} value={panNumber} onChange={e => setPanNumber(e.target.value.toUpperCase())} placeholder="ABCDE1234F" />
-                  <button onClick={verifyPan} disabled={isVerifying || panNumber.length < 10} className={amzButton + " mt-4"}>{isVerifying ? 'Verifying...' : 'Verify PAN'}</button>
+                  <button onClick={verifyPan} disabled={isVerifying || panNumber.length < 10} className={amzButton + " mt-4"}>
+                    {isVerifying ? 'Verifying...' : 'Verify PAN'}
+                  </button>
                 </div>
               )}
 
+              {/* STEP 2: AADHAAR */}
+              {kycStep === 'AADHAAR_SEND' && (
+                <div className="animate-in fade-in slide-in-from-right-4">
+                  <div className="bg-green-50 text-green-700 p-2 rounded text-xs font-bold mb-4 border border-green-200">✓ PAN Verified Successfully</div>
+                  <label className={labelStyles}>Enter your 12-digit Aadhaar Number</label>
+                  <input type="text" maxLength={12} className={`${inputStyles} font-mono tracking-widest`} value={aadhaarNumber} onChange={e => setAadhaarNumber(e.target.value.replace(/\D/g, ''))} placeholder="0000 0000 0000" />
+                  <button onClick={sendAadhaar} disabled={isVerifying || aadhaarNumber.length < 12} className={amzButton + " mt-4"}>
+                    {isVerifying ? 'Sending OTP...' : 'Send OTP to Mobile'}
+                  </button>
+                </div>
+              )}
+
+              {/* STEP 3: OTP */}
               {kycStep === 'AADHAAR_VERIFY' && (
                 <div className="animate-in fade-in slide-in-from-right-4">
                   <label className={labelStyles}>Enter Aadhaar OTP</label>
-                  {/* 🚀 Updated UI to show the masked phone number */}
-                  <p className="text-[11px] text-gray-500 mb-2">
-                    Sent to your UIDAI registered mobile number ending in <span className="font-bold text-[#111]">******{aadhaarMobileEnding}</span>.
-                  </p>
+                  <p className="text-[11px] text-gray-500 mb-2">Sent to your UIDAI registered mobile number ending in <span className="font-bold text-[#111]">******{aadhaarMobileEnding}</span>.</p>
                   <input type="text" maxLength={6} className={`${inputStyles} font-mono tracking-widest text-center text-xl`} value={aadhaarOtp} onChange={e => setAadhaarOtp(e.target.value.replace(/\D/g, ''))} placeholder="------" />
                   <button onClick={verifyAadhaar} disabled={isVerifying || aadhaarOtp.length < 6} className={amzButton + " mt-4"}>
                     {isVerifying ? 'Verifying...' : 'Verify & Complete KYC'}
@@ -4149,21 +4163,13 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {kycStep === 'AADHAAR_VERIFY' && (
-                <div className="animate-in fade-in slide-in-from-right-4">
-                  <label className={labelStyles}>Enter OTP</label>
-                  <p className="text-[11px] text-gray-500 mb-2">Sent to your registered mobile number.</p>
-                  <input type="text" maxLength={6} className={`${inputStyles} font-mono tracking-widest text-center text-xl`} value={aadhaarOtp} onChange={e => setAadhaarOtp(e.target.value.replace(/\D/g, ''))} placeholder="------" />
-                  <button onClick={verifyAadhaar} disabled={isVerifying || aadhaarOtp.length < 6} className={amzButton + " mt-4"}>{isVerifying ? 'Verifying...' : 'Verify & Complete KYC'}</button>
-                </div>
-              )}
-
+              {/* STEP 4: SUCCESS */}
               {kycStep === 'DONE' && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 text-center py-4">
-                  <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">✓</div>
-                  <h3 className="font-bold text-lg text-[#111] mb-1">KYC Approved</h3>
-                  <p className="text-xs text-gray-500 mb-6">Your identity has been verified.</p>
-                  <button onClick={proceedToRazorpay} className={amzButton}>Proceed to Setup Auto-Pay</button>
+                  <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 border border-green-200 shadow-sm">✓</div>
+                  <h3 className="font-bold text-xl text-[#111] mb-1">KYC Approved</h3>
+                  <p className="text-[13px] text-gray-500 mb-6">Your identity has been verified securely.</p>
+                  <button onClick={proceedToRazorpay} className={amzButton + " py-2 text-sm font-bold"}>Proceed to Setup Auto-Pay</button>
                   <p className="text-[10px] text-gray-500 mt-3 leading-tight">You will now be redirected to Razorpay to sign an e-mandate for your monthly deductions.</p>
                 </div>
               )}
@@ -4274,6 +4280,8 @@ export default function CheckoutPage() {
                             <div className="flex justify-between"><span>Monthly Interest:</span> <span className="font-bold">{emiCalcData.interestRateMonthly * 100}%</span></div>
                             <div className="flex justify-between border-t border-[#ddd] pt-1 mt-1"><span>Monthly EMI:</span> <span className="font-bold text-[#B12704] text-[14px]">₹{emiCalcData.monthlyEmi?.toLocaleString()} /mo</span></div>
                           </div>
+                          
+                          <p className="text-[10px] text-gray-500 mt-2 leading-tight">By proceeding, you agree to digitally sign an auto-debit e-mandate via Razorpay in the next step.</p>
                         </div>
                       )}
                     </div>
