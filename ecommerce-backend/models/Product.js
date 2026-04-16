@@ -349,6 +349,8 @@ const productSchema = new mongoose.Schema({
   cancellationWindowHours: { type: Number, default: 24 },
 
   affiliateCommission: { type: Number, default: 0 }, 
+  
+  // 🚀 FLAT RATE REVIEW COMMISSION
   reviewCommission: { type: Number, default: 0 }, 
   
   // 🚀 FINTECH: EMI OVERRIDES

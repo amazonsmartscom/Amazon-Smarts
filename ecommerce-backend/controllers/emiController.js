@@ -3,7 +3,7 @@ const Order = require('../models/Order');
 const EmiConfig = require('../models/EmiConfig');
 const Product = require('../models/Product');
 
-// 🚀 GET DYNAMIC CART CONFIGURATION (Hierarchy: Product > Category > Global)
+// 🚀 1. GET DYNAMIC CART CONFIGURATION (Hierarchy: Product > Category > Global)
 exports.getCartEmiConfig = async (req, res) => {
   try {
     const { cartItems } = req.body;
@@ -21,14 +21,14 @@ exports.getCartEmiConfig = async (req, res) => {
       let itemDownPayment = config.global.minDownPaymentPercent;
       let itemTenures = config.global.allowedTenures;
 
-      // 1. Check Category Override
+      // Check Category Override
       const catOverride = config.categories.find(c => c.categoryName === product.category);
       if (catOverride) {
-        if(catOverride.minDownPaymentPercent) itemDownPayment = catOverride.minDownPaymentPercent;
+        if(catOverride.minDownPaymentPercent !== undefined) itemDownPayment = catOverride.minDownPaymentPercent;
         if(catOverride.allowedTenures?.length) itemTenures = catOverride.allowedTenures;
       }
 
-      // 2. Check Product Override (Highest Priority)
+      // Check Product Override (Highest Priority)
       if (product.emiOverride?.isActive) {
         itemDownPayment = product.emiOverride.minDownPaymentPercent;
         itemTenures = product.emiOverride.allowedTenures;
@@ -37,7 +37,7 @@ exports.getCartEmiConfig = async (req, res) => {
       // Apply Strictest Rules to overall cart
       if (itemDownPayment > highestMinDownPayment) highestMinDownPayment = itemDownPayment;
       
-      // Intersection of allowed tenures (only allow months supported by ALL items in cart)
+      // Intersection of allowed tenures
       overlappingTenures = overlappingTenures.filter(t => itemTenures.includes(t));
     }
 
@@ -52,7 +52,7 @@ exports.getCartEmiConfig = async (req, res) => {
   }
 };
 
-// 🚀 CALCULATE ACTUAL EMI BASED ON HIERARCHY
+// 🚀 2. CALCULATE ACTUAL EMI
 exports.calculateEmi = async (req, res) => {
   try {
     const { cartItems, downPaymentPercent, tenureMonths } = req.body;
@@ -63,7 +63,6 @@ exports.calculateEmi = async (req, res) => {
     let totalOrderValue = 0;
     let totalMonthlyEmi = 0;
 
-    // Calculate EMI mathematically per item based on its specific hierarchy rule
     for (let item of cartItems) {
       const product = await Product.findById(item.product);
       if (!product) continue;
@@ -108,7 +107,7 @@ exports.calculateEmi = async (req, res) => {
   }
 };
 
-// 🚀 ADMIN CONFIG CONTROLLERS
+// 🚀 3. ADMIN CONFIG CONTROLLERS
 exports.getAdminConfig = async (req, res) => {
   let config = await EmiConfig.findOne();
   if (!config) config = await EmiConfig.create({});
@@ -117,19 +116,99 @@ exports.getAdminConfig = async (req, res) => {
 
 exports.updateAdminConfig = async (req, res) => {
   let config = await EmiConfig.findOne();
+  if (!config) config = new EmiConfig();
   config.global = req.body.global;
   config.categories = req.body.categories;
   await config.save();
   res.json({ message: "EMI Config updated successfully", config });
 };
 
-// 🚀 KYC & FORECLOSURE (Keep your existing functions here)
-exports.processKyc = async (req, res) => {
-  // ... (Keep your existing processKyc logic from the previous step)
-  res.json({ extractedData: { panNumber: "ABCDE1234F", idNumber: "XXXX-1234", name: "Verified Customer" } });
+// 🚀 4. API-BASED KYC
+exports.verifyPanCard = async (req, res) => {
+  try {
+    const { panNumber, customerName } = req.body;
+    if (panNumber.length !== 10) return res.status(400).json({ message: "Invalid PAN Format" });
+
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    res.json({
+      success: true,
+      message: "PAN Verified Successfully",
+      data: {
+        registeredName: customerName ? customerName.toUpperCase() : "VERIFIED USER", 
+        panNumber: panNumber.toUpperCase(),
+        isValid: true
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: "PAN Verification Failed" });
+  }
 };
 
+exports.sendAadhaarOtp = async (req, res) => {
+  try {
+    const { aadhaarNumber } = req.body;
+    if (aadhaarNumber.length !== 12) return res.status(400).json({ message: "Invalid Aadhaar Number" });
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    res.json({
+      success: true,
+      referenceId: "ref_" + Date.now(), 
+      message: "OTP sent to Aadhaar registered mobile number."
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to send Aadhaar OTP" });
+  }
+};
+
+exports.verifyAadhaarOtp = async (req, res) => {
+  try {
+    const { referenceId, otp } = req.body;
+    
+    // Sandbox OTP bypass
+    if (otp !== "123456") { 
+      return res.status(400).json({ message: "Invalid OTP entered." });
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    res.json({
+      success: true,
+      message: "Aadhaar Verified Successfully",
+      data: {
+        address: "123 Fake Street, Mumbai, Maharashtra, 400001",
+        careOf: "Father Name"
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Aadhaar Verification Failed" });
+  }
+};
+
+// 🚀 5. ADMIN FORECLOSURE
 exports.forecloseLoan = async (req, res) => {
-  // ... (Keep your existing forecloseLoan logic from the previous step)
-  res.json({ message: "Loan Foreclosed" });
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order || !order.isEmiOrder) return res.status(404).json({ message: "EMI Order not found" });
+
+    const foreclosureFee = 500; 
+    let remainingPrincipal = 0;
+    
+    order.emiDetails.schedule.forEach(emi => {
+      if (emi.status === 'Pending') {
+        remainingPrincipal += emi.amountDue; 
+        emi.status = 'Cancelled (Foreclosed)';
+      }
+    });
+
+    order.emiDetails.isForeclosed = true;
+    order.emiDetails.foreclosureFee = foreclosureFee;
+    
+    await order.save();
+    res.json({ message: "Loan Foreclosed successfully.", totalSettlement: remainingPrincipal + foreclosureFee, order });
+  } catch (error) {
+    res.status(500).json({ message: "Error foreclosing loan" });
+  }
 };

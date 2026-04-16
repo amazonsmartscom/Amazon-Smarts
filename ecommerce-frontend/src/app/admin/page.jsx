@@ -14033,6 +14033,9 @@ export default function AdminDashboard() {
   const [signupBonus, setSignupBonus] = useState(0); 
   const [newUserBonus, setNewUserBonus] = useState(0); 
 
+  // 🚀 GLOBAL EMI SETTINGS STATE
+  const [globalEmiConfig, setGlobalEmiConfig] = useState({ interestRateMonthly: 2, minDownPaymentPercent: 10, allowedTenures: '3,6,9,12' });
+
   // 🚀 Product Form States
   const [name, setName] = useState('');
   const [brand, setBrand] = useState(''); 
@@ -14056,6 +14059,12 @@ export default function AdminDashboard() {
   const [cancellationWindowHours, setCancellationWindowHours] = useState(24);
   const [affiliateCommission, setAffiliateCommission] = useState(''); 
   const [reviewCommission, setReviewCommission] = useState(''); 
+
+  // Add Product EMI Override States
+  const [emiOverrideActive, setEmiOverrideActive] = useState(false);
+  const [emiOverrideInterest, setEmiOverrideInterest] = useState('');
+  const [emiOverrideDown, setEmiOverrideDown] = useState('');
+  const [emiOverrideTenures, setEmiOverrideTenures] = useState('');
 
   const [editingProduct, setEditingProduct] = useState(null);
   const [editForm, setEditForm] = useState(null);
@@ -14106,7 +14115,8 @@ export default function AdminDashboard() {
         axios.get(`${apiUrl}/products/admin/pending-reviews`, config),
         axios.get(`${apiUrl}/admin/stats`, config),
         axios.get(`${apiUrl}/auth/settings`),
-        axios.get(`${apiUrl}/coupons`, config)
+        axios.get(`${apiUrl}/coupons`, config),
+        axios.get(`${apiUrl}/emi/admin/config`, config) // 🚀 Fetch EMI Config
       ]);
 
       const fetchedProducts = results[0].status === 'fulfilled' ? results[0].value.data : [];
@@ -14130,6 +14140,14 @@ export default function AdminDashboard() {
       }
 
       if (results[7].status === 'fulfilled') setCoupons(results[7].value.data);
+
+      if (results[8].status === 'fulfilled' && results[8].value.data?.global) {
+        setGlobalEmiConfig({
+          interestRateMonthly: results[8].value.data.global.interestRateMonthly || 2,
+          minDownPaymentPercent: results[8].value.data.global.minDownPaymentPercent || 10,
+          allowedTenures: results[8].value.data.global.allowedTenures?.join(',') || '3,6,9,12'
+        });
+      }
 
       if (fetchedOrders.length > 0) {
         const grouped = fetchedOrders.reduce((acc, o) => {
@@ -14208,6 +14226,22 @@ export default function AdminDashboard() {
     try { await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/auth/settings`, { signupBonus, newUserBonus }); alert("✅ Global Bonus Settings Updated!"); } catch (error) { alert("Failed to update global settings."); }
   };
 
+  // 🚀 SAVE GLOBAL EMI CONFIGURATIONS
+  const handleSaveEmiConfig = async () => {
+    try {
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/emi/admin/config?adminId=${adminId}`, {
+        global: {
+          interestRateMonthly: Number(globalEmiConfig.interestRateMonthly),
+          minDownPaymentPercent: Number(globalEmiConfig.minDownPaymentPercent),
+          allowedTenures: globalEmiConfig.allowedTenures.split(',').map(Number).filter(n => !isNaN(n))
+        }
+      });
+      alert("✅ Global EMI Rules Updated Successfully!");
+    } catch (error) {
+      alert("Failed to update EMI rules.");
+    }
+  };
+
   const handleUpdateOrderStatus = async (id, status) => {
     await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/orders/admin/${id}/status?adminId=${adminId}`, { status });
     alert(`Order Updated to ${status}`); fetchDashboardData();
@@ -14225,7 +14259,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // 🚀 EMI FORECLOSURE HANDLER
   const handleForecloseEMI = async (orderId) => {
     if(!window.confirm("WARNING: This will mark the loan as fully paid, apply the ₹500 fee, and cancel the auto-debit mandate. Proceed?")) return;
     try {
@@ -14293,10 +14326,26 @@ export default function AdminDashboard() {
     formData.append('affiliateCommission', affiliateCommission || 0); formData.append('reviewCommission', reviewCommission || 0); 
     formData.append('features', JSON.stringify(features.filter(f => f.trim() !== ''))); formData.append('specs', JSON.stringify(specs.filter(s => s.name.trim() !== '')));
     formData.append('variants', JSON.stringify(parseVariantsForDB(variants))); 
+    
+    // 🚀 APPEND EMI OVERRIDE DATA
+    formData.append('emiOverride', JSON.stringify({
+      isActive: emiOverrideActive,
+      interestRateMonthly: Number(emiOverrideInterest) || 0,
+      minDownPaymentPercent: Number(emiOverrideDown) || 10,
+      allowedTenures: emiOverrideTenures ? emiOverrideTenures.split(',').map(Number).filter(n => !isNaN(n)) : [3, 6]
+    }));
+
     for (let i = 0; i < images.length; i++) formData.append('images', images[i]);
     for (let i = 0; i < productBanners.length; i++) formData.append('banners', productBanners[i]);
     
-    try { await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/products?adminId=${adminId}`, formData); alert("✅ Product Published!"); setName(''); setBrand(''); setPrice(''); setDiscountPrice(''); setCategory(''); setStock(''); setDescription(''); setImages([]); setProductBanners([]); setFeatures(['']); setSpecs([{ name: '', value: '' }]); setVariants([{ name: '', options: '' }]); setSeoTitle(''); setSeoDescription(''); setSeoKeywords(''); setIsCancellable(true); setCancellationWindowHours(24); setAffiliateCommission(''); setReviewCommission(''); setActiveTab('inventory'); fetchDashboardData(); } catch(err) { alert("Publish failed"); }
+    try { 
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/products?adminId=${adminId}`, formData); 
+      alert("✅ Product Published!"); 
+      setName(''); setBrand(''); setPrice(''); setDiscountPrice(''); setCategory(''); setStock(''); setDescription(''); setImages([]); setProductBanners([]); setFeatures(['']); setSpecs([{ name: '', value: '' }]); setVariants([{ name: '', options: '' }]); setSeoTitle(''); setSeoDescription(''); setSeoKeywords(''); setIsCancellable(true); setCancellationWindowHours(24); setAffiliateCommission(''); setReviewCommission(''); 
+      setEmiOverrideActive(false); setEmiOverrideInterest(''); setEmiOverrideDown(''); setEmiOverrideTenures(''); // Reset EMI states
+      setActiveTab('inventory'); 
+      fetchDashboardData(); 
+    } catch(err) { alert("Publish failed"); }
   };
 
   const handleEditClick = (product) => {
@@ -14308,7 +14357,14 @@ export default function AdminDashboard() {
       returnPolicy: product.returnPolicy || '7 Days Replacement', warrantyPolicy: product.warrantyPolicy || '1 Year Warranty', 
       seoTitle: product.seoTitle || '', seoDescription: product.seoDescription || '', seoKeywords: product.seoKeywords || '',
       isCancellable: product.isCancellable !== undefined ? product.isCancellable : true, cancellationWindowHours: product.cancellationWindowHours !== undefined ? product.cancellationWindowHours : 24,
-      affiliateCommission: product.affiliateCommission || 0, reviewCommission: product.reviewCommission || 0 
+      affiliateCommission: product.affiliateCommission || 0, reviewCommission: product.reviewCommission || 0,
+      // 🚀 SAFE FALLBACK FOR EXISTING PRODUCTS
+      emiOverride: {
+        isActive: product.emiOverride?.isActive || false,
+        interestRateMonthly: product.emiOverride?.interestRateMonthly || 0,
+        minDownPaymentPercent: product.emiOverride?.minDownPaymentPercent || 10,
+        allowedTenures: product.emiOverride?.allowedTenures ? product.emiOverride.allowedTenures.join(',') : '3,6'
+      }
     });
   };
 
@@ -14317,13 +14373,17 @@ export default function AdminDashboard() {
     try {
       const formData = new FormData();
       Object.keys(editForm).forEach(key => {
-        const excludedFields = ['existingImages', 'newImagesFiles', 'existingBanners', 'newBannersFiles', 'features', 'specs', 'variants', 'reviews', 'ratings', 'numOfReviews', 'emiOverride']; // 🚀 ADDED emiOverride to exclusions
+        const excludedFields = ['existingImages', 'newImagesFiles', 'existingBanners', 'newBannersFiles', 'features', 'specs', 'variants', 'reviews', 'ratings', 'numOfReviews', 'emiOverride']; 
         if (!excludedFields.includes(key)) formData.append(key, editForm[key]);
       });
       formData.append('existingImages', JSON.stringify(editForm.existingImages)); formData.append('existingBanners', JSON.stringify(editForm.existingBanners)); formData.append('features', JSON.stringify(editForm.features.filter(f => f.trim() !== ''))); formData.append('specs', JSON.stringify(editForm.specs.filter(s => s.name.trim() !== ''))); formData.append('variants', JSON.stringify(parseVariantsForDB(editForm.variants))); 
       
-      // 🚀 APPEND EMI OVERRIDE DATA
-      if (editForm.emiOverride) formData.append('emiOverride', JSON.stringify(editForm.emiOverride));
+      // 🚀 FORMAT EMI OVERRIDE DATA PROPERLY BEFORE SAVING
+      let formattedEmiOverride = { ...editForm.emiOverride };
+      if (typeof formattedEmiOverride.allowedTenures === 'string') {
+          formattedEmiOverride.allowedTenures = formattedEmiOverride.allowedTenures.split(',').map(Number).filter(n => !isNaN(n));
+      }
+      formData.append('emiOverride', JSON.stringify(formattedEmiOverride));
 
       if (editForm.newImagesFiles) for (let i = 0; i < editForm.newImagesFiles.length; i++) formData.append('images', editForm.newImagesFiles[i]);
       if (editForm.newBannersFiles) for (let i = 0; i < editForm.newBannersFiles.length; i++) formData.append('banners', editForm.newBannersFiles[i]);
@@ -14409,7 +14469,6 @@ export default function AdminDashboard() {
     return new Date(a.createdAt) - new Date(b.createdAt);
   });
 
-  // 🚀 EMI SPECIFIC DATA
   const emiOrders = orders.filter(o => o.isEmiOrder);
   const activeEmiOrders = emiOrders.filter(o => !o.emiDetails?.isForeclosed && o.status !== 'Cancelled');
 
@@ -14443,10 +14502,7 @@ export default function AdminDashboard() {
             <SidebarItem icon="📊" label="Dashboard Overview" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
             <SidebarItem icon="📦" label="Manage Inventory" active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} />
             <SidebarItem icon="📝" label="Manage Orders" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
-            
-            {/* 🚀 EMI MANAGEMENT TAB */}
             <SidebarItem icon="💳" label="EMI Management" active={activeTab === 'emi'} onClick={() => setActiveTab('emi')} />
-            
             <SidebarItem icon="🎟️" label="Promo Codes" active={activeTab === 'coupons'} onClick={() => setActiveTab('coupons')} />
             <SidebarItem icon="💸" label="Affiliate Payouts" active={activeTab === 'payouts'} onClick={() => setActiveTab('payouts')} />
             <SidebarItem icon="🖼️" label="Banners & Ads" active={activeTab === 'marketing'} onClick={() => setActiveTab('marketing')} />
@@ -14487,33 +14543,32 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* 🚀 EMI MANAGEMENT TAB */}
+          {/* EMI MANAGEMENT TAB */}
           {activeTab === 'emi' && (
             <div className="max-w-[1600px] mx-auto space-y-6">
               <h2 className="text-[26px] font-bold mb-1 text-[#111]">EMI Portfolio Management</h2>
               <p className="text-[13px] text-[#565959] mb-6">Track active loans, verify KYC, and manage foreclosures.</p>
 
-              {/* 🚀 ADMIN GLOBAL EMI SETTINGS CONTROLS */}
+              {/* 🚀 ADMIN GLOBAL EMI SETTINGS CONTROLS (Wired up to save successfully) */}
               <div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-6 shadow-sm">
                 <h3 className="text-[16px] font-bold text-[#111] mb-4">Global EMI Rules</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label className="block text-[12px] font-bold text-[#111] mb-1">Default Interest Rate (%/mo)</label>
-                    <input type="number" step="0.1" className="w-full border border-[#888C8C] p-2 text-sm rounded" placeholder="e.g. 2.0" />
+                    <input type="number" step="0.1" className="w-full border border-[#888C8C] p-2 text-sm rounded" placeholder="e.g. 2.0" value={globalEmiConfig.interestRateMonthly} onChange={e => setGlobalEmiConfig({...globalEmiConfig, interestRateMonthly: e.target.value})} />
                   </div>
                   <div>
                     <label className="block text-[12px] font-bold text-[#111] mb-1">Min Downpayment (%)</label>
-                    <input type="number" className="w-full border border-[#888C8C] p-2 text-sm rounded" placeholder="e.g. 10" />
+                    <input type="number" className="w-full border border-[#888C8C] p-2 text-sm rounded" placeholder="e.g. 10" value={globalEmiConfig.minDownPaymentPercent} onChange={e => setGlobalEmiConfig({...globalEmiConfig, minDownPaymentPercent: e.target.value})} />
                   </div>
                   <div>
                     <label className="block text-[12px] font-bold text-[#111] mb-1">Allowed Tenures (Comma Separated)</label>
-                    <input type="text" className="w-full border border-[#888C8C] p-2 text-sm rounded" placeholder="e.g. 3,6,9,12" />
+                    <input type="text" className="w-full border border-[#888C8C] p-2 text-sm rounded" placeholder="e.g. 3,6,9,12" value={globalEmiConfig.allowedTenures} onChange={e => setGlobalEmiConfig({...globalEmiConfig, allowedTenures: e.target.value})} />
                   </div>
                 </div>
-                <button className="mt-4 bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] px-6 py-2 rounded-[8px] text-sm font-medium shadow-sm transition-colors">Save Global Rules</button>
+                <button onClick={handleSaveEmiConfig} className="mt-4 bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] px-6 py-2 rounded-[8px] text-sm font-medium shadow-sm transition-colors">Save Global Rules</button>
               </div>
 
-              {/* Top Stats */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white border border-[#DDD] rounded-[4px] p-5 shadow-sm">
                   <p className="text-[11px] font-bold text-[#565959] uppercase tracking-wider">Active EMI Accounts</p>
@@ -14529,7 +14584,6 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Table */}
               <div className="bg-white border border-[#DDD] overflow-hidden shadow-sm">
                 <table className="w-full text-left text-[13px]">
                   <thead className="bg-[#F0F2F2] border-b border-[#DDD] font-bold text-[#565959]">
@@ -15088,14 +15142,14 @@ export default function AdminDashboard() {
                    {/* 🚀 PRODUCT LEVEL EMI OVERRIDE */}
                    <div className="bg-[#F0F7FF] border border-[#007185] p-4 rounded-[4px] mt-4">
                      <label className="flex items-center gap-3 cursor-pointer mb-3">
-                       <input type="checkbox" className="w-4 h-4 accent-[#e77600]" checked={editForm?.emiOverride?.isActive} onChange={e => setEditForm({...editForm, emiOverride: {...editForm.emiOverride, isActive: e.target.checked}})} />
+                       <input type="checkbox" className="w-4 h-4 accent-[#e77600]" checked={emiOverrideActive} onChange={e => setEmiOverrideActive(e.target.checked)} />
                        <span className="text-[13px] font-bold text-[#111]">Override Global EMI Rules for this Product</span>
                      </label>
-                     {editForm?.emiOverride?.isActive && (
+                     {emiOverrideActive && (
                        <div className="grid grid-cols-3 gap-4">
-                         <div><label className="block text-xs font-bold mb-1">Interest Rate (%)</label><input type="number" className="w-full border p-1 rounded text-xs" /></div>
-                         <div><label className="block text-xs font-bold mb-1">Min Downpayment (%)</label><input type="number" className="w-full border p-1 rounded text-xs" /></div>
-                         <div><label className="block text-xs font-bold mb-1">Tenures (e.g. 3,6)</label><input type="text" className="w-full border p-1 rounded text-xs" /></div>
+                         <div><label className="block text-xs font-bold mb-1">Interest Rate (%)</label><input type="number" className="w-full border p-1 rounded text-xs" value={emiOverrideInterest} onChange={(e) => setEmiOverrideInterest(e.target.value)} /></div>
+                         <div><label className="block text-xs font-bold mb-1">Min Downpayment (%)</label><input type="number" className="w-full border p-1 rounded text-xs" value={emiOverrideDown} onChange={(e) => setEmiOverrideDown(e.target.value)} /></div>
+                         <div><label className="block text-xs font-bold mb-1">Tenures (e.g. 3,6)</label><input type="text" className="w-full border p-1 rounded text-xs" value={emiOverrideTenures} onChange={(e) => setEmiOverrideTenures(e.target.value)} /></div>
                        </div>
                      )}
                    </div>
@@ -15251,14 +15305,14 @@ export default function AdminDashboard() {
                   {/* 🚀 PRODUCT LEVEL EMI OVERRIDE */}
                   <div className="bg-[#F0F7FF] border border-[#007185] p-4 rounded-[4px] mt-4">
                     <label className="flex items-center gap-3 cursor-pointer mb-3">
-                      <input type="checkbox" className="w-4 h-4 accent-[#e77600]" checked={editForm?.emiOverride?.isActive} onChange={e => setEditForm({...editForm, emiOverride: {...editForm.emiOverride, isActive: e.target.checked}})} />
+                      <input type="checkbox" className="w-4 h-4 accent-[#e77600]" checked={editForm?.emiOverride?.isActive || false} onChange={e => setEditForm({...editForm, emiOverride: {...editForm.emiOverride, isActive: e.target.checked}})} />
                       <span className="text-[13px] font-bold text-[#111]">Override Global EMI Rules for this Product</span>
                     </label>
                     {editForm?.emiOverride?.isActive && (
                       <div className="grid grid-cols-3 gap-4">
-                        <div><label className="block text-xs font-bold mb-1">Interest Rate (%)</label><input type="number" className="w-full border p-1 rounded text-xs" /></div>
-                        <div><label className="block text-xs font-bold mb-1">Min Downpayment (%)</label><input type="number" className="w-full border p-1 rounded text-xs" /></div>
-                        <div><label className="block text-xs font-bold mb-1">Tenures (e.g. 3,6)</label><input type="text" className="w-full border p-1 rounded text-xs" /></div>
+                        <div><label className="block text-xs font-bold mb-1">Interest Rate (%)</label><input type="number" className="w-full border p-1 rounded text-xs" value={editForm?.emiOverride?.interestRateMonthly ?? ''} onChange={e => setEditForm({...editForm, emiOverride: {...editForm.emiOverride, interestRateMonthly: e.target.value}})} /></div>
+                        <div><label className="block text-xs font-bold mb-1">Min Downpayment (%)</label><input type="number" className="w-full border p-1 rounded text-xs" value={editForm?.emiOverride?.minDownPaymentPercent ?? ''} onChange={e => setEditForm({...editForm, emiOverride: {...editForm.emiOverride, minDownPaymentPercent: e.target.value}})} /></div>
+                        <div><label className="block text-xs font-bold mb-1">Tenures (e.g. 3,6)</label><input type="text" className="w-full border p-1 rounded text-xs" value={editForm?.emiOverride?.allowedTenures ?? ''} onChange={e => setEditForm({...editForm, emiOverride: {...editForm.emiOverride, allowedTenures: e.target.value}})} /></div>
                       </div>
                     )}
                   </div>

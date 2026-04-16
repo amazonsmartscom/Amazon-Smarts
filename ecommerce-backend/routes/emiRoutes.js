@@ -1,26 +1,30 @@
-// routes/emiRoutes.js
+// backend/routes/emiRoutes.js
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const { calculateEmi, processKyc, forecloseLoan, getCartEmiConfig, getAdminConfig, updateAdminConfig } = require('../controllers/emiController');
 
-// Store in memory so we can check exact file sizes before saving/sending to AI
-const upload = multer({ 
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 15 * 1024 * 1024 } // Absolute max 15MB to prevent crashes
-});
+const { 
+  calculateEmi, 
+  forecloseLoan, 
+  getCartEmiConfig, 
+  getAdminConfig, 
+  updateAdminConfig,
+  verifyPanCard,
+  sendAadhaarOtp,
+  verifyAadhaarOtp
+} = require('../controllers/emiController');
 
-// 🚀 NEW: DYNAMIC HIERARCHY ROUTES
+// 🚀 DYNAMIC HIERARCHY ROUTES
 router.post('/cart-config', getCartEmiConfig); 
 router.post('/calculate', calculateEmi);       
 router.get('/admin/config', getAdminConfig);
 router.put('/admin/config', updateAdminConfig);
 
-// 🚀 KYC & FORECLOSURE
-router.post('/kyc', upload.fields([
-  { name: 'selfie', maxCount: 1 }, { name: 'panCard', maxCount: 1 },
-  { name: 'idFront', maxCount: 1 }, { name: 'idBack', maxCount: 1 }
-]), processKyc);
+// 🚀 API-BASED KYC ROUTES
+router.post('/kyc/pan', verifyPanCard);
+router.post('/kyc/aadhaar/send-otp', sendAadhaarOtp);
+router.post('/kyc/aadhaar/verify-otp', verifyAadhaarOtp);
+
+// 🚀 ADMIN CONTROLS
 router.put('/admin/:id/foreclose', forecloseLoan);
 
 module.exports = router;
