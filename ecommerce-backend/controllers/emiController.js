@@ -146,17 +146,23 @@ exports.verifyPanCard = async (req, res) => {
   }
 };
 
+// 🚀 2. SEND AADHAAR OTP (Simulates UIDAI behavior)
 exports.sendAadhaarOtp = async (req, res) => {
   try {
     const { aadhaarNumber } = req.body;
     if (aadhaarNumber.length !== 12) return res.status(400).json({ message: "Invalid Aadhaar Number" });
 
+    // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Mocking real API behavior: UIDAI returns the last 4 digits of the linked mobile
+    const mockLastFourDigits = Math.floor(1000 + Math.random() * 9000).toString();
 
     res.json({
       success: true,
       referenceId: "ref_" + Date.now(), 
-      message: "OTP sent to Aadhaar registered mobile number."
+      mobileEnding: mockLastFourDigits, // 🚀 Send back masked mobile ending
+      message: `OTP sent to Aadhaar registered mobile number.`
     });
   } catch (error) {
     res.status(500).json({ message: "Failed to send Aadhaar OTP" });

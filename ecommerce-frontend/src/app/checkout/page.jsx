@@ -3747,7 +3747,7 @@ export default function CheckoutPage() {
   const [emiDownPayment, setEmiDownPayment] = useState(10); 
   const [emiTenure, setEmiTenure] = useState(6); 
   const [emiCalcData, setEmiCalcData] = useState(null);
-  
+  const [aadhaarMobileEnding, setAadhaarMobileEnding] = useState(''); // 🚀 NEW STATE
   // Interactive KYC States
   const [showKycModal, setShowKycModal] = useState(false);
   const [kycStep, setKycStep] = useState('PAN'); // 'PAN', 'AADHAAR_SEND', 'AADHAAR_VERIFY', 'DONE'
@@ -3909,6 +3909,7 @@ export default function CheckoutPage() {
     try {
       const { data } = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/emi/kyc/aadhaar/send-otp`, { aadhaarNumber });
       setAadhaarRefId(data.referenceId);
+      setAadhaarMobileEnding(data.mobileEnding || 'XXXX'); // 🚀 Catch the 4 digits
       setKycStep('AADHAAR_VERIFY');
     } catch(e) { alert(e.response?.data?.message || "Invalid ID Number"); }
     setIsVerifying(false);
@@ -4134,12 +4135,17 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {kycStep === 'AADHAAR_SEND' && (
+              {kycStep === 'AADHAAR_VERIFY' && (
                 <div className="animate-in fade-in slide-in-from-right-4">
-                  <div className="bg-green-50 text-green-700 p-2 rounded text-xs font-bold mb-4 border border-green-200">✓ PAN Verified Successfully</div>
-                  <label className={labelStyles}>Enter your 12-digit ID Number</label>
-                  <input type="text" maxLength={12} className={`${inputStyles} font-mono tracking-widest`} value={aadhaarNumber} onChange={e => setAadhaarNumber(e.target.value.replace(/\D/g, ''))} placeholder="0000 0000 0000" />
-                  <button onClick={sendAadhaar} disabled={isVerifying || aadhaarNumber.length < 12} className={amzButton + " mt-4"}>{isVerifying ? 'Sending OTP...' : 'Send OTP to Mobile'}</button>
+                  <label className={labelStyles}>Enter Aadhaar OTP</label>
+                  {/* 🚀 Updated UI to show the masked phone number */}
+                  <p className="text-[11px] text-gray-500 mb-2">
+                    Sent to your UIDAI registered mobile number ending in <span className="font-bold text-[#111]">******{aadhaarMobileEnding}</span>.
+                  </p>
+                  <input type="text" maxLength={6} className={`${inputStyles} font-mono tracking-widest text-center text-xl`} value={aadhaarOtp} onChange={e => setAadhaarOtp(e.target.value.replace(/\D/g, ''))} placeholder="------" />
+                  <button onClick={verifyAadhaar} disabled={isVerifying || aadhaarOtp.length < 6} className={amzButton + " mt-4"}>
+                    {isVerifying ? 'Verifying...' : 'Verify & Complete KYC'}
+                  </button>
                 </div>
               )}
 
