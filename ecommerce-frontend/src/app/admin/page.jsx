@@ -14317,10 +14317,14 @@ export default function AdminDashboard() {
     try {
       const formData = new FormData();
       Object.keys(editForm).forEach(key => {
-        const excludedFields = ['existingImages', 'newImagesFiles', 'existingBanners', 'newBannersFiles', 'features', 'specs', 'variants', 'reviews', 'ratings', 'numOfReviews'];
+        const excludedFields = ['existingImages', 'newImagesFiles', 'existingBanners', 'newBannersFiles', 'features', 'specs', 'variants', 'reviews', 'ratings', 'numOfReviews', 'emiOverride']; // 🚀 ADDED emiOverride to exclusions
         if (!excludedFields.includes(key)) formData.append(key, editForm[key]);
       });
       formData.append('existingImages', JSON.stringify(editForm.existingImages)); formData.append('existingBanners', JSON.stringify(editForm.existingBanners)); formData.append('features', JSON.stringify(editForm.features.filter(f => f.trim() !== ''))); formData.append('specs', JSON.stringify(editForm.specs.filter(s => s.name.trim() !== ''))); formData.append('variants', JSON.stringify(parseVariantsForDB(editForm.variants))); 
+      
+      // 🚀 APPEND EMI OVERRIDE DATA
+      if (editForm.emiOverride) formData.append('emiOverride', JSON.stringify(editForm.emiOverride));
+
       if (editForm.newImagesFiles) for (let i = 0; i < editForm.newImagesFiles.length; i++) formData.append('images', editForm.newImagesFiles[i]);
       if (editForm.newBannersFiles) for (let i = 0; i < editForm.newBannersFiles.length; i++) formData.append('banners', editForm.newBannersFiles[i]);
       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/products/${editingProduct._id}?adminId=${adminId}`, formData);
@@ -14440,7 +14444,7 @@ export default function AdminDashboard() {
             <SidebarItem icon="📦" label="Manage Inventory" active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} />
             <SidebarItem icon="📝" label="Manage Orders" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
             
-            {/* 🚀 NEW: EMI MANAGEMENT TAB */}
+            {/* 🚀 EMI MANAGEMENT TAB */}
             <SidebarItem icon="💳" label="EMI Management" active={activeTab === 'emi'} onClick={() => setActiveTab('emi')} />
             
             <SidebarItem icon="🎟️" label="Promo Codes" active={activeTab === 'coupons'} onClick={() => setActiveTab('coupons')} />
@@ -14483,11 +14487,31 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* 🚀 NEW: EMI MANAGEMENT TAB */}
+          {/* 🚀 EMI MANAGEMENT TAB */}
           {activeTab === 'emi' && (
             <div className="max-w-[1600px] mx-auto space-y-6">
               <h2 className="text-[26px] font-bold mb-1 text-[#111]">EMI Portfolio Management</h2>
               <p className="text-[13px] text-[#565959] mb-6">Track active loans, verify KYC, and manage foreclosures.</p>
+
+              {/* 🚀 ADMIN GLOBAL EMI SETTINGS CONTROLS */}
+              <div className="bg-white border border-[#DDD] rounded-[4px] p-6 mb-6 shadow-sm">
+                <h3 className="text-[16px] font-bold text-[#111] mb-4">Global EMI Rules</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-[12px] font-bold text-[#111] mb-1">Default Interest Rate (%/mo)</label>
+                    <input type="number" step="0.1" className="w-full border border-[#888C8C] p-2 text-sm rounded" placeholder="e.g. 2.0" />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-bold text-[#111] mb-1">Min Downpayment (%)</label>
+                    <input type="number" className="w-full border border-[#888C8C] p-2 text-sm rounded" placeholder="e.g. 10" />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-bold text-[#111] mb-1">Allowed Tenures (Comma Separated)</label>
+                    <input type="text" className="w-full border border-[#888C8C] p-2 text-sm rounded" placeholder="e.g. 3,6,9,12" />
+                  </div>
+                </div>
+                <button className="mt-4 bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] px-6 py-2 rounded-[8px] text-sm font-medium shadow-sm transition-colors">Save Global Rules</button>
+              </div>
 
               {/* Top Stats */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -14533,7 +14557,6 @@ export default function AdminDashboard() {
                           <div className="mt-2 space-y-1 text-[11px]">
                             <p><span className="text-[#565959]">PAN:</span> <span className="font-mono font-bold text-[#111]">{o.emiDetails?.kyc?.extractedData?.panNumber || 'N/A'}</span></p>
                             <p><span className="text-[#565959]">ID:</span> <span className="font-mono font-bold text-[#111]">{o.emiDetails?.kyc?.extractedData?.idNumber || 'N/A'}</span></p>
-                            <p><span className="text-[#565959]">Name Match:</span> {o.emiDetails?.kyc?.extractedData?.name || 'N/A'}</p>
                           </div>
                         </td>
 
@@ -14708,7 +14731,6 @@ export default function AdminDashboard() {
                 </div>
                 
                 <div className="hidden lg:flex gap-2 text-[13px]">
-                   {/* 🚀 MANUAL BACKGROUND SYNC BUTTON */}
                    <button 
                      onClick={() => triggerBulkSync(true)} 
                      disabled={isSyncingAll}
@@ -15062,6 +15084,22 @@ export default function AdminDashboard() {
                      <div><label className={amzLabel}> Comm. (%)</label><input type="number" className={amzInput} value={affiliateCommission} onChange={e => setAffiliateCommission(e.target.value)} placeholder="e.g. 10" /></div>
                      <div><label className={amzLabel}>Review Reward (₹)</label><input type="number" className={amzInput} value={reviewCommission} onChange={e => setReviewCommission(e.target.value)} placeholder="e.g. 50" /></div>
                    </div>
+
+                   {/* 🚀 PRODUCT LEVEL EMI OVERRIDE */}
+                   <div className="bg-[#F0F7FF] border border-[#007185] p-4 rounded-[4px] mt-4">
+                     <label className="flex items-center gap-3 cursor-pointer mb-3">
+                       <input type="checkbox" className="w-4 h-4 accent-[#e77600]" checked={editForm?.emiOverride?.isActive} onChange={e => setEditForm({...editForm, emiOverride: {...editForm.emiOverride, isActive: e.target.checked}})} />
+                       <span className="text-[13px] font-bold text-[#111]">Override Global EMI Rules for this Product</span>
+                     </label>
+                     {editForm?.emiOverride?.isActive && (
+                       <div className="grid grid-cols-3 gap-4">
+                         <div><label className="block text-xs font-bold mb-1">Interest Rate (%)</label><input type="number" className="w-full border p-1 rounded text-xs" /></div>
+                         <div><label className="block text-xs font-bold mb-1">Min Downpayment (%)</label><input type="number" className="w-full border p-1 rounded text-xs" /></div>
+                         <div><label className="block text-xs font-bold mb-1">Tenures (e.g. 3,6)</label><input type="text" className="w-full border p-1 rounded text-xs" /></div>
+                       </div>
+                     )}
+                   </div>
+
                  </div>
 
                  {/* Specs & Features */}
@@ -15208,6 +15246,21 @@ export default function AdminDashboard() {
                     <div><label className={amzLabel}>Stock</label><input type="number" className={amzInput} value={editForm.stock} onChange={e => setEditForm({...editForm, stock: e.target.value})} required /></div>
                     <div><label className={amzLabel}> Comm. (%)</label><input type="number" className={amzInput} value={editForm.affiliateCommission || 0} onChange={e => setEditForm({...editForm, affiliateCommission: e.target.value})} /></div>
                     <div><label className={amzLabel}>Review Reward (₹)</label><input type="number" className={amzInput} value={editForm.reviewCommission || 0} onChange={e => setEditForm({...editForm, reviewCommission: e.target.value})} /></div>
+                  </div>
+                  
+                  {/* 🚀 PRODUCT LEVEL EMI OVERRIDE */}
+                  <div className="bg-[#F0F7FF] border border-[#007185] p-4 rounded-[4px] mt-4">
+                    <label className="flex items-center gap-3 cursor-pointer mb-3">
+                      <input type="checkbox" className="w-4 h-4 accent-[#e77600]" checked={editForm?.emiOverride?.isActive} onChange={e => setEditForm({...editForm, emiOverride: {...editForm.emiOverride, isActive: e.target.checked}})} />
+                      <span className="text-[13px] font-bold text-[#111]">Override Global EMI Rules for this Product</span>
+                    </label>
+                    {editForm?.emiOverride?.isActive && (
+                      <div className="grid grid-cols-3 gap-4">
+                        <div><label className="block text-xs font-bold mb-1">Interest Rate (%)</label><input type="number" className="w-full border p-1 rounded text-xs" /></div>
+                        <div><label className="block text-xs font-bold mb-1">Min Downpayment (%)</label><input type="number" className="w-full border p-1 rounded text-xs" /></div>
+                        <div><label className="block text-xs font-bold mb-1">Tenures (e.g. 3,6)</label><input type="text" className="w-full border p-1 rounded text-xs" /></div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

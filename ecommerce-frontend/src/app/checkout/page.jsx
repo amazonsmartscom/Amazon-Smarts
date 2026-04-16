@@ -3695,7 +3695,6 @@
 
 
 
-
 // src/app/checkout/page.jsx
 'use client';
 import { useState, useEffect } from 'react';
@@ -3744,6 +3743,7 @@ export default function CheckoutPage() {
   const [upiId, setUpiId] = useState('');
 
   // 🚀 EMI & KYC STATES
+  const [dynamicEmiConfig, setDynamicEmiConfig] = useState({ minDownPaymentPercent: 10, allowedTenures: [3, 6, 9, 12] });
   const [emiDownPayment, setEmiDownPayment] = useState(10); 
   const [emiTenure, setEmiTenure] = useState(6); 
   const [emiCalcData, setEmiCalcData] = useState(null);
@@ -3779,14 +3779,26 @@ export default function CheckoutPage() {
   const shippingPrice = itemsPrice > 50000 ? 0 : 0; 
   const grandTotal = Math.max(0, itemsPrice + (cart.length > 0 ? shippingPrice : 0) - appliedDiscount);
 
-  // Auto Calculate EMI
+  // 🚀 1. FETCH DYNAMIC CART LIMITS ON LOAD
+  useEffect(() => {
+    if(cart.length > 0) {
+      axios.post(`${process.env.NEXT_PUBLIC_API_URL}/emi/cart-config`, { cartItems: cart })
+        .then(res => {
+           setDynamicEmiConfig(res.data);
+           setEmiDownPayment(res.data.minDownPaymentPercent); 
+           setEmiTenure(res.data.allowedTenures[0] || 6);          
+        }).catch(err => console.error(err));
+    }
+  }, [cart]);
+
+  // 🚀 2. CALCULATE MATH WHEN SLIDER MOVES
   useEffect(() => {
     if (paymentMethod === 'EMI_LOAN' && grandTotal > 0) {
       axios.post(`${process.env.NEXT_PUBLIC_API_URL}/emi/calculate`, {
-        totalAmount: grandTotal, downPaymentPercent: emiDownPayment, tenureMonths: emiTenure
+        cartItems: cart, downPaymentPercent: emiDownPayment, tenureMonths: emiTenure
       }).then(res => setEmiCalcData(res.data)).catch(err => console.error(err));
     }
-  }, [paymentMethod, emiDownPayment, emiTenure, grandTotal]);
+  }, [paymentMethod, emiDownPayment, emiTenure, cart, grandTotal]);
 
   const getImageUrl = (imagePath) => {
     if (!imagePath) return '#';
@@ -3815,7 +3827,6 @@ export default function CheckoutPage() {
     try {
       const userId = user?._id || user?.user?._id;
       
-      // Build standard schedule if EMI
       let schedule = [];
       if (methodString === 'EMI_LOAN' && emiCalcData) {
          for(let i=1; i<=emiTenure; i++) {
@@ -3876,7 +3887,6 @@ export default function CheckoutPage() {
       return;
     }
 
-    // 🚀 STEP 1: If EMI, trigger AI KYC Verification first
     if (paymentMethod === 'EMI_LOAN') {
        if(!kycFiles.selfie || !kycFiles.panCard || !kycFiles.idFront || !kycFiles.idBack) {
           alert("All KYC Documents are required for EMI Approval.");
@@ -3899,8 +3909,8 @@ export default function CheckoutPage() {
          const kycRes = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/emi/kyc`, formData);
          setExtractedKycData(kycRes.data.extractedData);
          setIsProcessing(false);
-         setShowKycModal(true); // Open confirmation modal
-         return; // Stop here until they confirm the modal
+         setShowKycModal(true); 
+         return; 
        } catch (err) {
          setIsProcessing(false);
          alert(err.response?.data?.message || "AI Verification failed. Please ensure images are clear.");
@@ -3908,10 +3918,10 @@ export default function CheckoutPage() {
        }
     }
 
-    // 🚀 STEP 2: Standard execution if not EMI (or called from KYC Modal)
     proceedToRazorpay();
   };
 
+  // 🚀 3. RAZORPAY RECURRING E-MANDATE ENFORCEMENT
   const proceedToRazorpay = async () => {
     setShowKycModal(false);
     setIsProcessing(true);
@@ -3935,7 +3945,7 @@ export default function CheckoutPage() {
             amount: rzpOrder.amount,
             currency: rzpOrder.currency,
             name: "Amazon Smarts",
-            description: paymentMethod === 'EMI_LOAN' ? "EMI Down Payment & E-Mandate" : `Secure ${paymentMethod} Payment`,
+            description: paymentMethod === 'EMI_LOAN' ? "Down Payment & E-Mandate Setup" : `Secure ${paymentMethod} Payment`,
             order_id: rzpOrder.id,
             handler: async function (response) {
               try {
@@ -3959,13 +3969,12 @@ export default function CheckoutPage() {
                   custom_block: {
                     name: "Complete Payment",
                     instruments: [
+                      paymentMethod === 'EMI_LOAN' ? { method: "emandate" } : 
                       paymentMethod === 'UPI' ? { method: "upi" } :
                       paymentMethod === 'CARD' ? { method: "card" } :
                       paymentMethod === 'NETBANKING' ? { method: "netbanking" } :
                       paymentMethod === 'WALLET' ? { method: "wallet" } :
-                      paymentMethod === 'EMI' ? { method: "emi" } :
                       paymentMethod === 'PAYLATER' ? { method: "paylater" } :
-                      paymentMethod === 'EMI_LOAN' ? { method: "card" } : 
                       { method: "card" } 
                     ]
                   }
@@ -4021,6 +4030,8 @@ export default function CheckoutPage() {
   const labelStyles = "block text-[13px] font-bold text-[#111] mb-1";
   const amzButton = "w-full bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200] rounded-[8px] py-[6px] text-[13px] text-[#0F1111] shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-colors cursor-pointer text-center disabled:opacity-50";
   const sectionTitle = "text-[18px] font-bold text-[#c45500] mb-4";
+  const authInputStyles = "w-full px-3 py-2 border border-[#a6a6a6] rounded-[3px] text-sm focus:outline-none focus:border-[#e77600] focus:shadow-[0_0_3px_2px_rgba(228,121,17,0.5)] transition-shadow text-[#111]";
+  const authButton = "w-full bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] py-[6px] rounded-[8px] text-[14px] text-[#111] shadow-sm transition-colors cursor-pointer text-center font-normal mt-2 disabled:opacity-50";
 
   if (!isHydrated) return null;
 
@@ -4029,6 +4040,30 @@ export default function CheckoutPage() {
       <div className="min-h-screen bg-white flex flex-col items-center pt-20">
         <h2 className="text-[24px] font-bold text-[#111] mb-4">Your Amazon Smarts Cart is empty.</h2>
         <Link href="/"><button className={amzButton + " px-6 py-2 w-auto rounded-[3px]"}>Continue Shopping</button></Link>
+      </div>
+    );
+  }
+
+  if (checkoutStep === 'otp') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center pt-4 font-sans selection:bg-orange-200 relative">
+        <div className="mb-4 mt-2"><Link href="/"><h1 className="text-3xl font-normal tracking-tighter text-[#111] cursor-pointer">amazon<span className="text-[#e77600] font-bold tracking-normal">smarts</span></h1></Link></div>
+        <div className="w-full max-w-[350px] mx-auto px-4 sm:px-0 flex-1 relative">
+          <div className="border border-[#ddd] rounded-[4px] p-[22px]">
+            <form onSubmit={handleVerifyAndPlaceOrder} className="space-y-4">
+              <h2 className="text-[28px] font-normal text-[#111] mb-2 leading-[1.2]">Verify email address</h2>
+              <p className="text-[13px] text-[#111] leading-snug">To verify your email, we've sent a One Time Password (OTP) to <span className="font-bold">{shippingInfo.email}</span></p>
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-[13px] font-bold text-[#111]">Enter OTP</label>
+                  <button type="button" onClick={() => { setCheckoutStep('editing'); setOtp(''); }} className="text-[13px] text-[#0066c0] hover:text-[#c45500] hover:underline bg-transparent border-none cursor-pointer">Change email</button>
+                </div>
+                <input type="text" maxLength="6" required className={`${authInputStyles} text-lg tracking-widest text-center py-2.5`} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} />
+              </div>
+              <button type="submit" disabled={isProcessing || otp.length < 6} className={authButton}>{isProcessing ? 'Connecting...' : 'Verify & Place Order'}</button>
+            </form>
+          </div>
+        </div>
       </div>
     );
   }
@@ -4185,16 +4220,17 @@ export default function CheckoutPage() {
                           <div>
                             <label className="flex justify-between text-[12px] font-bold text-[#111] mb-2">
                               <span>Down Payment: {emiDownPayment}%</span>
-                              <span className="text-[#B12704]">₹{emiCalcData.downPaymentAmount?.toLocaleString()} Today</span>
+                              <span className="text-[#B12704]">₹{emiCalcData?.downPaymentAmount?.toLocaleString()} Today</span>
                             </label>
-                            <input type="range" min="10" max="20" step="1" value={emiDownPayment} onChange={e => setEmiDownPayment(Number(e.target.value))} className="w-full h-1.5 bg-[#ddd] rounded-lg appearance-none cursor-pointer accent-[#e77600]" />
+                            <input type="range" min={dynamicEmiConfig.minDownPaymentPercent} max="50" step="1" value={emiDownPayment} onChange={e => setEmiDownPayment(Number(e.target.value))} className="w-full h-1.5 bg-[#ddd] rounded-lg appearance-none cursor-pointer accent-[#e77600]" />
+                            <p className="text-[10px] text-gray-500 mt-1">Minimum required for your cart: {dynamicEmiConfig.minDownPaymentPercent}%</p>
                           </div>
 
                           {/* Tenure Select */}
                           <div>
                             <label className="block text-[12px] font-bold text-[#111] mb-1">Select Tenure:</label>
                             <div className="flex gap-2">
-                               {[3, 6, 9, 12].map(m => (
+                               {dynamicEmiConfig.allowedTenures.map(m => (
                                  <button type="button" key={m} onClick={() => setEmiTenure(m)} className={`flex-1 py-1.5 text-[12px] font-bold rounded border ${emiTenure === m ? 'bg-[#e7f4e4] border-[#007600] text-[#007600]' : 'bg-white border-[#ddd] text-[#565959] hover:bg-gray-50'}`}>{m} Months</button>
                                ))}
                             </div>

@@ -243,6 +243,66 @@
 
 
 
+// // models/Product.js
+// const mongoose = require('mongoose');
+
+// const reviewSchema = new mongoose.Schema({
+//   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+//   name: { type: String, required: true },
+//   rating: { type: Number, required: true },
+//   comment: { type: String, required: true },
+//   isApproved: { type: Boolean, default: false } 
+// }, { timestamps: true });
+
+// const productSchema = new mongoose.Schema({
+//   seoTitle: { type: String },
+//   seoDescription: { type: String },
+//   seoKeywords: { type: String }, 
+//   name: { type: String, required: true },
+//   description: { type: String, required: true },
+//   price: { type: Number, required: true },
+//   discountPrice: { type: Number },
+//   category: { type: String, required: true },
+//   brand: { type: String, required: true, default: 'Generic' }, 
+//   stock: { type: Number, required: true, default: 10 },
+  
+//   images: [{ type: String }], 
+//   banners: [{ type: String }], 
+//   features: [{ type: String }], 
+  
+//   variants: [
+//     {
+//       name: { type: String, required: true },
+//       options: [
+//         { name: { type: String, required: true }, priceModifier: { type: Number, default: 0 } }
+//       ]
+//     }
+//   ],
+
+//   specs: [{ name: String, value: String }],
+
+//   returnPolicy: { type: String, default: '7 Days Replacement' },
+//   warrantyPolicy: { type: String, default: '1 Year Warranty' },
+//   isBestSeller: { type: Boolean, default: false },
+  
+//   isCancellable: { type: Boolean, default: true },
+//   cancellationWindowHours: { type: Number, default: 24 },
+
+//   affiliateCommission: { type: Number, default: 0 }, 
+  
+//   // 🚀 NEW: FLAT RATE REVIEW COMMISSION
+//   reviewCommission: { type: Number, default: 0 }, // Represents fixed amount in Rupees (e.g., ₹50)
+  
+//   reviews: [reviewSchema],
+//   ratings: { type: Number, default: 0 }, 
+//   numOfReviews: { type: Number, default: 0 } 
+// }, { timestamps: true });
+
+// module.exports = mongoose.model('Product', productSchema);
+
+
+
+
 // models/Product.js
 const mongoose = require('mongoose');
 
@@ -289,10 +349,16 @@ const productSchema = new mongoose.Schema({
   cancellationWindowHours: { type: Number, default: 24 },
 
   affiliateCommission: { type: Number, default: 0 }, 
+  reviewCommission: { type: Number, default: 0 }, 
   
-  // 🚀 NEW: FLAT RATE REVIEW COMMISSION
-  reviewCommission: { type: Number, default: 0 }, // Represents fixed amount in Rupees (e.g., ₹50)
-  
+  // 🚀 FINTECH: EMI OVERRIDES
+  emiOverride: {
+    isActive: { type: Boolean, default: false },
+    interestRateMonthly: { type: Number, default: 0 },
+    minDownPaymentPercent: { type: Number, default: 10 },
+    allowedTenures: { type: [Number], default: [3, 6] }
+  },
+
   reviews: [reviewSchema],
   ratings: { type: Number, default: 0 }, 
   numOfReviews: { type: Number, default: 0 } 
